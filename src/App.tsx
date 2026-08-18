@@ -6,10 +6,10 @@ import {
   HeartPulse, LayoutDashboard, Menu, MoreHorizontal, Pencil, Plus, Printer, ReceiptIndianRupee,
   Search, Settings2, ShieldCheck, SlidersHorizontal, Trash2, UserRound, UsersRound, WalletCards, X
 } from 'lucide-react';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Toaster } from '@/Components/ui/toaster';
+import { TooltipProvider } from '@/Components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ErrorBoundary } from '@/components/error-boundary';
+import { ErrorBoundary } from '@/Components/error-boundary';
 
 type Profile = {
   fullName: string; title: string; qualification: string; registration: string; pan: string; gstin: string;

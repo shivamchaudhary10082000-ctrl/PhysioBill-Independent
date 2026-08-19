@@ -22,10 +22,22 @@ type Patient = {
 };
 type Visit = { id: string; visitNumber: string; patientId: string; date: string; treatment: string; modalities: string; exercises: string; duration: string; notes: string; authorization: string; };
 type InvoiceStatus = 'Paid' | 'Part paid' | 'Outstanding' | 'Draft';
+type InvoiceAuditEntry = {
+  id: string;
+  action: 'correction' | 'edit';
+  reason: string;
+  changedAt: string;
+  changedBy: string;
+  changedFields: string[];
+  before: Partial<Invoice>;
+  after: Partial<Invoice>;
+};
+
 type Invoice = {
   id: string; number: string; patientId: string; description: string; sessions: string; startDate: string; endDate: string;
   fee: number; additional: number; additionalDescription: string; discount: number; gstRate: number; total: number; paid: number;
   paymentMethod: string; finalized: boolean; status: InvoiceStatus; createdAt: string;
+  auditTrail?: InvoiceAuditEntry[];
 };
 type Settings = { practiceName: string; defaultPayment: string; footerNote: string; showGst: boolean; dateFormat: string; };
 
@@ -131,12 +143,13 @@ function normalizeInvoices(items: Invoice[]) {
     used.add(number);
     const finalized = typeof invoice.finalized === 'boolean' ? invoice.finalized : invoice.status !== 'Draft';
     return {
-      ...invoice,
-      number,
-      additionalDescription: invoice.additionalDescription || '',
-      finalized,
-      status: deriveInvoiceStatus(invoice.total, invoice.paid, finalized),
-    };
+  ...invoice,
+  number,
+  additionalDescription: invoice.additionalDescription || '',
+  auditTrail: Array.isArray(invoice.auditTrail) ? invoice.auditTrail : [],
+  finalized,
+  status: deriveInvoiceStatus(invoice.total, invoice.paid, finalized),
+};
   });
 }
 function normalizeSettings(settings: Settings) {
@@ -145,7 +158,69 @@ function normalizeSettings(settings: Settings) {
     defaultPayment: paymentMethods.includes(settings.defaultPayment as typeof paymentMethods[number]) ? settings.defaultPayment : 'Select payment method',
   };
 }
+const invoiceFinancialFields: (keyof Invoice)[] = [
+  'fee',
+  'additional',
+  'additionalDescription',
+  'discount',
+  'gstRate',
+  'total',
+  'paid',
+  'paymentMethod',
+];
 
+const invoiceEditableFields: (keyof Invoice)[] = [
+  'patientId',
+  'description',
+  'sessions',
+  'startDate',
+  'endDate',
+  'fee',
+  'additional',
+  'additionalDescription',
+  'discount',
+  'gstRate',
+  'paid',
+  'paymentMethod',
+  'finalized',
+];
+
+const invoiceFieldLabels: Record<string, string> = {
+  patientId: 'patient',
+  description: 'description',
+  sessions: 'sessions',
+  startDate: 'start date',
+  endDate: 'end date',
+  fee: 'service fee',
+  additional: 'additional charges',
+  additionalDescription: 'additional charge description',
+  discount: 'discount',
+  gstRate: 'GST',
+  paid: 'amount paid',
+  paymentMethod: 'payment method',
+  finalized: 'invoice state',
+  total: 'total',
+};
+
+const hasInvoiceFinancialChanges = (before: Invoice, after: Invoice) =>
+  invoiceFinancialFields.some((field) => before[field] !== after[field]);
+
+const getInvoiceChangedFields = (before: Invoice, after: Invoice) =>
+  invoiceEditableFields
+    .filter((field) => before[field] !== after[field])
+    .map((field) => invoiceFieldLabels[field] || String(field));
+
+const invoiceFieldKeyFromLabel = (label: string) =>
+  Object.keys(invoiceFieldLabels).find(
+    (key) => invoiceFieldLabels[key] === label
+  ) as keyof Invoice | undefined;
+
+const auditValue = (value: unknown) => {
+  if (value === undefined || value === null || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Finalized' : 'Draft';
+  if (typeof value === 'number') return money(value);
+  return String(value);
+};
 function usePersistentState<T>(key: string, initial: T, normalize?: (value: T) => T) {
   const [value, setValue] = useState<T>(() => {
     try {
@@ -173,8 +248,35 @@ function Field({ label, hint, ...props }: { label: string; hint?: string; } & In
 function TextArea({ label, ...props }: { label: string; } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</span><textarea className="min-h-24 w-full resize-y rounded-xl border bg-card px-3.5 py-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/10" {...props} /></label>;
 }
-function SelectField({ label, value, onChange, children }: { label: string; value: string | number; onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void; children: ReactNode }) {
-  return <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</span><select value={value} onChange={onChange} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10">{children}</select></label>;
+function SelectField({
+  label,
+  value,
+  onChange,
+  children,
+  disabled = false,
+}: {
+  label: string;
+  value: string | number;
+  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  children: ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+        {label}
+      </span>
+
+      <select
+        disabled={disabled}
+        value={value}
+        onChange={onChange}
+        className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-70"
+      >
+        {children}
+      </select>
+    </label>
+  );
 }
 function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'green' | 'amber' | 'coral' | 'blue' }) {
   const tones = { neutral: 'bg-muted text-muted-foreground', green: 'bg-primary/10 text-primary', amber: 'bg-amber-100 text-amber-800', coral: 'bg-accent/25 text-foreground', blue: 'bg-sky-100 text-sky-800' };

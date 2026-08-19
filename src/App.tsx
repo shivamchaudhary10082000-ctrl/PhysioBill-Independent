@@ -618,7 +618,6 @@ const getWorkspacePatients = (
     belongsToPhysio(patient.physioId, physioId),
   );
 
-/* =========================================================
 const getWorkspaceVisits = (
   visits: Visit[],
   physioId: string,
@@ -638,7 +637,6 @@ const getWorkspaceInvoices = (
 /* =========================================================
    INVOICE AUDIT / CONTROLLED MUTATIONS
    ========================================================= */
-
 const createAuditId = () =>
   `audit-${Date.now()}-${Math.random()
     .toString(36)
@@ -835,8 +833,6 @@ const correctFinalizedInvoice = (
     },
   };
 };
-
-/* =========================================================
 const markInvoicePaid = (
   before: Invoice,
   actor: AuditActor,
@@ -1060,95 +1056,6 @@ function InvoiceAuditHistory({
   );
 }
 
-/* =========================================================
-          {entry.changedFields.length > 0 && (
-            <div className="mt-4">
-              <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
-                Changed fields
-              </p>
-
-              <div className="mt-2 flex flex-wrap gap-2">
-                {entry.changedFields.map(
-                  (field) => (
-                    <Badge
-                      key={field}
-                      tone="neutral"
-                    >
-                      {field}
-                    </Badge>
-                  ),
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-xl border p-3">
-              <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
-                Before
-              </p>
-
-              <div className="mt-2 space-y-1 text-sm">
-                {entry.changedFields.map(
-                  (label) => {
-                    const key =
-                      invoiceFieldKeyFromLabel(
-                        label,
-                      );
-
-                    return (
-                      <p key={label}>
-                        <span className="font-semibold">
-                          {label}:
-                        </span>{' '}
-                        {auditValue(
-                          key
-                            ? entry.before[key]
-                            : undefined,
-                        )}
-                      </p>
-                    );
-                  },
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-xl border p-3">
-              <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
-                After
-              </p>
-
-              <div className="mt-2 space-y-1 text-sm">
-                {entry.changedFields.map(
-                  (label) => {
-                    const key =
-                      invoiceFieldKeyFromLabel(
-                        label,
-                      );
-
-                    return (
-                      <p key={label}>
-                        <span className="font-semibold">
-                          {label}:
-                        </span>{' '}
-                        {auditValue(
-                          key
-                            ? entry.after[key]
-                            : undefined,
-                        )}
-                      </p>
-                    );
-                  },
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-}
 
 function CorrectionReasonModal({
   open,
@@ -1295,7 +1202,7 @@ const belongsToPhysio = (
   physioId: string | undefined,
   currentPhysioId: string,
 ): boolean =>
-  !physioId || physioId === currentPhysioId;
+  !physioId === currentPhysioId;
 
 const getWorkspacePatients = (
   patients: Patient[],

@@ -1,253 +1,1469 @@
-import { type ButtonHTMLAttributes, type ChangeEvent, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes, useEffect, useState } from 'react';
-import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import {
-  Activity, ArrowLeft, ArrowRight, Bell, BookOpenText, CalendarDays,
-  Check, ChevronRight, CircleHelp, ClipboardList, Clock3, Copy, FilePlus2, FileText,
-  HeartPulse, LayoutDashboard, Menu, MoreHorizontal, Pencil, Plus, Printer, ReceiptIndianRupee,
-  Search, Settings2, ShieldCheck, SlidersHorizontal, Trash2, UserRound, UsersRound, WalletCards, X
+  type ButtonHTMLAttributes,
+  type ChangeEvent,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+  useEffect,
+  useState,
+} from 'react';
+
+import {
+  Link,
+  Route,
+  Switch,
+  useLocation,
+  useParams,
+  Router as WouterRouter,
+} from 'wouter';
+
+import {
+  Activity,
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  BookOpenText,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  CircleHelp,
+  ClipboardList,
+  Clock3,
+  Copy,
+  FilePlus2,
+  FileText,
+  HeartPulse,
+  LayoutDashboard,
+  Menu,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Printer,
+  ReceiptIndianRupee,
+  Search,
+  Settings2,
+  ShieldCheck,
+  SlidersHorizontal,
+  Trash2,
+  UserRound,
+  UsersRound,
+  WalletCards,
+  X,
 } from 'lucide-react';
+
 import { Toaster } from '@/Components/ui/toaster';
 import { TooltipProvider } from '@/Components/ui/tooltip';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import { ErrorBoundary } from '@/Components/error-boundary';
 
+/* =========================================================
+   PHYSIOBILL — APPLICATION IDENTITY
+   ========================================================= */
+
+type UserRole = 'physio' | 'patient';
+
+type AuthUser = {
+  id: string;
+  role: UserRole;
+  displayName: string;
+  email: string;
+};
+
+/*
+ * IMPORTANT:
+ * This is the application-level identity model.
+ *
+ * Phase 1:
+ * The app is still running in local/demo mode.
+ *
+ * Future:
+ * These values will come from real authentication.
+ *
+ * We must NOT treat localStorage as real authentication.
+ */
+
+type WorkspaceIdentity = {
+  physioId: string;
+};
+
+/* =========================================================
+   PHYSIOTHERAPIST PROFILE
+   ========================================================= */
+
 type Profile = {
-  fullName: string; title: string; qualification: string; registration: string; pan: string; gstin: string;
-  phone: string; email: string; address: string; logo: string; upiName: string; upiId: string;
-  bankName: string; accountNumber: string; ifsc: string; invoicePrefix: string;
+  id: string;
+
+  fullName: string;
+  title: string;
+  qualification: string;
+  registration: string;
+
+  pan: string;
+  gstin: string;
+
+  phone: string;
+  email: string;
+  address: string;
+
+  logo: string;
+
+  upiName: string;
+  upiId: string;
+
+  bankName: string;
+  accountNumber: string;
+  ifsc: string;
+
+  invoicePrefix: string;
+
+  /*
+   * Future payment architecture.
+   *
+   * This must NEVER contain a secret payment credential.
+   *
+   * Later this will represent the physiotherapist's
+   * connected payment identity on the selected provider.
+   */
+  paymentAccountId?: string;
+
+  paymentAccountStatus?: 'not_connected' | 'pending' | 'connected';
 };
+
+/* =========================================================
+   PHYSIO ↔ PATIENT RELATIONSHIP
+   ========================================================= */
+
+type PhysioPatientRelationship = {
+  id: string;
+
+  physioId: string;
+  patientId: string;
+
+  status: 'active' | 'inactive';
+
+  createdAt: string;
+};
+
+/* =========================================================
+   PATIENT
+   ========================================================= */
+
 type Patient = {
-  id: string; patientNumber: string; name: string; phone: string; email: string; address: string; age: string;
-  condition: string; referringDoctor: string; referralDate: string; insuranceTpa: string; policyMemberId: string; notes: string;
+  id: string;
+
+  /*
+   * Future production ownership boundary.
+   *
+   * A patient belongs to a physiotherapist through the
+   * explicit relationship model above.
+   *
+   * This field is retained as a convenient denormalized
+   * ownership reference for the prototype and future API.
+   */
+  physioId?: string;
+
+  /*
+   * Future authentication identity.
+   *
+   * This is NOT a password and must never contain one.
+   */
+  userId?: string;
+
+  patientNumber: string;
+
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  age: string;
+
+  condition: string;
+
+  referringDoctor: string;
+  referralDate: string;
+
+  insuranceTpa: string;
+  policyMemberId: string;
+
+  notes: string;
 };
-type Visit = { id: string; visitNumber: string; patientId: string; date: string; treatment: string; modalities: string; exercises: string; duration: string; notes: string; authorization: string; };
-type InvoiceStatus = 'Paid' | 'Part paid' | 'Outstanding' | 'Draft';
+
+/* =========================================================
+   VISIT
+   ========================================================= */
+
+type Visit = {
+  id: string;
+
+  /*
+   * Ownership references.
+   *
+   * In production these will be validated server-side.
+   */
+  physioId?: string;
+  patientId: string;
+
+  visitNumber: string;
+
+  date: string;
+
+  treatment: string;
+  modalities: string;
+  exercises: string;
+
+  duration: string;
+
+  notes: string;
+
+  authorization: string;
+};
+
+/* =========================================================
+/* =========================================================
+   INVOICE STATUS
+   ========================================================= */
+
+type InvoiceStatus =
+  | 'Paid'
+  | 'Part paid'
+  | 'Outstanding'
+  | 'Draft';
+
+/* =========================================================
+   INVOICE AUDIT
+   ========================================================= */
+
+/*
+ * Audit actions are deliberately explicit.
+ *
+ * "payment" is separate from "correction".
+ *
+ * This prevents a payment mutation from being disguised
+ * as a generic invoice edit.
+ */
+
+type InvoiceAuditAction =
+  | 'correction'
+  | 'edit'
+  | 'payment';
+
+/*
+ * Audit identity.
+ *
+ * Phase 1:
+ * We can use the current provider profile.
+ *
+ * Future:
+ * This will come from the authenticated backend user.
+ */
+
+type AuditActor = {
+  userId: string;
+  role: UserRole;
+  displayName: string;
+};
+
+/*
+ * One immutable audit event.
+ *
+ * Before/after values are stored explicitly so the history
+ * can be independently reviewed.
+ */
+
 type InvoiceAuditEntry = {
   id: string;
-  action: 'correction' | 'edit';
+
+  action: InvoiceAuditAction;
+
   reason: string;
+
   changedAt: string;
+
   changedBy: string;
+
+  changedByUserId?: string;
+
+  changedByRole?: UserRole;
+
   changedFields: string[];
+
   before: Partial<Invoice>;
+
   after: Partial<Invoice>;
 };
 
+/* =========================================================
+   INVOICE
+   ========================================================= */
+
 type Invoice = {
-  id: string; number: string; patientId: string; description: string; sessions: string; startDate: string; endDate: string;
-  fee: number; additional: number; additionalDescription: string; discount: number; gstRate: number; total: number; paid: number;
-  paymentMethod: string; finalized: boolean; status: InvoiceStatus; createdAt: string;
+  id: string;
+
+  /*
+   * Production ownership.
+   *
+   * These are not security boundaries on the client.
+   * The eventual backend/database must enforce them.
+   */
+  physioId?: string;
+  patientId: string;
+
+  /*
+   * Same invoice number must survive corrections.
+   *
+   * Correction changes the invoice record and adds an
+   * audit event — it does NOT generate a replacement
+   * invoice number.
+   */
+  number: string;
+
+  description: string;
+
+  sessions: string;
+
+  startDate: string;
+  endDate: string;
+
+  /*
+   * Financial fields
+   */
+  fee: number;
+  additional: number;
+  additionalDescription: string;
+
+  discount: number;
+  gstRate: number;
+
+  total: number;
+
+  paid: number;
+
+  paymentMethod: string;
+
+  /*
+   * Lifecycle
+   */
+  finalized: boolean;
+
+  status: InvoiceStatus;
+
+  createdAt: string;
+
+  /*
+   * Controlled audit history.
+   */
   auditTrail?: InvoiceAuditEntry[];
 };
-type Settings = { practiceName: string; defaultPayment: string; footerNote: string; showGst: boolean; dateFormat: string; };
+
+/* =========================================================
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+type Settings = {
+  practiceName: string;
+
+  defaultPayment: string;
+
+  footerNote: string;
+
+  showGst: boolean;
+
+  dateFormat: string;
+};
+
+/* =========================================================
+   QUERY CLIENT
+   ========================================================= */
 
 const queryClient = new QueryClient();
+
+/* =========================================================
+   DATE / DISPLAY HELPERS
+   ========================================================= */
+
 const today = new Date().toISOString().slice(0, 10);
+
 const currentYear = new Date().getFullYear();
-const iso = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
-const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
-const dateLabel = (value: string) => value ? new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${value}T00:00:00`)) : '—';
-const headerDateLabel = new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
-const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'PT';
-const formatSequentialId = (prefix: string, year: number, sequence: number) => `${prefix}-${year}-${String(sequence).padStart(6, '0')}`;
-const extractSequence = (value: string | undefined, prefix: string) => {
-  const match = value?.match(new RegExp(`^${prefix}-(?:\\d{4}-)?(\\d+)$`));
+
+const iso = (offset: number) =>
+  new Date(
+    Date.now() + offset * 86400000,
+  )
+    .toISOString()
+    .slice(0, 10);
+
+const money = (value: number) =>
+  `₹${Math.round(value).toLocaleString('en-IN')}`;
+
+const dateLabel = (value: string) =>
+  value
+    ? new Intl.DateTimeFormat('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date(`${value}T00:00:00`))
+    : '—';
+
+const headerDateLabel =
+  new Intl.DateTimeFormat('en-IN', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
+
+const initials = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'PT';
+
+/* =========================================================
+   SEQUENTIAL IDS
+   ========================================================= */
+
+const formatSequentialId = (
+  prefix: string,
+  year: number,
+  sequence: number,
+) =>
+  `${prefix}-${year}-${String(sequence).padStart(6, '0')}`;
+
+const extractSequence = (
+  value: string | undefined,
+  prefix: string,
+) => {
+  const match = value?.match(
+    new RegExp(
+      `^${prefix}-(?:\\d{4}-)?(\\d+)$`,
+    ),
+  );
+
   return match ? Number(match[1]) : 0;
 };
-const nextSequentialId = (prefix: string, values: string[]) => formatSequentialId(prefix, currentYear, values.reduce((max, value) => Math.max(max, extractSequence(value, prefix)), 0) + 1);
-const deriveInvoiceStatus = (total: number, paid: number, finalized: boolean): InvoiceStatus => {
+
+const nextSequentialId = (
+  prefix: string,
+  values: string[],
+) =>
+  formatSequentialId(
+    prefix,
+    currentYear,
+    values.reduce(
+      (max, value) =>
+        Math.max(
+          max,
+          extractSequence(value, prefix),
+        ),
+      0,
+    ) + 1,
+  );
+
+/* =========================================================
+/* =========================================================
+   INVOICE STATUS
+   ========================================================= */
+
+const deriveInvoiceStatus = (
+  total: number,
+  paid: number,
+  finalized: boolean,
+): InvoiceStatus => {
   if (!finalized) return 'Draft';
-  const balance = Math.max(total - paid, 0);
+
+  const balance = Math.max(
+    total - paid,
+    0,
+  );
+
   if (balance === 0) return 'Paid';
+
   if (paid > 0) return 'Part paid';
+
   return 'Outstanding';
 };
-const invoiceTone = (status: InvoiceStatus): 'neutral' | 'green' | 'amber' | 'coral' => status === 'Paid' ? 'green' : status === 'Part paid' ? 'amber' : status === 'Draft' ? 'neutral' : 'coral';
-const paymentMethods = ['Select payment method', 'UPI', 'Cash', 'Bank transfer', 'Card', 'Cheque', 'Other'] as const;
+
+const invoiceTone = (
+  status: InvoiceStatus,
+): 'neutral' | 'green' | 'amber' | 'coral' =>
+  status === 'Paid'
+    ? 'green'
+    : status === 'Part paid'
+      ? 'amber'
+      : status === 'Draft'
+        ? 'neutral'
+        : 'coral';
+
+const paymentMethods = [
+  'Select payment method',
+  'UPI',
+  'Cash',
+  'Bank transfer',
+  'Card',
+  'Cheque',
+  'Other',
+] as const;
+
+/* =========================================================
+   DEFAULT PROFILE / SETTINGS
+   ========================================================= */
+
+const DEMO_PHYSIO_ID = 'physio-demo-001';
 
 const defaultProfile: Profile = {
-  fullName: '', title: 'Physiotherapist', qualification: '', registration: '', pan: '', gstin: '',
-  phone: '', email: '', address: '', logo: '', upiName: '', upiId: '', bankName: '', accountNumber: '', ifsc: '', invoicePrefix: 'PB'
-};
-const defaultSettings: Settings = { practiceName: '', defaultPayment: 'Select payment method', footerNote: 'Thank you for choosing independent physiotherapy care.', showGst: false, dateFormat: 'DD MMM YYYY' };
-const demoPatients: Patient[] = [
-  { id: 'p-101', patientNumber: formatSequentialId('PT', currentYear, 1), name: 'Meera Kulkarni', phone: '+91 98765 12480', email: 'meera.k@example.com', address: 'Indiranagar, Bengaluru', age: '42', condition: 'Post-operative knee rehabilitation', referringDoctor: '', referralDate: '', insuranceTpa: '', policyMemberId: '', notes: 'Prefers morning appointments. Home visit.' },
-  { id: 'p-102', patientNumber: formatSequentialId('PT', currentYear, 2), name: 'Arjun Rao', phone: '+91 98204 71862', email: 'arjun.rao@example.com', address: 'Kharadi, Pune', age: '34', condition: 'Mechanical low back pain', referringDoctor: '', referralDate: '', insuranceTpa: '', policyMemberId: '', notes: 'Works from home.' },
-  { id: 'p-103', patientNumber: formatSequentialId('PT', currentYear, 3), name: 'Sana Iqbal', phone: '+91 99102 44317', email: 'sana.i@example.com', address: 'Alkapuri, Vadodara', age: '58', condition: 'Shoulder mobility and strength', referringDoctor: '', referralDate: '', insuranceTpa: '', policyMemberId: '', notes: 'Family member joins tele-follow ups.' },
-];
-const demoVisits: Visit[] = [
-  { id: 'v-201', visitNumber: formatSequentialId('VIS', currentYear, 1), patientId: 'p-101', date: today, treatment: 'Knee rehabilitation review', modalities: 'Soft tissue release, patellar mobilization', exercises: 'Quad sets, heel slides, supported sit-to-stand', duration: '60', notes: 'Flexion improving. Mild swelling after stairs.', authorization: 'Home visit — patient present' },
-  { id: 'v-202', visitNumber: formatSequentialId('VIS', currentYear, 2), patientId: 'p-102', date: today, treatment: 'Lumbar movement session', modalities: 'Heat pack, manual therapy', exercises: 'McGill curl-up, hip hinge practice', duration: '45', notes: 'Pain settled to 2/10 by end of session.', authorization: 'Patient present' },
-  { id: 'v-203', visitNumber: formatSequentialId('VIS', currentYear, 3), patientId: 'p-103', date: iso(-2), treatment: 'Shoulder mobility', modalities: 'Joint mobilization, assisted ROM', exercises: 'Wall slides, external rotation with band', duration: '45', notes: 'Good tolerance, continue gradual loading.', authorization: 'Patient present' },
-];
-const demoInvoices: Invoice[] = [
-  { id: 'inv-301', number: formatSequentialId('PB', currentYear, 7), patientId: 'p-101', description: 'Physiotherapy home visits — knee rehabilitation', sessions: '4', startDate: iso(-18), endDate: iso(-4), fee: 4800, additional: 250, additionalDescription: 'Home visit travel charge', discount: 0, gstRate: 0, total: 5050, paid: 3000, paymentMethod: 'UPI', finalized: true, status: 'Part paid', createdAt: iso(-3) },
-  { id: 'inv-302', number: formatSequentialId('PB', currentYear, 6), patientId: 'p-102', description: 'Physiotherapy assessment and treatment sessions', sessions: '3', startDate: iso(-31), endDate: iso(-22), fee: 3600, additional: 0, additionalDescription: '', discount: 0, gstRate: 0, total: 3600, paid: 3600, paymentMethod: 'Bank transfer', finalized: true, status: 'Paid', createdAt: iso(-21) },
-  { id: 'inv-303', number: formatSequentialId('PB', currentYear, 5), patientId: 'p-103', description: 'Shoulder mobility physiotherapy sessions', sessions: '5', startDate: iso(-52), endDate: iso(-37), fee: 6250, additional: 0, additionalDescription: '', discount: 250, gstRate: 0, total: 6000, paid: 0, paymentMethod: 'UPI', finalized: true, status: 'Outstanding', createdAt: iso(-36) },
-];
+  id: DEMO_PHYSIO_ID,
 
-function normalizePatients(items: Patient[]) {
-  let next = items.reduce((max, patient) => Math.max(max, extractSequence(patient.patientNumber, 'PT')), 0) + 1;
-  const used = new Set<string>();
-  return items.map((patient) => {
-    let patientNumber = patient.patientNumber;
-    if (!patientNumber || used.has(patientNumber)) {
-      patientNumber = nextSequentialId('PT', [...used, ...items.map((item) => item.patientNumber || '')]);
-      while (used.has(patientNumber)) {
-        next += 1;
-        patientNumber = formatSequentialId('PT', currentYear, next);
-      }
+  fullName: '',
+  title: 'Physiotherapist',
+  qualification: '',
+  registration: '',
+
+  pan: '',
+  gstin: '',
+
+  phone: '',
+  email: '',
+  address: '',
+
+  logo: '',
+
+  upiName: '',
+  upiId: '',
+
+  bankName: '',
+  accountNumber: '',
+  ifsc: '',
+
+  invoicePrefix: 'PB',
+
+  paymentAccountId: undefined,
+  paymentAccountStatus: 'not_connected',
+};
+
+const defaultSettings: Settings = {
+  practiceName: '',
+  defaultPayment: 'Select payment method',
+  footerNote:
+    'Thank you for choosing independent physiotherapy care.',
+  showGst: false,
+  dateFormat: 'DD MMM YYYY',
+};
+
+const demoAuthUser: AuthUser = {
+  id: DEMO_PHYSIO_ID,
+  role: 'physio',
+  displayName: 'Demo Physiotherapist',
+  email: 'demo@physiobill.local',
+};
+
+const demoWorkspace: WorkspaceIdentity = {
+  physioId: DEMO_PHYSIO_ID,
+};
+
+/*
+ * Demo relationships are created after demoPatients has been
+ * declared. They must not execute before that declaration.
+ *
+ * The relationship construction is therefore intentionally
+ * placed with the demo patient data section below.
+ */
+
+/* =========================================================
+   WORKSPACE NORMALIZATION
+   ========================================================= */
+
+const normalizePatientsForWorkspace = (
+  items: Patient[],
+  physioId: string,
+) =>
+  normalizePatients(items).map((patient) => ({
+    ...patient,
+    physioId,
+  }));
+
+const normalizeVisitsForWorkspace = (
+  items: Visit[],
+  physioId: string,
+) =>
+  normalizeVisits(items).map((visit) => ({
+    ...visit,
+    physioId,
+  }));
+
+const normalizeInvoicesForWorkspace = (
+  items: Invoice[],
+  physioId: string,
+) =>
+  normalizeInvoices(items).map((invoice) => ({
+    ...invoice,
+    physioId,
+  }));
+
+const belongsToPhysio = (
+  physioId: string | undefined,
+  currentPhysioId: string,
+) =>
+  physioId === currentPhysioId;
+
+const getWorkspacePatients = (
+  patients: Patient[],
+  physioId: string,
+) =>
+  patients.filter((patient) =>
+    belongsToPhysio(patient.physioId, physioId),
+  );
+
+/* =========================================================
+const getWorkspaceVisits = (
+  visits: Visit[],
+  physioId: string,
+) =>
+  visits.filter((visit) =>
+    belongsToPhysio(visit.physioId, physioId),
+  );
+
+const getWorkspaceInvoices = (
+  invoices: Invoice[],
+  physioId: string,
+) =>
+  invoices.filter((invoice) =>
+    belongsToPhysio(invoice.physioId, physioId),
+  );
+
+/* =========================================================
+   INVOICE AUDIT / CONTROLLED MUTATIONS
+   ========================================================= */
+
+const createAuditId = () =>
+  `audit-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+
+const createAuditEntry = (
+  action: InvoiceAuditAction,
+  reason: string,
+  before: Invoice,
+  after: Invoice,
+  actor: AuditActor,
+): InvoiceAuditEntry => ({
+  id: createAuditId(),
+
+  action,
+
+  reason: reason.trim(),
+
+  changedAt: new Date().toISOString(),
+
+  changedBy: actor.displayName,
+
+  changedByUserId: actor.userId,
+
+  changedByRole: actor.role,
+
+  changedFields: getInvoiceChangedFields(
+    before,
+    after,
+  ),
+
+  before: Object.fromEntries(
+    invoiceEditableFields
+      .filter(
+        (field) =>
+          before[field] !== after[field],
+      )
+      .map((field) => [
+        field,
+        before[field],
+      ]),
+  ),
+
+  after: Object.fromEntries(
+    invoiceEditableFields
+      .filter(
+        (field) =>
+          before[field] !== after[field],
+      )
+      .map((field) => [
+        field,
+        after[field],
+      ]),
+  ),
+});
+
+type InvoiceMutationResult =
+  | {
+      ok: true;
+      invoice: Invoice;
     }
-    used.add(patientNumber);
-    next = Math.max(next, extractSequence(patientNumber, 'PT') + 1);
-    return {
-      ...patient,
-      patientNumber,
-      condition: patient.condition || '',
-      referringDoctor: patient.referringDoctor || '',
-      referralDate: patient.referralDate || '',
-      insuranceTpa: patient.insuranceTpa || '',
-      policyMemberId: patient.policyMemberId || '',
-      notes: patient.notes || '',
+  | {
+      ok: false;
+      error: string;
     };
-  });
-}
-function normalizeVisits(items: Visit[]) {
-  let next = items.reduce((max, visit) => Math.max(max, extractSequence(visit.visitNumber, 'VIS')), 0) + 1;
-  const used = new Set<string>();
-  return items.map((visit) => {
-    let visitNumber = visit.visitNumber;
-    if (!visitNumber || used.has(visitNumber)) {
-      visitNumber = formatSequentialId('VIS', currentYear, next);
-      while (used.has(visitNumber)) {
-        next += 1;
-        visitNumber = formatSequentialId('VIS', currentYear, next);
-      }
-    }
-    used.add(visitNumber);
-    next = Math.max(next, extractSequence(visitNumber, 'VIS') + 1);
-    return { ...visit, visitNumber };
-  });
-}
-function normalizeInvoices(items: Invoice[]) {
-  const used = new Set<string>();
-  return items.map((invoice, index) => {
-    const prefix = invoice.number?.match(/^([A-Za-z]+)-/)?.[1] || 'PB';
-    let sequence = extractSequence(invoice.number, prefix) || index + 1;
-    const year = Number(invoice.createdAt?.slice(0, 4)) || currentYear;
-    let number = formatSequentialId(prefix, year, sequence);
-    while (used.has(number)) {
-      sequence += 1;
-      number = formatSequentialId(prefix, year, sequence);
-    }
-    used.add(number);
-    const finalized = typeof invoice.finalized === 'boolean' ? invoice.finalized : invoice.status !== 'Draft';
+
+const validateInvoiceCorrection = (
+  before: Invoice,
+  after: Invoice,
+  reason: string,
+) => {
+  if (!reason.trim()) {
+    return 'A correction reason is required.';
+  }
+
+  if (!before.finalized) {
+    return 'Draft invoices should be edited normally.';
+  }
+
+  if (before.status === 'Paid') {
+    return 'Paid invoices cannot be financially corrected.';
+  }
+
+  if (!hasInvoiceFinancialChanges(before, after)) {
+    return 'No financial change was detected.';
+  }
+
+  if (after.number !== before.number) {
+    return 'Invoice number cannot change during correction.';
+  }
+
+  /*
+   * Payment mutations must use the dedicated payment workflow.
+   * A correction cannot be used to alter the amount already paid.
+   */
+  if (after.paid !== before.paid) {
+    return 'Paid amount must be changed through the payment workflow.';
+  }
+
+  if (after.total < 0) {
+    return 'Invoice total cannot be negative.';
+  }
+
+  if (after.paid < 0) {
+    return 'Paid amount cannot be negative.';
+  }
+
+  if (after.paid > after.total) {
+    return 'Paid amount cannot exceed the invoice total.';
+  }
+
+  return null;
+};
+
+const correctFinalizedInvoice = (
+  before: Invoice,
+  proposed: Invoice,
+  reason: string,
+  actor: AuditActor,
+): InvoiceMutationResult => {
+  const validationError =
+    validateInvoiceCorrection(
+      before,
+      proposed,
+      reason,
+    );
+
+  if (validationError) {
     return {
-  ...invoice,
-  number,
-  additionalDescription: invoice.additionalDescription || '',
-  auditTrail: Array.isArray(invoice.auditTrail) ? invoice.auditTrail : [],
-  finalized,
-  status: deriveInvoiceStatus(invoice.total, invoice.paid, finalized),
-};
-  });
-}
-function normalizeSettings(settings: Settings) {
-  return {
-    ...settings,
-    defaultPayment: paymentMethods.includes(settings.defaultPayment as typeof paymentMethods[number]) ? settings.defaultPayment : 'Select payment method',
+      ok: false,
+      error: validationError,
+    };
+  }
+
+  /*
+   * Preserve immutable identity and ownership.
+   *
+   * Workspace ownership is never taken from an arbitrary
+   * proposed client-side object.
+   */
+  const corrected: Invoice = {
+    ...proposed,
+
+    id: before.id,
+
+    number: before.number,
+
+    physioId: before.physioId,
+
+    patientId: before.patientId,
+
+    finalized: true,
+
+    total:
+      Math.round(
+        (
+          proposed.fee +
+          proposed.additional -
+          proposed.discount
+        ) *
+          (1 + proposed.gstRate / 100) *
+          100,
+      ) / 100,
+
+    status: 'Draft',
+
+    auditTrail: before.auditTrail ?? [],
   };
+
+  corrected.status = deriveInvoiceStatus(
+    corrected.total,
+    corrected.paid,
+    true,
+  );
+
+  const audit = createAuditEntry(
+    'correction',
+    reason,
+    before,
+    corrected,
+    actor,
+  );
+
+  return {
+    ok: true,
+
+    invoice: {
+      ...corrected,
+
+      auditTrail: [
+        ...(before.auditTrail ?? []),
+        audit,
+      ],
+    },
+  };
+};
+
+/* =========================================================
+const markInvoicePaid = (
+  before: Invoice,
+  actor: AuditActor,
+): InvoiceMutationResult => {
+  if (!before.finalized) {
+    return {
+      ok: false,
+      error:
+        'A draft invoice must be finalized before payment can be recorded.',
+    };
+  }
+
+  if (before.status === 'Paid') {
+    return {
+      ok: false,
+      error: 'This invoice is already paid.',
+    };
+  }
+
+  if (before.paid >= before.total) {
+    return {
+      ok: false,
+      error: 'This invoice has no outstanding balance.',
+    };
+  }
+
+  const after: Invoice = {
+    ...before,
+
+    /*
+     * Ownership is preserved from the existing invoice.
+     * The payment mutation must not silently move an invoice
+     * into another workspace.
+     */
+    physioId: before.physioId,
+
+    paid: before.total,
+
+    status: 'Paid',
+
+    finalized: true,
+  };
+
+  const audit = createAuditEntry(
+    'payment',
+    'Invoice marked as paid.',
+    before,
+    after,
+    actor,
+  );
+
+  return {
+    ok: true,
+
+    invoice: {
+      ...after,
+
+      auditTrail: [
+        ...(before.auditTrail ?? []),
+        audit,
+      ],
+    },
+  };
+};
+
+const isFinancialFieldLocked = (
+  invoice: Invoice,
+) =>
+  invoice.finalized || invoice.status === 'Paid';
+
+const canDirectlyEditFinancialFields = (
+  invoice: Invoice,
+) =>
+  !invoice.finalized &&
+  invoice.status !== 'Paid';
+
+const canCorrectInvoice = (
+  invoice: Invoice,
+) =>
+  invoice.finalized &&
+  invoice.status !== 'Paid';
+
+/* =========================================================
+   INVOICE AUDIT HISTORY
+   ========================================================= */
+
+function InvoiceAuditHistory({
+  invoice,
+}: {
+  invoice: Invoice;
+}) {
+  const entries = invoice.auditTrail ?? [];
+
+  if (!entries.length) {
+    return (
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="flex items-center gap-2">
+          <ShieldCheck
+            size={18}
+            className="text-primary"
+          />
+
+          <h3 className="font-bold">
+            Audit history
+          </h3>
+        </div>
+
+        <p className="mt-2 text-sm text-muted-foreground">
+          No recorded changes yet.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border bg-card p-5">
+      <div className="flex items-center gap-2">
+        <ShieldCheck
+          size={18}
+          className="text-primary"
+        />
+
+        <h3 className="font-bold">
+          Audit history
+        </h3>
+      </div>
+
+      <div className="mt-5 space-y-5">
+        {entries
+          .slice()
+          .reverse()
+          .map((entry) => (
+            <div
+              key={entry.id}
+              className="rounded-xl border bg-background p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-bold capitalize">
+                    {entry.action === 'correction'
+                      ? 'Financial correction'
+                      : entry.action === 'payment'
+                        ? 'Payment recorded'
+                        : 'Invoice edited'}
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {new Date(
+                      entry.changedAt,
+                    ).toLocaleString('en-IN')}
+                  </p>
+                </div>
+
+                <Badge tone="blue">
+                  {entry.changedBy}
+                </Badge>
+              </div>
+
+              <div className="mt-4 rounded-xl bg-secondary/60 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                  Reason
+                </p>
+
+                <p className="mt-1 text-sm">
+                  {entry.reason}
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                  Changed fields
+                </p>
+
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {entry.changedFields.map(
+                    (field) => (
+                      <span
+                        key={field}
+                        className="rounded-full border px-2.5 py-1 text-xs"
+                      >
+                        {field}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                    Before
+                  </p>
+
+                  <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">
+                    {JSON.stringify(
+                      entry.before,
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </div>
+
+                <div className="rounded-xl border p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                    After
+                  </p>
+
+                  <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">
+                    {JSON.stringify(
+                      entry.after,
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
 }
-const invoiceFinancialFields: (keyof Invoice)[] = [
-  'fee',
-  'additional',
-  'additionalDescription',
-  'discount',
-  'gstRate',
-  'total',
-  'paid',
-  'paymentMethod',
-];
 
-const invoiceEditableFields: (keyof Invoice)[] = [
-  'patientId',
-  'description',
-  'sessions',
-  'startDate',
-  'endDate',
-  'fee',
-  'additional',
-  'additionalDescription',
-  'discount',
-  'gstRate',
-  'paid',
-  'paymentMethod',
-  'finalized',
-];
+/* =========================================================
+          {entry.changedFields.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                Changed fields
+              </p>
 
-const invoiceFieldLabels: Record<string, string> = {
-  patientId: 'patient',
-  description: 'description',
-  sessions: 'sessions',
-  startDate: 'start date',
-  endDate: 'end date',
-  fee: 'service fee',
-  additional: 'additional charges',
-  additionalDescription: 'additional charge description',
-  discount: 'discount',
-  gstRate: 'GST',
-  paid: 'amount paid',
-  paymentMethod: 'payment method',
-  finalized: 'invoice state',
-  total: 'total',
+              <div className="mt-2 flex flex-wrap gap-2">
+                {entry.changedFields.map(
+                  (field) => (
+                    <Badge
+                      key={field}
+                      tone="neutral"
+                    >
+                      {field}
+                    </Badge>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                Before
+              </p>
+
+              <div className="mt-2 space-y-1 text-sm">
+                {entry.changedFields.map(
+                  (label) => {
+                    const key =
+                      invoiceFieldKeyFromLabel(
+                        label,
+                      );
+
+                    return (
+                      <p key={label}>
+                        <span className="font-semibold">
+                          {label}:
+                        </span>{' '}
+                        {auditValue(
+                          key
+                            ? entry.before[key]
+                            : undefined,
+                        )}
+                      </p>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border p-3">
+              <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+                After
+              </p>
+
+              <div className="mt-2 space-y-1 text-sm">
+                {entry.changedFields.map(
+                  (label) => {
+                    const key =
+                      invoiceFieldKeyFromLabel(
+                        label,
+                      );
+
+                    return (
+                      <p key={label}>
+                        <span className="font-semibold">
+                          {label}:
+                        </span>{' '}
+                        {auditValue(
+                          key
+                            ? entry.after[key]
+                            : undefined,
+                        )}
+                      </p>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+}
+
+function CorrectionReasonModal({
+  open,
+  reason,
+  onReasonChange,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  reason: string;
+  onReasonChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4">
+      <div className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-extrabold">
+              Correct invoice
+            </h3>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              This creates an auditable correction.
+              The invoice number will remain unchanged.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close correction dialog"
+            className="rounded-xl p-2 hover:bg-secondary"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="mt-6">
+          <label
+            htmlFor="correction-reason"
+            className="text-sm font-bold"
+          >
+            Reason for correction
+          </label>
+
+          <textarea
+            id="correction-reason"
+            value={reason}
+            onChange={(event) =>
+              onReasonChange(event.target.value)
+            }
+            placeholder="Explain why the finalized invoice needs correction."
+            rows={5}
+            className="mt-2 w-full rounded-xl border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+          />
+
+          <p className="mt-2 text-xs text-muted-foreground">
+            A reason is mandatory and will be permanently
+            recorded in the invoice audit history.
+          </p>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-secondary"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!reason.trim()}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:pointer-events-none disabled:opacity-50"
+          >
+            Confirm correction
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   APPLICATION STATE / WORKSPACE
+   ========================================================= */
+
+const DEMO_PHYSIO_ID = 'physio-demo-001';
+
+const demoAuthUser: AuthUser = {
+  id: DEMO_PHYSIO_ID,
+  role: 'physio',
+  displayName: 'Demo Physiotherapist',
+  email: 'demo@physiobill.local',
 };
 
-const hasInvoiceFinancialChanges = (before: Invoice, after: Invoice) =>
-  invoiceFinancialFields.some((field) => before[field] !== after[field]);
-
-const getInvoiceChangedFields = (before: Invoice, after: Invoice) =>
-  invoiceEditableFields
-    .filter((field) => before[field] !== after[field])
-    .map((field) => invoiceFieldLabels[field] || String(field));
-
-const invoiceFieldKeyFromLabel = (label: string) =>
-  Object.keys(invoiceFieldLabels).find(
-    (key) => invoiceFieldLabels[key] === label
-  ) as keyof Invoice | undefined;
-
-const auditValue = (value: unknown) => {
-  if (value === undefined || value === null || value === '') return '—';
-  if (typeof value === 'boolean') return value ? 'Finalized' : 'Draft';
-  if (typeof value === 'number') return money(value);
-  return String(value);
+const demoWorkspace: WorkspaceIdentity = {
+  physioId: DEMO_PHYSIO_ID,
 };
-function usePersistentState<T>(key: string, initial: T, normalize?: (value: T) => T) {
+
+const demoRelationships: PhysioPatientRelationship[] =
+  demoPatients.map((patient) => ({
+    id: `relationship-${patient.id}`,
+    physioId: DEMO_PHYSIO_ID,
+    patientId: patient.id,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+  }));
+
+const normalizePatientsForWorkspace = (
+  items: Patient[],
+  physioId: string,
+): Patient[] =>
+  normalizePatients(items).map((patient) => ({
+    ...patient,
+    physioId,
+  }));
+
+const normalizeVisitsForWorkspace = (
+  items: Visit[],
+  physioId: string,
+): Visit[] =>
+  normalizeVisits(items).map((visit) => ({
+    ...visit,
+    physioId,
+  }));
+
+const normalizeInvoicesForWorkspace = (
+  items: Invoice[],
+  physioId: string,
+): Invoice[] =>
+  normalizeInvoices(items).map((invoice) => ({
+    ...invoice,
+    physioId,
+  }));
+
+const belongsToPhysio = (
+  physioId: string | undefined,
+  currentPhysioId: string,
+): boolean =>
+  !physioId || physioId === currentPhysioId;
+
+const getWorkspacePatients = (
+  patients: Patient[],
+  physioId: string,
+): Patient[] =>
+  patients.filter((patient) =>
+    belongsToPhysio(
+      patient.physioId,
+      physioId,
+    ),
+  );
+
+const getWorkspaceVisits = (
+  visits: Visit[],
+  physioId: string,
+): Visit[] =>
+  visits.filter((visit) =>
+    belongsToPhysio(
+      visit.physioId,
+      physioId,
+    ),
+  );
+
+const getWorkspaceInvoices = (
+  invoices: Invoice[],
+  physioId: string,
+): Invoice[] =>
+  invoices.filter((invoice) =>
+    belongsToPhysio(
+      invoice.physioId,
+      physioId,
+    ),
+  );
+
+const createAuditId = () =>
+  `audit-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+/* =========================================================
+   PERSISTENT STATE
+   ========================================================= */
+
+function usePersistentState<T>(
+  key: string,
+  initial: T,
+  normalize?: (value: T) => T,
+) {
   const [value, setValue] = useState<T>(() => {
     try {
       const saved = localStorage.getItem(key);
-      const parsed = saved ? JSON.parse(saved) as T : initial;
-      return normalize ? normalize(parsed) : parsed;
-    } catch { return normalize ? normalize(initial) : initial; }
+      const parsed = saved
+        ? (JSON.parse(saved) as T)
+        : initial;
+
+      return normalize
+        ? normalize(parsed)
+        : parsed;
+    } catch {
+      return normalize
+        ? normalize(initial)
+        : initial;
+    }
   });
-  useEffect(() => { localStorage.setItem(key, JSON.stringify(value)); }, [key, value]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify(value),
+      );
+    } catch {
+      /*
+       * Local demo persistence is best-effort.
+       * A production backend will replace this layer.
+       */
+    }
+  }, [key, value]);
+
   return [value, setValue] as const;
 }
 
-function Button({ children, variant = 'primary', className = '', ...props }: { children: ReactNode; variant?: 'primary' | 'soft' | 'ghost' | 'danger'; className?: string; } & ButtonHTMLAttributes<HTMLButtonElement>) {
+/* =========================================================
+   REUSABLE UI
+   ========================================================= */
+
+function Button({
+  children,
+  variant = 'primary',
+  className = '',
+  ...props
+}: {
+  children: ReactNode;
+  variant?:
+    | 'primary'
+    | 'soft'
+    | 'ghost'
+    | 'danger';
+  className?: string;
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
   const styles = {
-    primary: 'bg-primary text-primary-foreground shadow-[0_4px_12px_hsl(var(--primary)/.16)] hover:-translate-y-px',
-    soft: 'bg-secondary text-secondary-foreground hover:bg-accent/35',
-    ghost: 'bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
-    danger: 'bg-destructive/10 text-destructive hover:bg-destructive/15'
+    primary:
+      'bg-primary text-primary-foreground shadow-[0_4px_12px_hsl(var(--primary)/.16)] hover:-translate-y-px',
+    soft:
+      'bg-secondary text-secondary-foreground hover:bg-accent/35',
+    ghost:
+      'bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground',
+    danger:
+      'bg-destructive/10 text-destructive hover:bg-destructive/15',
   };
-  return <button className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`} {...props}>{children}</button>;
+return (
+    <button
+      className={`inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
 }
-function Field({ label, hint, ...props }: { label: string; hint?: string; } & InputHTMLAttributes<HTMLInputElement>) {
-  return <label className="block space-y-1.5"><span className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground"><span>{label}</span>{hint && <span className="font-normal normal-case tracking-normal">{hint}</span>}</span><input className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none transition-shadow placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/10" {...props} /></label>;
+
+function Field({
+  label,
+  hint,
+  ...props
+}: {
+  label: string;
+  hint?: string;
+} & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+        <span>{label}</span>
+
+        {hint && (
+          <span className="font-normal normal-case tracking-normal">
+            {hint}
+          </span>
+        )}
+      </span>
+
+      <input
+        className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none transition-shadow placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
+        {...props}
+      />
+    </label>
+  );
 }
-function TextArea({ label, ...props }: { label: string; } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</span><textarea className="min-h-24 w-full resize-y rounded-xl border bg-card px-3.5 py-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/10" {...props} /></label>;
+function TextArea({
+  label,
+  ...props
+}: {
+  label: string;
+} & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">
+        {label}
+      </span>
+
+      <textarea
+        className="min-h-24 w-full resize-y rounded-xl border bg-card px-3.5 py-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
+        {...props}
+      />
+    </label>
+  );
 }
+
 function SelectField({
   label,
   value,
@@ -257,7 +1473,9 @@ function SelectField({
 }: {
   label: string;
   value: string | number;
-  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (
+    event: ChangeEvent<HTMLSelectElement>,
+  ) => void;
   children: ReactNode;
   disabled?: boolean;
 }) {
@@ -278,178 +1496,2606 @@ function SelectField({
     </label>
   );
 }
-function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'green' | 'amber' | 'coral' | 'blue' }) {
-  const tones = { neutral: 'bg-muted text-muted-foreground', green: 'bg-primary/10 text-primary', amber: 'bg-amber-100 text-amber-800', coral: 'bg-accent/25 text-foreground', blue: 'bg-sky-100 text-sky-800' };
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${tones[tone]}`}>{children}</span>;
+
+function Badge({
+  children,
+  tone = 'neutral',
+}: {
+  children: ReactNode;
+  tone?:
+    | 'neutral'
+    | 'green'
+    | 'amber'
+    | 'coral'
+    | 'blue';
+}) {
+const tones = {
+    neutral:
+      'bg-muted text-muted-foreground',
+    green:
+      'bg-primary/10 text-primary',
+    amber:
+      'bg-amber-100 text-amber-800',
+    coral:
+      'bg-accent/25 text-foreground',
+    blue:
+      'bg-sky-100 text-sky-800',
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${tones[tone]}`}
+    >
+      {children}
+    </span>
+  );
 }
-function EmptyState({ icon: Icon, title, description, action }: { icon: typeof FileText; title: string; description: string; action?: ReactNode }) {
-  return <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card/70 px-6 py-16 text-center"><div className="mb-4 rounded-2xl bg-secondary p-4 text-primary"><Icon size={25} /></div><h3 className="text-lg font-bold">{title}</h3><p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>{action && <div className="mt-5">{action}</div>}</div>;
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: typeof FileText;
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card/70 px-6 py-16 text-center">
+      <div className="mb-4 rounded-2xl bg-secondary p-4 text-primary">
+        <Icon size={25} />
+      </div>
+
+      <h3 className="text-lg font-bold">
+        {title}
+      </h3>
+
+      <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
+
+      {action && (
+        <div className="mt-5">
+          {action}
+        </div>
+      )}
+    </div>
+  );
 }
+/* =========================================================
+   WORKSPACE STATE / WORKSPACE CONTROLLER
+   ========================================================= */
+
+type WorkspaceState = {
+  authUser: AuthUser;
+
+  profile: Profile;
+  setProfile: (
+    value:
+      | Profile
+      | ((previous: Profile) => Profile),
+  ) => void;
+
+  settings: Settings;
+  setSettings: (
+    value:
+      | Settings
+      | ((previous: Settings) => Settings),
+  ) => void;
+
+  patients: Patient[];
+  setPatients: (
+    value:
+      | Patient[]
+      | ((previous: Patient[]) => Patient[]),
+  ) => void;
+
+  visits: Visit[];
+  setVisits: (
+    value:
+      | Visit[]
+      | ((previous: Visit[]) => Visit[]),
+  ) => void;
+
+  invoices: Invoice[];
+  setInvoices: (
+    value:
+      | Invoice[]
+      | ((previous: Invoice[]) => Invoice[]),
+  ) => void;
+
+  workspacePatients: Patient[];
+  workspaceVisits: Visit[];
+  workspaceInvoices: Invoice[];
+
+  currentPhysioId: string;
+
+  updateInvoice: (
+    invoiceId: string,
+    proposed: Invoice,
+    reason?: string,
+  ) => InvoiceMutationResult;
+
+  finalizeInvoice: (
+    invoice: Invoice,
+  ) => InvoiceMutationResult;
+
+  recordInvoicePayment: (
+    invoice: Invoice,
+    actor: AuditActor,
+  ) => InvoiceMutationResult;
+};
+
+/* =========================================================
+   AUTHENTICATED USER
+   ========================================================= */
+
+function useAuthenticatedUser(): AuthUser | null {
+  const [authUser] =
+    usePersistentState<AuthUser | null>(
+      'physiobill-demo-auth-user',
+      demoAuthUser,
+    );
+
+  return authUser;
+}
+
+/* =========================================================
+   WORKSPACE CONTROLLER
+   ========================================================= */
+
+function WorkspaceController({
+  authUser,
+}: {
+  authUser: AuthUser;
+}) {
+  const currentPhysioId =
+    authUser.role === 'physio'
+      ? authUser.id
+      : DEMO_PHYSIO_ID;
+
+  /* =======================================================
+     PROFILE
+     ======================================================= */
+
+  const [profile, setProfile] =
+    usePersistentState<Profile>(
+      'physiobill-profile',
+      {
+        ...defaultProfile,
+        id: currentPhysioId,
+      },
+      (value) => ({
+        ...defaultProfile,
+        ...value,
+        id: value.id || currentPhysioId,
+      }),
+    );
+
+  /* =======================================================
+     SETTINGS
+     ======================================================= */
+
+  const [settings, setSettings] =
+    usePersistentState<Settings>(
+      'physiobill-settings',
+      defaultSettings,
+      normalizeSettings,
+    );
+
+  /* =======================================================
+     PATIENTS
+     ======================================================= */
+
+  const [patients, setPatients] =
+    usePersistentState<Patient[]>(
+      'physiobill-patients',
+      normalizePatientsForWorkspace(
+        demoPatients,
+        currentPhysioId,
+      ),
+      (value) =>
+        normalizePatientsForWorkspace(
+          value,
+          currentPhysioId,
+        ),
+    );
+
+  /* =======================================================
+     VISITS
+     ======================================================= */
+
+  const [visits, setVisits] =
+    usePersistentState<Visit[]>(
+      'physiobill-visits',
+      normalizeVisitsForWorkspace(
+        demoVisits,
+        currentPhysioId,
+      ),
+      (value) =>
+        normalizeVisitsForWorkspace(
+          value,
+          currentPhysioId,
+        ),
+    );
+
+  /* =======================================================
+     INVOICES
+     ======================================================= */
+
+  const [invoices, setInvoices] =
+    usePersistentState<Invoice[]>(
+      'physiobill-invoices',
+      normalizeInvoicesForWorkspace(
+        demoInvoices,
+        currentPhysioId,
+      ),
+      (value) =>
+        normalizeInvoicesForWorkspace(
+          value,
+          currentPhysioId,
+        ),
+    );
+
+  /* =======================================================
+     WORKSPACE-SCOPED DATA
+     ======================================================= */
+
+  const workspacePatients =
+    getWorkspacePatients(
+      patients,
+      currentPhysioId,
+    );
+
+  const workspaceVisits =
+    getWorkspaceVisits(
+      visits,
+      currentPhysioId,
+    );
+
+  const workspaceInvoices =
+    getWorkspaceInvoices(
+      invoices,
+      currentPhysioId,
+    );
+
+  /* =======================================================
+     CONTROLLED INVOICE UPDATE
+     ======================================================= */
+
+  const updateInvoice = (
+    invoiceId: string,
+    proposed: Invoice,
+    reason?: string,
+  ): InvoiceMutationResult => {
+    const existing =
+      workspaceInvoices.find(
+        (invoice) =>
+          invoice.id === invoiceId,
+      );
+
+    if (!existing) {
+      return {
+        ok: false,
+        error: 'Invoice not found.',
+      };
+    }
+
+    /*
+     * Never allow an invoice to be moved into
+     * another physiotherapist workspace.
+     */
+    if (
+      proposed.physioId &&
+      proposed.physioId !== currentPhysioId
+    ) {
+      return {
+        ok: false,
+        error:
+          'Invoice does not belong to the current workspace.',
+      };
+    }
+
+    /*
+     * Invoice number is immutable.
+     */
+    if (
+      proposed.number !== existing.number
+    ) {
+      return {
+        ok: false,
+        error:
+          'Invoice number cannot be changed.',
+      };
+    }
+
+    /*
+     * FINALIZED INVOICE
+     *
+     * Any financial change must go through
+     * the controlled correction workflow.
+     */
+    if (
+      existing.finalized &&
+      hasInvoiceFinancialChanges(
+        existing,
+        proposed,
+      )
+    ) {
+      if (!reason?.trim()) {
+        return {
+          ok: false,
+          error:
+            'A correction reason is required for finalized financial changes.',
+        };
+      }
+
+      const correction =
+        correctFinalizedInvoice(
+          existing,
+          {
+            ...proposed,
+            id: existing.id,
+            number: existing.number,
+            physioId:
+              existing.physioId ??
+              currentPhysioId,
+          },
+          reason,
+          {
+            userId: authUser.id,
+            role: authUser.role,
+            displayName:
+              authUser.displayName,
+          },
+        );
+
+      if (!correction.ok) {
+        return correction;
+      }
+
+      setInvoices((current) =>
+        current.map((invoice) =>
+          invoice.id === invoiceId &&
+          belongsToPhysio(
+            invoice.physioId,
+            currentPhysioId,
+          )
+            ? correction.invoice
+            : invoice,
+        ),
+      );
+
+      return correction;
+    }
+
+    /*
+     * PAYMENT CHANGES MUST NEVER HAPPEN THROUGH
+     * THE NORMAL EDITOR.
+     */
+    if (
+      existing.finalized &&
+      proposed.paid !== existing.paid
+    ) {
+      return {
+        ok: false,
+        error:
+          'Payment changes must be recorded through the payment workflow.',
+      };
+    }
+
+    /*
+     * ALL OTHER FINALIZED EDITS ARE LOCKED.
+     */
+    if (existing.finalized) {
+      return {
+        ok: false,
+        error:
+          'Finalized invoices must be corrected through the correction workflow.',
+      };
+    }
+
+    /*
+     * PAID INVOICES ARE FINANCIALLY LOCKED.
+     */
+    if (
+      existing.status === 'Paid' &&
+      hasInvoiceFinancialChanges(
+        existing,
+        proposed,
+      )
+    ) {
+      return {
+        ok: false,
+        error:
+          'Paid invoices cannot be financially edited.',
+      };
+    }
+
+    /*
+     * DRAFT UPDATE
+     *
+     * Draft invoices can be edited normally.
+     */
+    const updated: Invoice = {
+      ...proposed,
+
+      id: existing.id,
+
+      number: existing.number,
+
+      physioId:
+        existing.physioId ??
+        currentPhysioId,
+
+      status: deriveInvoiceStatus(
+        proposed.total,
+        proposed.paid,
+        proposed.finalized,
+      ),
+    };
+
+    setInvoices((current) =>
+      current.map((invoice) =>
+        invoice.id === invoiceId &&
+        belongsToPhysio(
+          invoice.physioId,
+          currentPhysioId,
+        )
+          ? updated
+          : invoice,
+      ),
+    );
+
+    return {
+      ok: true,
+      invoice: updated,
+    };
+  };
+
+  /* =======================================================
+     FINALIZE INVOICE
+     ======================================================= */
+
+  const finalizeInvoice = (
+    invoice: Invoice,
+  ): InvoiceMutationResult => {
+    if (
+      !belongsToPhysio(
+        invoice.physioId,
+        currentPhysioId,
+      )
+    ) {
+      return {
+        ok: false,
+        error:
+          'Invoice does not belong to the current workspace.',
+      };
+    }
+
+    if (invoice.finalized) {
+      return {
+        ok: false,
+        error:
+          'Invoice is already finalized.',
+      };
+    }
+
+    if (invoice.status === 'Paid') {
+      return {
+        ok: false,
+        error:
+          'Paid invoices do not need to be finalized again.',
+      };
+    }
+
+    const after: Invoice = {
+      ...invoice,
+
+      physioId:
+        invoice.physioId ??
+        currentPhysioId,
+
+      finalized: true,
+
+      status: deriveInvoiceStatus(
+        invoice.total,
+        invoice.paid,
+        true,
+      ),
+    };
+
+    setInvoices((current) =>
+      current.map((item) =>
+        item.id === invoice.id &&
+        belongsToPhysio(
+          item.physioId,
+          currentPhysioId,
+        )
+          ? after
+          : item,
+      ),
+    );
+
+    return {
+      ok: true,
+      invoice: after,
+    };
+  };
+
+  /* =======================================================
+     PAYMENT WORKFLOW
+     ======================================================= */
+
+  const recordInvoicePayment = (
+    invoice: Invoice,
+    actor: AuditActor,
+  ): InvoiceMutationResult => {
+    if (
+      !belongsToPhysio(
+        invoice.physioId,
+        currentPhysioId,
+      )
+    ) {
+      return {
+        ok: false,
+        error:
+          'Invoice does not belong to the current workspace.',
+      };
+    }
+
+    if (!invoice.finalized) {
+      return {
+        ok: false,
+        error:
+          'A draft invoice must be finalized before payment can be recorded.',
+      };
+    }
+
+    if (invoice.status === 'Paid') {
+      return {
+        ok: false,
+        error:
+          'This invoice is already paid.',
+      };
+    }
+
+    if (invoice.paid >= invoice.total) {
+      return {
+        ok: false,
+        error:
+          'This invoice has no outstanding balance.',
+      };
+    }
+
+    const after: Invoice = {
+      ...invoice,
+
+      physioId:
+        invoice.physioId ??
+        currentPhysioId,
+
+      paid: invoice.total,
+
+      status: 'Paid',
+    };
+
+    const audit =
+      createAuditEntry(
+        'payment',
+        'Invoice marked as paid.',
+        invoice,
+        after,
+        actor,
+      );
+
+    const result: Invoice = {
+      ...after,
+
+      auditTrail: [
+        ...(invoice.auditTrail ?? []),
+        audit,
+      ],
+    };
+
+    setInvoices((current) =>
+      current.map((item) =>
+        item.id === invoice.id &&
+        belongsToPhysio(
+          item.physioId,
+          currentPhysioId,
+        )
+          ? result
+          : item,
+      ),
+    );
+
+    return {
+      ok: true,
+      invoice: result,
+    };
+  };
+
+  /* =======================================================
+     WORKSPACE OBJECT
+     ======================================================= */
+
+  const workspace: WorkspaceState = {
+    authUser,
+
+    profile,
+    setProfile,
+
+    settings,
+    setSettings,
+
+    patients,
+    setPatients,
+
+    visits,
+    setVisits,
+
+    invoices,
+    setInvoices,
+
+    workspacePatients,
+    workspaceVisits,
+    workspaceInvoices,
+
+    currentPhysioId,
+
+    updateInvoice,
+    finalizeInvoice,
+    recordInvoicePayment,
+  };
+
+  return (
+    <PhysioWorkspace
+      workspace={workspace}
+    />
+  );
+}
+/* =========================================================
+   APPLICATION SHELL
+   ========================================================= */
 
 const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/patients', label: 'Patients', icon: UsersRound },
-  { href: '/visits', label: 'Visits', icon: ClipboardList },
-  { href: '/invoices', label: 'Invoices', icon: ReceiptIndianRupee },
+  {
+    href: '/dashboard',
+    label: 'Overview',
+    icon: LayoutDashboard,
+  },
+  {
+    href: '/patients',
+    label: 'Patients',
+    icon: UsersRound,
+  },
+  {
+    href: '/visits',
+    label: 'Visits',
+    icon: ClipboardList,
+  },
+  {
+    href: '/invoices',
+    label: 'Invoices',
+    icon: ReceiptIndianRupee,
+  },
 ];
-function AppShell({ children, profile }: { children: ReactNode; profile: Profile }) {
+
+function AppShell({
+  children,
+  profile,
+}: {
+  children: ReactNode;
+  profile: Profile;
+}) {
   const [location] = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const current = navItems.find((item) => location.startsWith(item.href));
-  const title = current?.label || (location === '/profile' ? 'Provider profile' : location === '/settings' ? 'Settings' : location.includes('/invoice') ? 'Invoice desk' : 'Overview');
-  return <div className="app-shell flex bg-background">
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[238px] flex-col bg-sidebar px-4 py-5 text-sidebar-foreground lg:flex">
-      <Link href="/dashboard" data-testid="link-brand" className="mb-10 flex items-center gap-3 px-2"><span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground"><HeartPulse size={21} strokeWidth={2.5} /></span><span><strong className="block text-base tracking-tight">Physio<span className="text-sidebar-primary">Bill</span></strong><small className="text-[10px] uppercase tracking-[.18em] text-sidebar-foreground/55">clinical desk</small></span></Link>
-      <p className="px-3 text-[10px] font-bold uppercase tracking-[.18em] text-sidebar-foreground/40">Workspace</p>
-      <nav className="mt-3 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-nav-${label.toLowerCase()}`} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${location.startsWith(href) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`}><Icon size={18} /><span>{label}</span>{href === '/invoices' && <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">{'03'}</span>}</Link>)}
-      </nav>
-      <p className="mt-8 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-sidebar-foreground/40">Practice</p>
-      <nav className="mt-3 space-y-1">
-        <Link href="/profile" data-testid="link-nav-profile" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${location === '/profile' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`}><UserRound size={18} /><span>Provider profile</span></Link>
-        <Link href="/settings" data-testid="link-nav-settings" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${location === '/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`}><Settings2 size={18} /><span>Settings</span></Link>
-      </nav>
-      <div className="mt-auto rounded-2xl border border-sidebar-border bg-sidebar-accent/55 p-3.5"><div className="flex items-center gap-2"><span className="grid size-8 place-items-center rounded-xl bg-sidebar-primary/15 text-xs font-bold text-sidebar-primary">{initials(profile.fullName || 'Your profile')}</span><div className="min-w-0"><p className="truncate text-xs font-bold">{profile.fullName || 'Your practice'}</p><p className="truncate text-[10px] text-sidebar-foreground/50">{profile.title}</p></div></div><p className="mt-3 text-[10px] leading-4 text-sidebar-foreground/50">Your records stay on this device in demo mode.</p></div>
-    </aside>
-    <div className="min-w-0 flex-1 lg:ml-[238px]">
-       <header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-md sm:px-7">
-         <div className="flex items-center gap-3"><button data-testid="button-mobile-menu" onClick={() => setMenuOpen(true)} className="rounded-xl p-2 hover:bg-secondary lg:hidden"><Menu size={20} /></button><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">{headerDateLabel}</p><h1 className="mt-0.5 text-lg font-extrabold tracking-tight sm:text-xl">{title}</h1></div></div>
-        <div className="flex items-center gap-2 sm:gap-3"><span className="hidden items-center gap-1.5 rounded-full bg-accent/20 px-3 py-1.5 text-[11px] font-bold text-foreground sm:flex"><span className="size-1.5 rounded-full bg-accent" /> Demo workspace</span><button data-testid="button-notifications" className="rounded-xl p-2.5 text-muted-foreground hover:bg-secondary hover:text-foreground"><Bell size={18} /></button><Link href="/profile" data-testid="link-header-profile" className="grid size-9 place-items-center rounded-xl bg-primary text-xs font-extrabold text-primary-foreground">{initials(profile.fullName || 'Your profile')}</Link></div>
-      </header>
-      <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 sm:pt-8 lg:px-10 lg:pb-10">{children}</main>
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t bg-card/95 px-2 py-2 backdrop-blur-lg lg:hidden">{navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-mobile-${label.toLowerCase()}`} className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] font-bold ${location.startsWith(href) ? 'text-primary' : 'text-muted-foreground'}`}><Icon size={19} /><span>{label}</span></Link>)}</nav>
+  const [menuOpen, setMenuOpen] =
+    useState(false);
+
+  const current = navItems.find((item) =>
+    location.startsWith(item.href),
+  );
+
+  const title =
+    current?.label ||
+    (location === '/profile'
+      ? 'Provider profile'
+      : location === '/settings'
+        ? 'Settings'
+        : location.includes('/invoice')
+          ? 'Invoice desk'
+          : 'Overview');
+
+  return (
+    <div className="app-shell flex bg-background">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[238px] flex-col bg-sidebar px-4 py-5 text-sidebar-foreground lg:flex">
+        <Link
+          href="/dashboard"
+          data-testid="link-brand"
+          className="mb-10 flex items-center gap-3 px-2"
+        >
+          <span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground">
+            <HeartPulse
+              size={21}
+              strokeWidth={2.5}
+            />
+          </span>
+
+          <span>
+            <strong className="block text-base tracking-tight">
+              Physio
+              <span className="text-sidebar-primary">
+                Bill
+              </span>
+            </strong>
+
+            <small className="text-[10px] uppercase tracking-[.18em] text-sidebar-foreground/55">
+              clinical desk
+            </small>
+          </span>
+        </Link>
+
+        <p className="px-3 text-[10px] font-bold uppercase tracking-[.18em] text-sidebar-foreground/40">
+          Workspace
+        </p>
+
+        <nav className="mt-3 space-y-1">
+          {navItems.map(
+            ({
+              href,
+              label,
+              icon: Icon,
+            }) => (
+              <Link
+                key={href}
+                href={href}
+                data-testid={`link-nav-${label.toLowerCase()}`}
+                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${
+                  location.startsWith(href)
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'
+                }`}
+              >
+                <Icon size={18} />
+
+                <span>{label}</span>
+
+                {href === '/invoices' && (
+                  <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
+                    03
+                  </span>
+                )}
+              </Link>
+            ),
+          )}
+        </nav>
+
+        <p className="mt-8 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-sidebar-foreground/40">
+          Practice
+        </p>
+
+        <nav className="mt-3 space-y-1">
+          <Link
+            href="/profile"
+            data-testid="link-nav-profile"
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${
+              location === '/profile'
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'
+            }`}
+          >
+            <UserRound size={18} />
+            <span>Provider profile</span>
+          </Link>
+
+          <Link
+            href="/settings"
+            data-testid="link-nav-settings"
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors ${
+              location === '/settings'
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'
+            }`}
+          >
+            <Settings2 size={18} />
+            <span>Settings</span>
+          </Link>
+        </nav>
+
+        <div className="mt-auto rounded-2xl border border-sidebar-border bg-sidebar-accent/55 p-3.5">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-xl bg-sidebar-primary/15 text-xs font-bold text-sidebar-primary">
+              {initials(
+                profile.fullName ||
+                  'Your profile',
+              )}
+            </span>
+
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold">
+                {profile.fullName ||
+                  'Your practice'}
+              </p>
+
+              <p className="truncate text-[10px] text-sidebar-foreground/50">
+                {profile.title}
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-3 text-[10px] leading-4 text-sidebar-foreground/50">
+            Your records stay on this device
+            in demo mode.
+          </p>
+        </div>
+      </aside>
+
+      <div className="min-w-0 flex-1 lg:ml-[238px]">
+        <header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-md sm:px-7">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              data-testid="button-mobile-menu"
+              onClick={() =>
+                setMenuOpen(true)
+              }
+              className="rounded-xl p-2 hover:bg-secondary lg:hidden"
+            >
+              <Menu size={20} />
+            </button>
+
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">
+                {headerDateLabel}
+              </p>
+
+              <h1 className="mt-0.5 text-lg font-extrabold tracking-tight sm:text-xl">
+                {title}
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="hidden items-center gap-1.5 rounded-full bg-accent/20 px-3 py-1.5 text-[11px] font-bold text-foreground sm:flex">
+              <span className="size-1.5 rounded-full bg-accent" />
+              Demo workspace
+            </span>
+
+            <button
+              type="button"
+              data-testid="button-notifications"
+              className="rounded-xl p-2.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              <Bell size={18} />
+            </button>
+
+            <Link
+              href="/profile"
+              data-testid="link-header-profile"
+              className="grid size-9 place-items-center rounded-xl bg-primary text-xs font-extrabold text-primary-foreground"
+            >
+              {initials(
+                profile.fullName ||
+                  'Your profile',
+              )}
+            </Link>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 sm:pt-8 lg:px-10 lg:pb-10">
+          {children}
+        </main>
+
+        <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t bg-card/95 px-2 py-2 backdrop-blur-lg lg:hidden">
+          {navItems.map(
+            ({
+              href,
+              label,
+              icon: Icon,
+            }) => (
+              <Link
+                key={href}
+                href={href}
+                data-testid={`link-mobile-${label.toLowerCase()}`}
+                className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-[10px] font-bold ${
+                  location.startsWith(href)
+                    ? 'text-primary'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                <Icon size={19} />
+                <span>{label}</span>
+              </Link>
+            ),
+          )}
+        </nav>
+      </div>
+
+      {menuOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close menu"
+            data-testid="button-close-mobile-menu"
+            className="absolute inset-0 bg-foreground/30"
+            onClick={() =>
+              setMenuOpen(false)
+            }
+          />
+
+          <aside className="relative flex h-full w-[280px] flex-col bg-sidebar p-5 text-sidebar-foreground shadow-2xl">
+            <button
+              type="button"
+              data-testid="button-close-menu"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+              className="mb-7 self-end text-sidebar-foreground/60"
+            >
+              <X size={20} />
+            </button>
+
+            <Link
+              href="/dashboard"
+              onClick={() =>
+                setMenuOpen(false)
+              }
+              className="mb-8 flex items-center gap-3"
+            >
+              <span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground">
+                <HeartPulse size={21} />
+              </span>
+
+              <strong>
+                Physio
+                <span className="text-sidebar-primary">
+                  Bill
+                </span>
+              </strong>
+            </Link>
+
+            {[
+              ...navItems,
+              {
+                href: '/profile',
+                label: 'Provider profile',
+                icon: UserRound,
+              },
+              {
+                href: '/settings',
+                label: 'Settings',
+                icon: Settings2,
+              },
+            ].map(
+              ({
+                href,
+                label,
+                icon: Icon,
+              }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() =>
+                    setMenuOpen(false)
+                  }
+                  data-testid={`link-drawer-${label
+                    .toLowerCase()
+                    .replaceAll(
+                      ' ',
+                      '-',
+                    )}`}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/75 hover:bg-sidebar-accent"
+                >
+                  <Icon size={18} />
+                  {label}
+                </Link>
+              ),
+            )}
+          </aside>
+        </div>
+      )}
     </div>
-    {menuOpen && <div className="fixed inset-0 z-40 lg:hidden"><button aria-label="Close menu" data-testid="button-close-mobile-menu" className="absolute inset-0 bg-foreground/30" onClick={() => setMenuOpen(false)} /><aside className="relative flex h-full w-[280px] flex-col bg-sidebar p-5 text-sidebar-foreground shadow-2xl"><button data-testid="button-close-menu" onClick={() => setMenuOpen(false)} className="mb-7 self-end text-sidebar-foreground/60"><X size={20} /></button><Link href="/dashboard" onClick={() => setMenuOpen(false)} className="mb-8 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground"><HeartPulse size={21} /></span><strong>Physio<span className="text-sidebar-primary">Bill</span></strong></Link>{[...navItems, { href: '/profile', label: 'Provider profile', icon: UserRound }, { href: '/settings', label: 'Settings', icon: Settings2 }].map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMenuOpen(false)} data-testid={`link-drawer-${label.toLowerCase().replaceAll(' ', '-')}`} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/75 hover:bg-sidebar-accent"><Icon size={18} />{label}</Link>)}</aside></div>}
-  </div>;
+  );
 }
 
-function SectionHeading({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
-  return <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div>{eyebrow && <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[.18em] text-primary">{eyebrow}</p>}<h2 className="text-2xl font-extrabold tracking-[-.04em] sm:text-[28px]">{title}</h2>{description && <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>}</div>{action}</div>;
-}
+/* =========================================================
+   SECTION HEADING
+   ========================================================= */
 
-function Dashboard({ patients, visits, invoices, profile }: { patients: Patient[]; visits: Visit[]; invoices: Invoice[]; profile: Profile }) {
-  const outstanding = invoices.reduce((sum, item) => sum + Math.max(item.total - item.paid, 0), 0);
-  const monthTotal = invoices.reduce((sum, item) => sum + item.total, 0);
-  const todaysVisits = visits.filter((visit) => visit.date === today);
-  const patientName = (id: string) => patients.find((patient) => patient.id === id)?.name || 'Unknown patient';
-  return <div className="page-enter space-y-7">
-    <div className="relative overflow-hidden rounded-[24px] bg-primary px-5 py-7 text-primary-foreground sm:px-8 sm:py-9"><div className="absolute -right-10 -top-20 size-64 rounded-full border-[28px] border-primary-foreground/10" /><div className="absolute -bottom-32 right-24 size-64 rounded-full border-[1px] border-sidebar-primary/20" /><div className="relative max-w-2xl"><Badge tone="coral">Demo workspace · local data</Badge><h2 className="mt-4 text-[30px] font-extrabold leading-[1.04] tracking-[-.05em] sm:text-[42px]">A clear desk for <span className="display-serif font-normal italic text-sidebar-primary">better care.</span></h2><p className="mt-3 max-w-lg text-sm leading-6 text-primary-foreground/70">Move from a thoughtful visit note to a reimbursement-ready invoice, without losing the human details in between.</p><div className="mt-6 flex flex-wrap gap-2.5"><Link href="/invoice/new" data-testid="link-hero-new-invoice" className="inline-flex items-center gap-2 rounded-xl bg-sidebar-primary px-4 py-3 text-sm font-extrabold text-sidebar-primary-foreground transition-transform hover:-translate-y-px">Create invoice <ArrowRight size={16} /></Link><Link href="/visits" data-testid="link-hero-visits" className="inline-flex items-center gap-2 rounded-xl border border-primary-foreground/20 px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary-foreground/10">Log a visit</Link></div></div></div>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {[
-        { label: 'Outstanding', value: money(outstanding), sub: 'across open invoices', icon: WalletCards, tone: 'text-accent' },
-        { label: 'Today’s visits', value: String(todaysVisits.length).padStart(2, '0'), sub: todaysVisits.length ? 'care moments on the desk' : 'nothing scheduled', icon: CalendarDays, tone: 'text-primary' },
-        { label: 'Active patients', value: String(patients.length).padStart(2, '0'), sub: 'in your directory', icon: UsersRound, tone: 'text-sky-700' },
-        { label: 'Billed this cycle', value: money(monthTotal), sub: 'demo invoice total', icon: Activity, tone: 'text-amber-700' },
-      ].map(({ label, value, sub, icon: Icon, tone }, index) => <div key={label} className={`page-enter stagger-${index + 1} rounded-2xl border bg-card p-5`} data-testid={`card-stat-${label.toLowerCase().replaceAll(' ', '-')}`}><div className="flex items-start justify-between"><p className="text-xs font-bold text-muted-foreground">{label}</p><Icon size={18} className={tone} /></div><p className="mono mt-5 text-[27px] font-medium tracking-tight">{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{sub}</p></div>)}
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div>
+        {eyebrow && (
+          <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[.18em] text-primary">
+            {eyebrow}
+          </p>
+        )}
+
+        <h2 className="text-2xl font-extrabold tracking-[-.04em] sm:text-[28px]">
+          {title}
+        </h2>
+
+        {description && (
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
+            {description}
+          </p>
+        )}
+      </div>
+
+      {action}
     </div>
-    <div className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
-      <section className="rounded-2xl border bg-card"><div className="flex items-center justify-between border-b px-5 py-4"><div><h3 className="font-extrabold">Today’s care plan</h3><p className="mt-1 text-xs text-muted-foreground">{todaysVisits.length ? `${todaysVisits.length} visits · your notes, in order` : 'Your schedule is open today'}</p></div><Link href="/visits" data-testid="link-dashboard-all-visits" className="text-xs font-bold text-primary hover:underline">View all</Link></div><div className="divide-y">{todaysVisits.length ? todaysVisits.map((visit) => <div key={visit.id} data-testid={`row-today-visit-${visit.id}`} className="flex items-start gap-4 px-5 py-4"><div className="mt-0.5 flex size-10 shrink-0 flex-col items-center justify-center rounded-xl bg-secondary text-primary"><span className="text-[10px] font-bold">{visit.duration}</span><span className="text-[9px]">min</span></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-bold">{patientName(visit.patientId)}</p><Badge tone="green">{visit.authorization.split('—')[0]}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{visit.treatment}</p><p className="mt-2 text-xs leading-5 text-foreground/70">{visit.notes}</p></div><Link href="/visits" data-testid={`link-edit-visit-${visit.id}`} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary"><ChevronRight size={17} /></Link></div>) : <div className="p-10"><EmptyState icon={CalendarDays} title="A lighter day" description="When you log a visit, it will appear here with the details you need at a glance." action={<Link href="/visits" data-testid="link-empty-log-visit" className="text-sm font-bold text-primary">Open visit records</Link>} /></div>}</div></section>
-      <section className="rounded-2xl border bg-card"><div className="flex items-center justify-between border-b px-5 py-4"><div><h3 className="font-extrabold">Recent invoices</h3><p className="mt-1 text-xs text-muted-foreground">Your last billing moments</p></div><Link href="/invoices" data-testid="link-dashboard-all-invoices" className="text-xs font-bold text-primary hover:underline">View all</Link></div><div className="divide-y">{invoices.slice(0, 4).map((invoice) => <div key={invoice.id} data-testid={`row-recent-invoice-${invoice.id}`} className="flex items-center gap-3 px-5 py-4"><div className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><FileText size={16} /></div><div className="min-w-0 flex-1"><p className="mono text-xs font-medium">{invoice.number}</p><p className="truncate text-sm font-bold">{patientName(invoice.patientId)}</p></div><div className="text-right"><p className="mono text-sm font-medium">{money(invoice.total)}</p><Badge tone={invoice.status === 'Paid' ? 'green' : invoice.status === 'Part paid' ? 'amber' : 'coral'}>{invoice.status}</Badge></div></div>)}</div>{!invoices.length && <div className="p-6"><EmptyState icon={ReceiptIndianRupee} title="No invoices yet" description="Create your first invoice after a visit." /></div>}</section>
+  );
+}
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+
+function Dashboard({
+  patients,
+  visits,
+  invoices,
+  profile,
+}: {
+  patients: Patient[];
+  visits: Visit[];
+  invoices: Invoice[];
+  profile: Profile;
+}) {
+  const outstanding =
+    invoices.reduce(
+      (sum, invoice) =>
+        sum +
+        Math.max(
+          invoice.total -
+            invoice.paid,
+          0,
+        ),
+      0,
+    );
+
+  const monthTotal =
+    invoices.reduce(
+      (sum, invoice) =>
+        sum + invoice.total,
+      0,
+    );
+
+  const todaysVisits =
+    visits.filter(
+      (visit) =>
+        visit.date === today,
+    );
+
+  const patientName = (
+    patientId: string,
+  ) =>
+    patients.find(
+      (patient) =>
+        patient.id === patientId,
+    )?.name ||
+    'Unknown patient';
+
+  return (
+    <div className="page-enter space-y-7">
+      <div className="relative overflow-hidden rounded-[24px] bg-primary px-5 py-7 text-primary-foreground sm:px-8 sm:py-9">
+        <div className="absolute -right-10 -top-20 size-64 rounded-full border-[28px] border-primary-foreground/10" />
+
+        <div className="absolute -bottom-32 right-24 size-64 rounded-full border border-sidebar-primary/20" />
+
+        <div className="relative max-w-2xl">
+          <Badge tone="coral">
+            Demo workspace · local data
+          </Badge>
+
+          <h2 className="mt-4 text-[30px] font-extrabold leading-[1.04] tracking-[-.05em] sm:text-[42px]">
+            A clear desk for{' '}
+            <span className="display-serif font-normal italic text-sidebar-primary">
+              better care.
+            </span>
+          </h2>
+
+          <p className="mt-3 max-w-lg text-sm leading-6 text-primary-foreground/70">
+            Move from a thoughtful visit
+            note to a reimbursement-ready
+            invoice, without losing the
+            human details in between.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-2.5">
+            <Link
+              href="/invoice/new"
+              data-testid="link-hero-new-invoice"
+              className="inline-flex items-center gap-2 rounded-xl bg-sidebar-primary px-4 py-3 text-sm font-extrabold text-sidebar-primary-foreground transition-transform hover:-translate-y-px"
+            >
+              Create invoice
+              <ArrowRight size={16} />
+            </Link>
+
+            <Link
+              href="/visits"
+              data-testid="link-hero-visits"
+              className="inline-flex items-center gap-2 rounded-xl border border-primary-foreground/20 px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary-foreground/10"
+            >
+              Log a visit
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          {
+            label: 'Outstanding',
+            value: money(
+              outstanding,
+            ),
+            sub: 'across open invoices',
+            icon: WalletCards,
+            tone: 'text-accent',
+          },
+          {
+            label: 'Today’s visits',
+            value: String(
+              todaysVisits.length,
+            ).padStart(2, '0'),
+            sub: todaysVisits.length
+              ? 'care moments on the desk'
+              : 'nothing scheduled',
+            icon: CalendarDays,
+            tone: 'text-primary',
+          },
+          {
+            label: 'Active patients',
+            value: String(
+              patients.length,
+            ).padStart(2, '0'),
+            sub: 'in your directory',
+            icon: UsersRound,
+            tone: 'text-sky-700',
+          },
+          {
+            label: 'Billed this cycle',
+            value: money(
+              monthTotal,
+            ),
+            sub: 'demo invoice total',
+            icon: Activity,
+            tone: 'text-amber-700',
+          },
+        ].map(
+          ({
+            label,
+            value,
+            sub,
+            icon: Icon,
+            tone,
+          }, index) => (
+            <div
+              key={label}
+              className={`page-enter stagger-${
+                index + 1
+              } rounded-2xl border bg-card p-5`}
+              data-testid={`card-stat-${label
+                .toLowerCase()
+                .replaceAll(
+                  ' ',
+                  '-',
+                )}`}
+            >
+              <div className="flex items-start justify-between">
+                <p className="text-xs font-bold text-muted-foreground">
+                  {label}
+                </p>
+
+                <Icon
+                  size={18}
+                  className={tone}
+                />
+              </div>
+
+              <p className="mono mt-5 text-[27px] font-medium tracking-tight">
+                {value}
+              </p>
+
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {sub}
+              </p>
+            </div>
+          ),
+        )}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between border-b px-5 py-4">
+            <div>
+              <h3 className="font-extrabold">
+                Today’s care plan
+              </h3>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                {todaysVisits.length
+                  ? `${todaysVisits.length} visits · your notes, in order`
+                  : 'Your schedule is open today'}
+              </p>
+            </div>
+
+            <Link
+              href="/visits"
+              data-testid="link-dashboard-all-visits"
+              className="text-xs font-bold text-primary hover:underline"
+            >
+              View all
+            </Link>
+          </div>
+
+          <div className="divide-y">
+            {todaysVisits.length ? (
+              todaysVisits.map(
+                (visit) => (
+                  <div
+                    key={visit.id}
+                    data-testid={`row-today-visit-${visit.id}`}
+                    className="flex items-start gap-4 px-5 py-4"
+                  >
+                    <div className="mt-0.5 flex size-10 shrink-0 flex-col items-center justify-center rounded-xl bg-secondary text-primary">
+                      <span className="text-[10px] font-bold">
+                        {visit.duration}
+                      </span>
+
+                      <span className="text-[9px]">
+                        min
+                      </span>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold">
+                          {patientName(
+                            visit.patientId,
+                          )}
+                        </p>
+
+                        <Badge tone="green">
+                          {
+                            visit.authorization.split(
+                              '—',
+                            )[0]
+                          }
+                        </Badge>
+                      </div>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {visit.treatment}
+                      </p>
+
+                      <p className="mt-2 text-xs leading-5 text-foreground/70">
+                        {visit.notes}
+                      </p>
+                    </div>
+
+                    <Link
+                      href="/visits"
+                      data-testid={`link-edit-visit-${visit.id}`}
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary"
+                    >
+                      <ChevronRight
+                        size={17}
+                      />
+                    </Link>
+                  </div>
+                ),
+              )
+            ) : (
+              <div className="p-10">
+                <EmptyState
+                  icon={CalendarDays}
+                  title="A lighter day"
+                  description="When you log a visit, it will appear here with the details you need at a glance."
+     action={
+                    <Link
+                      href="/visits"
+                      data-testid="link-empty-log-visit"
+                      className="text-sm font-bold text-primary"
+                    >
+                      Open visit records
+                    </Link>
+                  }
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between border-b px-5 py-4">
+            <div>
+              <h3 className="font-extrabold">
+                Recent invoices
+              </h3>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your last billing moments
+              </p>
+            </div>
+
+            <Link
+              href="/invoices"
+              data-testid="link-dashboard-all-invoices"
+              className="text-xs font-bold text-primary hover:underline"
+            >
+              View all
+            </Link>
+          </div>
+
+          <div className="divide-y">
+            {invoices
+              .slice(0, 4)
+              .map(
+                (invoice) => (
+                  <div
+                    key={invoice.id}
+                    data-testid={`row-recent-invoice-${invoice.id}`}
+                    className="flex items-center gap-3 px-5 py-4"
+                  >
+                    <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+                      <FileText size={16} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="mono text-xs font-medium">
+                        {invoice.number}
+                      </p>
+
+                      <p className="truncate text-sm font-bold">
+                        {patientName(
+                          invoice.patientId,
+                        )}
+                      </p>
+                    </div>
+  <div className="text-right">
+                      <p className="mono text-sm font-medium">
+                        {money(
+                          invoice.total,
+                        )}
+                      </p>
+
+                      <Badge
+                        tone={
+                          invoice.status ===
+                          'Paid'
+                            ? 'green'
+                            : invoice.status ===
+                                'Part paid'
+                              ? 'amber'
+                              : invoice.status ===
+                                  'Draft'
+                                ? 'neutral'
+                                : 'coral'
+                        }
+                      >
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ),
+              )}
+          </div>
+
+          {!invoices.length && (
+            <div className="p-6">
+              <EmptyState
+                icon={
+                  ReceiptIndianRupee
+                }
+                title="No invoices yet"
+                description="Create your first invoice after a visit."
+              />
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <QuickAction
+          href="/patients"
+          icon={UsersRound}
+          title="Add patient"
+          text="Keep care details close"
+        />
+
+        <QuickAction
+          href="/visits"
+          icon={BookOpenText}
+          title="Write a visit note"
+          text="Capture the clinical thread"
+        />
+
+        <QuickAction
+          href="/profile"
+          icon={SlidersHorizontal}
+          title={
+            profile.fullName
+              ? 'Review profile'
+              : 'Complete profile'
+          }
+          text="Make every invoice yours"
+        />
+      </div>
     </div>
-    <div className="grid gap-3 sm:grid-cols-3"><QuickAction href="/patients" icon={UsersRound} title="Add patient" text="Keep care details close" /><QuickAction href="/visits" icon={BookOpenText} title="Write a visit note" text="Capture the clinical thread" /><QuickAction href="/profile" icon={SlidersHorizontal} title={profile.fullName ? 'Review profile' : 'Complete profile'} text="Make every invoice yours" /></div>
-  </div>;
+  );
 }
-function QuickAction({ href, icon: Icon, title, text }: { href: string; icon: typeof Plus; title: string; text: string }) {
-  return <Link href={href} data-testid={`link-quick-${title.toLowerCase().replaceAll(' ', '-')}`} className="group flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40"><span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><Icon size={18} /></span><span><strong className="block text-sm">{title}</strong><small className="mt-1 block text-xs text-muted-foreground">{text}</small></span><ArrowRight className="ml-auto text-muted-foreground transition-transform group-hover:translate-x-1" size={16} /></Link>;
+/* =========================================================
+   QUICK ACTION
+   ========================================================= */
+
+function QuickAction({
+  href,
+  icon: Icon,
+  title,
+  text,
+}: {
+  href: string;
+  icon: typeof Plus;
+  title: string;
+  text: string;
+}) {
+  return (
+    <Link
+      href={href}
+      data-testid={`link-quick-${title
+        .toLowerCase()
+        .replaceAll(' ', '-')}`}
+      className="group flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40"
+    >
+      <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+        <Icon size={18} />
+      </span>
+
+      <span>
+        <strong className="block text-sm">
+          {title}
+        </strong>
+
+        <small className="mt-1 block text-xs text-muted-foreground">
+          {text}
+        </small>
+      </span>
+
+      <ArrowRight
+        className="ml-auto text-muted-foreground transition-transform group-hover:translate-x-1"
+        size={16}
+      />
+    </Link>
+  );
+}
+/* =========================================================
+   PATIENTS WORKSPACE
+   ========================================================= */
+
+function PatientsPage({
+  patients,
+  visits,
+  invoices,
+  onAddPatient,
+}: {
+  patients: Patient[];
+  visits: Visit[];
+  invoices: Invoice[];
+  onAddPatient: () => void;
+}) {
+  const [search, setSearch] =
+    useState('');
+
+  const filteredPatients =
+    patients.filter((patient) => {
+      const query =
+        search.trim().toLowerCase();
+
+      if (!query) return true;
+
+      return [
+        patient.patientNumber,
+        patient.name,
+        patient.phone,
+        patient.email,
+        patient.condition,
+      ].some((value) =>
+        value
+          .toLowerCase()
+          .includes(query),
+      );
+    });
+
+  return (
+    <div className="page-enter">
+      <SectionHeading
+        eyebrow="Patient directory"
+        title="Patients"
+        description="Keep every patient's clinical and billing context together."
+        action={
+          <Button
+            type="button"
+            onClick={onAddPatient}
+            data-testid="button-add-patient"
+          >
+            <Plus size={16} />
+            Add patient
+          </Button>
+        }
+      />
+
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search
+            size={17}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+
+          <input
+            value={search}
+            onChange={(event) =>
+              setSearch(
+                event.target.value,
+              )
+            }
+            placeholder="Search by name, patient number, phone or condition..."
+            data-testid="input-search-patients"
+            className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border bg-card">
+        <div className="hidden grid-cols-[1.1fr_1fr_1fr_.8fr_auto] gap-4 border-b px-5 py-3 text-[10px] font-extrabold uppercase tracking-[.14em] text-muted-foreground md:grid">
+          <span>Patient</span>
+          <span>Contact</span>
+          <span>Condition</span>
+          <span>Activity</span>
+          <span />
+        </div>
+
+        <div className="divide-y">
+          {filteredPatients.map(
+            (patient) => {
+              const patientVisits =
+                visits.filter(
+                  (visit) =>
+                    visit.patientId ===
+                    patient.id,
+                );
+
+              const patientInvoices =
+                invoices.filter(
+                  (invoice) =>
+                    invoice.patientId ===
+                    patient.id,
+                );
+
+              const outstanding =
+                patientInvoices.reduce(
+                  (sum, invoice) =>
+                    sum +
+                    Math.max(
+                      invoice.total -
+                        invoice.paid,
+                      0,
+                    ),
+                  0,
+                );
+
+              return (
+                <Link
+                  key={patient.id}
+                  href={`/patients/${patient.id}`}
+                  data-testid={`link-patient-${patient.id}`}
+                  className="grid gap-4 px-5 py-4 transition-colors hover:bg-secondary/40 md:grid-cols-[1.1fr_1fr_1fr_.8fr_auto] md:items-center"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-xs font-extrabold text-primary">
+                      {initials(
+                        patient.name,
+                      )}
+                    </span>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-extrabold">
+                        {patient.name}
+                      </p>
+
+                      <p className="mono mt-0.5 text-[10px] text-muted-foreground">
+                        {
+                          patient.patientNumber
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-xs">
+                    <p>{patient.phone}</p>
+
+                    <p className="mt-1 truncate text-muted-foreground">
+                      {patient.email ||
+                        'No email'}
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    {patient.condition ||
+                      'Not specified'}
+                  </p>
+
+                  <div>
+                    <p className="text-xs font-bold">
+                      {patientVisits.length}{' '}
+                      visits
+                    </p>
+
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {outstanding
+                        ? `${money(
+                            outstanding,
+                          )} outstanding`
+                        : 'No balance'}
+                    </p>
+                  </div>
+
+                  <ChevronRight
+                    size={17}
+                    className="hidden text-muted-foreground md:block"
+                  />
+                </Link>
+              );
+            },
+          )}
+
+          {!filteredPatients.length && (
+            <div className="p-10">
+              <EmptyState
+                icon={UsersRound}
+                title={
+                  search
+                    ? 'No patients found'
+                    : 'Your patient directory is empty'
+                }
+                description={
+                  search
+                    ? 'Try another search term.'
+                    : 'Add your first patient to begin building their care record.'
+                }
+                action={
+                  !search ? (
+                    <Button
+                      type="button"
+                      onClick={
+                        onAddPatient
+                      }
+                    >
+                      <Plus size={16} />
+                      Add patient
+                    </Button>
+                  ) : undefined
+                }
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+/* =========================================================
+   PATIENT FORM
+   ========================================================= */
+
+function PatientForm({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial?: Patient;
+  onSave: (
+    patient: Patient,
+  ) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] =
+    useState<Patient>(
+      initial ?? {
+        id: '',
+        physioId: undefined,
+        userId: undefined,
+        patientNumber: '',
+        name: '',
+        phone: '',
+        email: '',
+        address: '',
+        age: '',
+        condition: '',
+        referringDoctor: '',
+        referralDate: '',
+        insuranceTpa: '',
+        policyMemberId: '',
+        notes: '',
+      },
+    );
+
+  const update = <
+    K extends keyof Patient,
+  >(
+    field: K,
+    value: Patient[K],
+  ) => {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const submit = () => {
+    if (!form.name.trim()) return;
+
+    onSave({
+      ...form,
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      address: form.address.trim(),
+      condition:
+        form.condition.trim(),
+      notes: form.notes.trim(),
+    });
+  };
+
+  return (
+    <div className="rounded-2xl border bg-card p-5 sm:p-7">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">
+            {initial
+              ? 'Edit record'
+              : 'New record'}
+          </p>
+
+          <h3 className="mt-1 text-xl font-extrabold">
+            {initial
+              ? 'Update patient'
+              : 'Add patient'}
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-xl p-2 text-muted-foreground hover:bg-secondary"
+          aria-label="Close patient form"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field
+          label="Full name"
+          value={form.name}
+          onChange={(event) =>
+            update(
+              'name',
+              event.target.value,
+            )
+          }
+          placeholder="Patient full name"
+        />
+
+        <Field
+          label="Phone"
+          value={form.phone}
+          onChange={(event) =>
+            update(
+              'phone',
+              event.target.value,
+            )
+          }
+          placeholder="+91..."
+        />
+
+        <Field
+          label="Email"
+          type="email"
+          value={form.email}
+          onChange={(event) =>
+            update(
+              'email',
+              event.target.value,
+            )
+          }
+          placeholder="patient@example.com"
+        />
+
+        <Field
+          label="Age"
+          value={form.age}
+          onChange={(event) =>
+            update(
+              'age',
+              event.target.value,
+            )
+          }
+          placeholder="Age"
+        />
+
+        <div className="md:col-span-2">
+          <Field
+            label="Condition"
+            value={form.condition}
+            onChange={(event) =>
+              update(
+                'condition',
+                event.target.value,
+              )
+            }
+            placeholder="Primary condition / diagnosis"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <Field
+            label="Address"
+            value={form.address}
+            onChange={(event) =>
+              update(
+                'address',
+                event.target.value,
+              )
+            }
+            placeholder="Patient address"
+          />
+        </div>
+
+        <Field
+          label="Referring doctor"
+          value={
+            form.referringDoctor
+          }
+          onChange={(event) =>
+            update(
+              'referringDoctor',
+              event.target.value,
+            )
+          }
+          placeholder="Doctor name"
+        />
+
+        <Field
+          label="Referral date"
+          type="date"
+          value={form.referralDate}
+          onChange={(event) =>
+            update(
+              'referralDate',
+              event.target.value,
+            )
+          }
+        />
+
+        <Field
+          label="Insurance / TPA"
+          value={form.insuranceTpa}
+          onChange={(event) =>
+            update(
+              'insuranceTpa',
+              event.target.value,
+            )
+          }
+          placeholder="TPA / insurer"
+        />
+
+        <Field
+          label="Policy / member ID"
+          value={
+            form.policyMemberId
+          }
+          onChange={(event) =>
+            update(
+              'policyMemberId',
+              event.target.value,
+            )
+          }
+          placeholder="Policy or member number"
+        />
+
+        <div className="md:col-span-2">
+          <TextArea
+            label="Clinical notes"
+            value={form.notes}
+            onChange={(event) =>
+              update(
+                'notes',
+                event.target.value,
+              )
+            }
+            placeholder="Relevant background, precautions or other notes..."
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          disabled={!form.name.trim()}
+          onClick={submit}
+          data-testid="button-save-patient"
+        >
+          <Check size={16} />
+          {initial
+            ? 'Save changes'
+            : 'Add patient'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+/* =========================================================
+   PATIENT DETAIL
+   ========================================================= */
+
+function PatientDetailPage({
+  patient,
+  visits,
+  invoices,
+  onEdit,
+  onBack,
+}: {
+  patient: Patient;
+  visits: Visit[];
+  invoices: Invoice[];
+  onEdit: () => void;
+  onBack: () => void;
+}) {
+  const patientVisits =
+    visits.filter(
+      (visit) =>
+        visit.patientId ===
+        patient.id,
+    );
+
+  const patientInvoices =
+    invoices.filter(
+      (invoice) =>
+        invoice.patientId ===
+        patient.id,
+    );
+
+  const balance =
+    patientInvoices.reduce(
+      (sum, invoice) =>
+        sum +
+        Math.max(
+          invoice.total -
+            invoice.paid,
+          0,
+        ),
+      0,
+    );
+
+  return (
+    <div className="page-enter">
+      <button
+        type="button"
+        onClick={onBack}
+        data-testid="button-back-patient"
+        className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft size={16} />
+        Patients
+      </button>
+
+      <div className="rounded-2xl border bg-card p-5 sm:p-7">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-primary text-lg font-extrabold text-primary-foreground">
+              {initials(
+                patient.name,
+              )}
+            </span>
+
+            <div>
+              <p className="mono text-[10px] text-muted-foreground">
+                {patient.patientNumber}
+              </p>
+
+              <h2 className="mt-1 text-2xl font-extrabold tracking-tight">
+                {patient.name}
+              </h2>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                {patient.condition ||
+                  'Condition not specified'}
+              </p>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onEdit}
+            data-testid="button-edit-patient"
+          >
+            <Pencil size={15} />
+            Edit patient
+          </Button>
+        </div>
+
+        <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <InfoCard
+            label="Phone"
+            value={
+              patient.phone || '—'
+            }
+          />
+
+          <InfoCard
+            label="Age"
+            value={patient.age || '—'}
+          />
+
+          <InfoCard
+            label="Visits"
+            value={String(
+              patientVisits.length,
+            )}
+          />
+
+          <InfoCard
+            label="Outstanding"
+            value={money(balance)}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border bg-card">
+          <div className="border-b px-5 py-4">
+            <h3 className="font-extrabold">
+              Clinical record
+            </h3>
+          </div>
+
+          <div className="space-y-4 p-5">
+            <DetailRow
+              label="Email"
+              value={
+                patient.email || '—'
+              }
+            />
+
+            <DetailRow
+              label="Address"
+              value={
+                patient.address || '—'
+              }
+            />
+
+            <DetailRow
+              label="Referring doctor"
+              value={
+                patient.referringDoctor ||
+                '—'
+              }
+            />
+
+            <DetailRow
+              label="Referral date"
+              value={
+                patient.referralDate
+                  ? dateLabel(
+                      patient.referralDate,
+                    )
+                  : '—'
+              }
+            />
+
+            <DetailRow
+              label="Insurance / TPA"
+              value={
+                patient.insuranceTpa ||
+                '—'
+              }
+            />
+
+            <DetailRow
+              label="Policy / member ID"
+              value={
+                patient.policyMemberId ||
+                '—'
+              }
+            />
+
+            <div className="rounded-xl bg-secondary/60 p-4">
+              <p className="text-[10px] font-extrabold uppercase tracking-[.12em] text-muted-foreground">
+                Notes
+              </p>
+
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                {patient.notes ||
+                  'No additional notes.'}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border bg-card">
+          <div className="border-b px-5 py-4">
+            <h3 className="font-extrabold">
+              Recent visits
+            </h3>
+          </div>
+
+          <div className="divide-y">
+            {patientVisits.length ? (
+              patientVisits
+                .slice()
+                .reverse()
+                .slice(0, 6)
+                .map((visit) => (
+                  <div
+                    key={visit.id}
+                    className="px-5 py-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="mono text-xs font-medium">
+                          {
+                            visit.visitNumber
+                          }
+                        </p>
+
+                        <p className="mt-1 text-sm font-bold">
+                          {dateLabel(
+                            visit.date,
+                          )}
+                        </p>
+                      </div>
+
+                      <Badge tone="blue">
+                        {
+                          visit.duration
+                        }{' '}
+                        min
+                      </Badge>
+                    </div>
+
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {visit.treatment}
+                    </p>
+
+                    <p className="mt-2 text-sm leading-6">
+                      {visit.notes}
+                    </p>
+                  </div>
+                ))
+            ) : (
+              <div className="p-8">
+                <EmptyState
+                  icon={ClipboardList}
+                  title="No visits recorded"
+                  description="Clinical visits for this patient will appear here."
+                />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+/* =========================================================
+   VISITS WORKSPACE
+   ========================================================= */
+
+function VisitsPage({
+  visits,
+  patients,
+  onAddVisit,
+}: {
+  visits: Visit[];
+  patients: Patient[];
+  onAddVisit: () => void;
+}) {
+  const patientName = (
+    patientId: string,
+  ) =>
+    patients.find(
+      (patient) =>
+        patient.id === patientId,
+    )?.name ||
+    'Unknown patient';
+
+  return (
+    <div className="page-enter">
+      <SectionHeading
+        eyebrow="Clinical records"
+        title="Visits"
+        description="A chronological record of treatment, modalities, exercises and clinical notes."
+        action={
+          <Button
+            type="button"
+            onClick={onAddVisit}
+            data-testid="button-add-visit"
+          >
+            <Plus size={16} />
+            Log visit
+          </Button>
+        }
+      />
+
+      <div className="overflow-hidden rounded-2xl border bg-card">
+        <div className="hidden grid-cols-[1fr_1fr_1.3fr_.7fr] gap-4 border-b px-5 py-3 text-[10px] font-extrabold uppercase tracking-[.14em] text-muted-foreground md:grid">
+          <span>Visit</span>
+          <span>Patient</span>
+          <span>Treatment</span>
+          <span>Date</span>
+        </div>
+
+        <div className="divide-y">
+          {visits
+            .slice()
+            .sort(
+              (a, b) =>
+                b.date.localeCompare(
+                  a.date,
+                ),
+            )
+            .map((visit) => (
+              <div
+                key={visit.id}
+                data-testid={`row-visit-${visit.id}`}
+                className="grid gap-3 px-5 py-4 md:grid-cols-[1fr_1fr_1.3fr_.7fr] md:items-center"
+              >
+                <div>
+                  <p className="mono text-xs font-medium">
+                    {visit.visitNumber}
+                  </p>
+
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {visit.duration} min
+                  </p>
+                </div>
+
+                <p className="text-sm font-bold">
+                  {patientName(
+                    visit.patientId,
+                  )}
+                </p>
+
+                <div>
+                  <p className="text-sm">
+                    {visit.treatment}
+                  </p>
+
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {visit.modalities ||
+                      'No modalities recorded'}
+                  </p>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {dateLabel(
+                    visit.date,
+                  )}
+                </p>
+              </div>
+            ))}
+
+          {!visits.length && (
+            <div className="p-10">
+              <EmptyState
+                icon={ClipboardList}
+                title="No visits yet"
+                description="Log the first clinical visit to start the patient's treatment timeline."
+                action={
+                  <Button
+                    type="button"
+                    onClick={
+                      onAddVisit
+                    }
+                  >
+                    <Plus size={16} />
+                    Log visit
+                  </Button>
+                }
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+/* =========================================================
+   VISIT FORM
+   ========================================================= */
+
+function VisitForm({
+  patients,
+  onSave,
+  onCancel,
+}: {
+  patients: Patient[];
+  onSave: (visit: Visit) => void;
+  onCancel: () => void;
+}) {
+  const [patientId, setPatientId] =
+    useState(
+      patients[0]?.id ?? '',
+    );
+
+  const [date, setDate] =
+    useState(today);
+
+  const [treatment, setTreatment] =
+    useState('');
+
+  const [modalities, setModalities] =
+    useState('');
+
+  const [exercises, setExercises] =
+    useState('');
+
+  const [duration, setDuration] =
+    useState('60');
+
+  const [notes, setNotes] =
+    useState('');
+
+  const [authorization, setAuthorization] =
+    useState('');
+
+  const submit = () => {
+    if (
+      !patientId ||
+      !treatment.trim()
+    ) {
+      return;
+    }
+
+    onSave({
+      id: '',
+      patientId,
+      visitNumber: '',
+      date,
+      treatment:
+        treatment.trim(),
+      modalities:
+        modalities.trim(),
+      exercises:
+        exercises.trim(),
+      duration,
+      notes: notes.trim(),
+      authorization:
+        authorization.trim(),
+    });
+  };
+
+  return (
+    <div className="rounded-2xl border bg-card p-5 sm:p-7">
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">
+            Clinical note
+          </p>
+
+          <h3 className="mt-1 text-xl font-extrabold">
+            Log a visit
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close visit form"
+          className="rounded-xl p-2 text-muted-foreground hover:bg-secondary"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <SelectField
+          label="Patient"
+          value={patientId}
+          onChange={(event) =>
+            setPatientId(
+              event.target.value,
+            )
+          }
+          options={[
+            {
+              label:
+                'Select patient',
+              value: '',
+            },
+            ...patients.map(
+              (patient) => ({
+                label:
+                  `${patient.name} · ${patient.patientNumber}`,
+                value:
+                  patient.id,
+              }),
+            ),
+          ]}
+        />
+
+        <Field
+          label="Visit date"
+          type="date"
+          value={date}
+          onChange={(event) =>
+            setDate(
+              event.target.value,
+            )
+          }
+        />
+
+        <Field
+          label="Treatment"
+          value={treatment}
+          onChange={(event) =>
+            setTreatment(
+              event.target.value,
+            )
+          }
+          placeholder="e.g. Knee rehabilitation"
+        />
+
+        <Field
+          label="Duration"
+          value={duration}
+          onChange={(event) =>
+            setDuration(
+              event.target.value,
+            )
+          }
+          placeholder="60"
+        />
+
+        <Field
+          label="Modalities"
+          value={modalities}
+          onChange={(event) =>
+            setModalities(
+              event.target.value,
+            )
+          }
+          placeholder="e.g. TENS, ultrasound"
+        />
+
+        <Field
+          label="Authorization"
+          value={authorization}
+          onChange={(event) =>
+            setAuthorization(
+              event.target.value,
+            )
+          }
+          placeholder="e.g. Approved — 10 sessions"
+        />
+
+        <div className="md:col-span-2">
+          <TextArea
+            label="Exercises"
+            value={exercises}
+            onChange={(event) =>
+              setExercises(
+                event.target.value,
+              )
+            }
+            placeholder="Exercises prescribed or performed..."
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <TextArea
+            label="Clinical notes"
+            value={notes}
+            onChange={(event) =>
+              setNotes(
+                event.target.value,
+              )
+            }
+            placeholder="Subjective findings, objective findings, response to treatment and plan..."
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          disabled={
+            !patientId ||
+            !treatment.trim()
+          }
+          onClick={submit}
+          data-testid="button-save-visit"
+        >
+          <Check size={16} />
+          Save visit
+        </Button>
+      </div>
+    </div>
+  );
+}
+/* =========================================================
+   SMALL DETAIL COMPONENTS
+   ========================================================= */
+
+function InfoCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-secondary/60 p-4">
+      <p className="text-[10px] font-extrabold uppercase tracking-[.12em] text-muted-foreground">
+        {label}
+      </p>
+
+      <p className="mt-2 truncate text-sm font-bold">
+        {value}
+      </p>
+    </div>
+  );
 }
 
-function ProfilePage({ profile, setProfile, notify }: { profile: Profile; setProfile: (value: Profile) => void; notify: (message: string) => void }) {
-  const [draft, setDraft] = useState(profile);
-  const update = (key: keyof Profile, value: string) => setDraft((old) => ({ ...old, [key]: value }));
-  const save = () => { setProfile(draft); notify('Provider profile saved locally'); };
-  const logoChange = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => update('logo', String(reader.result)); reader.readAsDataURL(file); };
-    return <div className="page-enter max-w-5xl"><SectionHeading eyebrow="Practice identity" title="Provider profile" description="These details appear on the invoices you share. Keep regulated fields blank until you have verified them." action={<Button onClick={save} data-testid="button-save-profile"><Check size={16} /> Save profile</Button>} /><div className="mb-6 flex items-start gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4 text-sm"><ShieldCheck className="mt-0.5 shrink-0 text-primary" size={18} /><p className="leading-6"><strong>Privacy-first demo.</strong> Your changes are stored only in this browser. Registration, PAN and GSTIN are intentionally blank — add them only when you are ready.</p></div><div className="grid gap-6 lg:grid-cols-[.72fr_1.28fr]"><section className="rounded-2xl border bg-card p-5 sm:p-6"><h3 className="font-extrabold">Your practice mark</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">A small logo or wordmark gives a document a personal finish.</p><div className="mt-6 flex items-center gap-4"><div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-primary text-2xl font-extrabold text-primary-foreground">{draft.logo ? <img src={draft.logo} alt="Practice logo" className="size-full object-cover" /> : initials(draft.fullName || 'PT')}</div><div><label data-testid="label-upload-logo" className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-xs font-bold hover:bg-accent/25"><FilePlus2 size={15} /> Upload logo<input data-testid="input-logo" className="hidden" type="file" accept="image/*" onChange={logoChange} /></label>{draft.logo && <button data-testid="button-remove-logo" onClick={() => update('logo', '')} className="ml-2 text-xs font-semibold text-destructive">Remove</button>}<p className="mt-2 text-[11px] text-muted-foreground">PNG or JPG · square works best</p></div></div><div className="mt-7 border-t pt-5"><p className="text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">Document numbering</p><div className="mt-3 flex items-center gap-3"><Field label="Invoice prefix" value={draft.invoicePrefix} onChange={(e) => update('invoicePrefix', e.target.value.toUpperCase())} placeholder="PB" maxLength={5} /><div className="mt-5 rounded-xl bg-secondary px-3 py-3 mono text-xs">{draft.invoicePrefix || 'PB'}-{currentYear}-000001</div></div><p className="mt-2 text-[11px] text-muted-foreground">The next number is calculated automatically.</p></div></section><section className="rounded-2xl border bg-card p-5 sm:p-6"><h3 className="font-extrabold">Professional details</h3><p className="mt-1 text-xs text-muted-foreground">What patients and reimbursement teams see first.</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><Field label="Full name" value={draft.fullName} onChange={(e) => update('fullName', e.target.value)} placeholder="Your name" /><Field label="Professional title" value={draft.title} onChange={(e) => update('title', e.target.value)} placeholder="Physiotherapist" /><Field label="Qualification" value={draft.qualification} onChange={(e) => update('qualification', e.target.value)} placeholder="e.g. BPT, MPT" /><Field label="Registration / council no." value={draft.registration} onChange={(e) => update('registration', e.target.value)} placeholder="Add when verified" /><Field label="PAN" value={draft.pan} onChange={(e) => update('pan', e.target.value.toUpperCase())} placeholder="Add when verified" /><Field label="GSTIN" hint="Optional" value={draft.gstin} onChange={(e) => update('gstin', e.target.value.toUpperCase())} placeholder="Add when verified" /><Field label="Phone" type="tel" value={draft.phone} onChange={(e) => update('phone', e.target.value)} placeholder="+91" /><Field label="Email" type="email" value={draft.email} onChange={(e) => update('email', e.target.value)} placeholder="you@practice.com" /></div><div className="mt-4"><TextArea label="Practice / correspondence address" value={draft.address} onChange={(e) => update('address', e.target.value)} placeholder="Clinic or home-visit correspondence address" /></div></section></div><section className="mt-6 rounded-2xl border bg-card p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><h3 className="font-extrabold">Payment details</h3><p className="mt-1 text-xs text-muted-foreground">Optional details printed in the payment summary. Never added by default.</p></div><Badge tone="blue">Optional</Badge></div><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><Field label="UPI display name" value={draft.upiName} onChange={(e) => update('upiName', e.target.value)} placeholder="Name shown on UPI" /><Field label="UPI ID" value={draft.upiId} onChange={(e) => update('upiId', e.target.value)} placeholder="name@bank" /><Field label="Bank name" value={draft.bankName} onChange={(e) => update('bankName', e.target.value)} placeholder="Optional" /><Field label="Account number" value={draft.accountNumber} onChange={(e) => update('accountNumber', e.target.value)} placeholder="Optional" /><Field label="IFSC" value={draft.ifsc} onChange={(e) => update('ifsc', e.target.value.toUpperCase())} placeholder="Optional" /></div></section></div>;
-}
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1 border-b pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+      <span className="text-xs font-bold text-muted-foreground">
+        {label}
+      </span>
 
-function PatientsPage({ patients, setPatients, visits, notify }: { patients: Patient[]; setPatients: (value: Patient[]) => void; visits: Visit[]; notify: (message: string) => void }) {  const [location] = useLocation();
-  const patientQuery = new URLSearchParams(location.split('?')[1] || '').get('patient');
-  const [query, setQuery] = useState(''); const [selected, setSelected] = useState<Patient | null>(() => patients.find((patient) => patient.id === patientQuery) || null); const [showAdd, setShowAdd] = useState(false);
-  const [draft, setDraft] = useState<Patient>({ id: '', patientNumber: '', name: '', phone: '', email: '', address: '', age: '', condition: '', referringDoctor: '', referralDate: '', insuranceTpa: '', policyMemberId: '', notes: '' });
-  useEffect(() => { if (patientQuery) setSelected(patients.find((patient) => patient.id === patientQuery) || null); }, [patientQuery, patients]);
-  const filtered = patients.filter((patient) => `${patient.name} ${patient.condition} ${patient.phone}`.toLowerCase().includes(query.toLowerCase()));
-  const openAdd = () => { setDraft({ id: `p-${Date.now()}`, patientNumber: nextSequentialId('PT', patients.map((patient) => patient.patientNumber)), name: '', phone: '', email: '', address: '', age: '', condition: '', referringDoctor: '', referralDate: '', insuranceTpa: '', policyMemberId: '', notes: '' }); setShowAdd(true); };
-  const save = () => { if (!draft.name.trim()) return; setPatients(patients.some((p) => p.id === draft.id) ? patients.map((p) => p.id === draft.id ? draft : p) : [draft, ...patients]); setSelected(draft); setShowAdd(false); notify(patients.some((p) => p.id === draft.id) ? 'Patient details updated' : 'Patient added to directory'); };
-  const remove = (id: string) => { if (window.confirm('Remove this patient from the demo directory?')) { setPatients(patients.filter((p) => p.id !== id)); setSelected(null); notify('Patient removed'); } };
-  return <div className="page-enter"><SectionHeading eyebrow="Care directory" title="Patients" description="A small, focused directory for the people behind each visit." action={<Button onClick={openAdd} data-testid="button-add-patient"><Plus size={16} /> Add patient</Button>} /><div className="mb-5 flex flex-col gap-3 sm:flex-row"><label className="relative block flex-1"><Search className="absolute left-3.5 top-3.5 text-muted-foreground" size={17} /><input data-testid="input-search-patients" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name, condition or phone" className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label><button data-testid="button-filter-patients" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border bg-card px-4 text-sm font-bold text-muted-foreground"><SlidersHorizontal size={16} /> Filters</button></div><div className="grid gap-5 lg:grid-cols-[1fr_360px]"><section className="overflow-hidden rounded-2xl border bg-card"><div className="hidden grid-cols-[1fr_1fr_120px] gap-4 border-b bg-secondary/35 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground sm:grid"><span>Patient</span><span>Care focus</span><span>Last seen</span></div>{filtered.length ? filtered.map((patient) => <button key={patient.id} data-testid={`button-select-patient-${patient.id}`} onClick={() => setSelected(patient)} className={`grid w-full grid-cols-1 gap-2 border-b px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-secondary/40 sm:grid-cols-[1fr_1fr_120px] sm:items-center sm:gap-4 ${selected?.id === patient.id ? 'bg-secondary/55' : ''}`}><span className="flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-xs font-extrabold text-primary">{initials(patient.name)}</span><span><strong className="block text-sm">{patient.name}</strong><small className="mt-1 block text-xs text-muted-foreground">{patient.patientNumber} · {patient.phone}</small></span></span><span className="pl-[52px] text-xs leading-5 text-muted-foreground sm:pl-0">{patient.condition}</span><span className="pl-[52px] text-xs text-muted-foreground sm:pl-0">{(() => { const lastVisit = visits.filter((visit) => visit.patientId === patient.id).sort((a, b) => b.date.localeCompare(a.date))[0]; return lastVisit ? dateLabel(lastVisit.date) : 'Not seen yet'; })()} <ChevronRight className="float-right sm:hidden" size={16} /></span></button>) : <div className="p-6"><EmptyState icon={UsersRound} title="No matching patients" description={query ? 'Try a different name or phone number.' : 'Start your directory with the people you care for.'} action={!query && <Button onClick={openAdd} data-testid="button-empty-add-patient"><Plus size={15} /> Add patient</Button>} /></div>}</section>{selected ? <PatientDetail patient={selected} setSelected={setSelected} save={(item) => { setPatients(patients.map((p) => p.id === item.id ? item : p)); setSelected(item); notify('Patient details updated'); }} remove={() => remove(selected.id)} /> : <div className="hidden rounded-2xl border bg-card p-6 lg:block"><div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center"><div className="mb-4 rounded-2xl bg-secondary p-4 text-primary"><UserRound size={24} /></div><h3 className="font-extrabold">Select a patient</h3><p className="mt-2 max-w-[230px] text-sm leading-6 text-muted-foreground">Choose a patient to review their contact details and care focus.</p></div></div>}</div>{showAdd && <PatientModal draft={draft} setDraft={setDraft} onSave={save} onClose={() => setShowAdd(false)} />}</div>;
+      <span className="max-w-[70%] text-right text-sm">
+        {value}
+      </span>
+    </div>
+  );
 }
-function PatientDetail({ patient, setSelected, save, remove }: { patient: Patient; setSelected: (patient: Patient | null) => void; save: (patient: Patient) => void; remove: () => void }) {
-  const [editing, setEditing] = useState(false); const [draft, setDraft] = useState(patient);
-  useEffect(() => { setDraft(patient); setEditing(false); }, [patient]);
-  return <section className="rounded-2xl border bg-card p-5 sm:p-6"><div className="flex items-start justify-between"><div className="flex items-center gap-3"><div className="grid size-12 place-items-center rounded-2xl bg-primary text-sm font-extrabold text-primary-foreground">{initials(patient.name)}</div><div><h3 className="font-extrabold">{patient.name}</h3><p className="mt-1 text-xs text-muted-foreground">{patient.patientNumber}</p></div></div><button data-testid={`button-close-patient-detail-${patient.id}`} onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary"><X size={17} /></button></div>{editing ? <div className="mt-6 space-y-4"><Field label="Full name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /><div className="grid gap-3 sm:grid-cols-2"><Field label="Phone" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /><Field label="Age" value={draft.age} onChange={(e) => setDraft({ ...draft, age: e.target.value })} /></div><Field label="Diagnosis / clinical condition" value={draft.condition} onChange={(e) => setDraft({ ...draft, condition: e.target.value })} /><div className="grid gap-3 sm:grid-cols-2"><Field label="Referring doctor" value={draft.referringDoctor} onChange={(e) => setDraft({ ...draft, referringDoctor: e.target.value })} placeholder="Optional" /><Field label="Referral date" type="date" value={draft.referralDate} onChange={(e) => setDraft({ ...draft, referralDate: e.target.value })} /></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Insurance / TPA" value={draft.insuranceTpa} onChange={(e) => setDraft({ ...draft, insuranceTpa: e.target.value })} placeholder="Optional" /><Field label="Policy / member ID" value={draft.policyMemberId} onChange={(e) => setDraft({ ...draft, policyMemberId: e.target.value })} placeholder="Optional" /></div><TextArea label="Notes" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} /><div className="flex gap-2"><Button onClick={() => { save(draft); setEditing(false); }} data-testid={`button-save-patient-${patient.id}`}><Check size={15} /> Save</Button><Button variant="ghost" onClick={() => setEditing(false)} data-testid={`button-cancel-patient-${patient.id}`}>Cancel</Button></div></div> : <div className="mt-6 space-y-4"><InfoRow label="Patient ID" value={patient.patientNumber} /><InfoRow label="Diagnosis / condition" value={patient.condition} /><InfoRow label="Contact" value={patient.phone} /><InfoRow label="Location" value={patient.address} /><InfoRow label="Referring doctor" value={patient.referringDoctor || 'Not added'} /><InfoRow label="Referral date" value={patient.referralDate ? dateLabel(patient.referralDate) : 'Not added'} /><InfoRow label="Insurance / TPA" value={patient.insuranceTpa || 'Not added'} /><InfoRow label="Policy / member ID" value={patient.policyMemberId || 'Not added'} /><InfoRow label="Notes" value={patient.notes || 'No notes added'} /><div className="flex gap-2 border-t pt-5"><Button variant="soft" onClick={() => setEditing(true)} data-testid={`button-edit-patient-${patient.id}`}><Pencil size={15} /> Edit details</Button><Button variant="danger" className="px-3" onClick={remove} data-testid={`button-delete-patient-${patient.id}`}><Trash2 size={15} /></Button></div></div>}</section>;
-}
-function InfoRow({ label, value }: { label: string; value: string }) { return <div><p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</p><p className="mt-1 text-sm leading-5">{value}</p></div>; }
-function PatientModal({ draft, setDraft, onSave, onClose }: { draft: Patient; setDraft: (value: Patient) => void; onSave: () => void; onClose: () => void }) {
-  return <Modal title="Add patient" onClose={onClose}><div className="space-y-4"><Field label="Full name" autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Patient name" /><div className="grid gap-3 sm:grid-cols-2"><Field label="Phone" type="tel" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} placeholder="+91" /><Field label="Age" value={draft.age} onChange={(e) => setDraft({ ...draft, age: e.target.value })} placeholder="Optional" /></div><Field label="Diagnosis / clinical condition" value={draft.condition} onChange={(e) => setDraft({ ...draft, condition: e.target.value })} placeholder="e.g. shoulder mobility" /><Field label="Address" value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} placeholder="Area or home-visit address" /><div className="grid gap-3 sm:grid-cols-2"><Field label="Referring doctor" value={draft.referringDoctor} onChange={(e) => setDraft({ ...draft, referringDoctor: e.target.value })} placeholder="Optional" /><Field label="Referral date" type="date" value={draft.referralDate} onChange={(e) => setDraft({ ...draft, referralDate: e.target.value })} /></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Insurance / TPA" value={draft.insuranceTpa} onChange={(e) => setDraft({ ...draft, insuranceTpa: e.target.value })} placeholder="Optional" /><Field label="Policy / member ID" value={draft.policyMemberId} onChange={(e) => setDraft({ ...draft, policyMemberId: e.target.value })} placeholder="Optional" /></div><TextArea label="Notes" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} placeholder="Preferences, context, or reminders" /></div><ModalActions onClose={onClose} onSave={onSave} saveLabel="Add patient" testId="button-submit-patient" /></Modal>;
-}
-
-function VisitsPage({ visits, patients, setVisits, notify }: { visits: Visit[]; patients: Patient[]; setVisits: (value: Visit[]) => void; notify: (message: string) => void }) {
-  const [showAdd, setShowAdd] = useState(false); const [query, setQuery] = useState('');
-  const [draft, setDraft] = useState<Visit>({ id: '', visitNumber: '', patientId: patients[0]?.id || '', date: today, treatment: '', modalities: '', exercises: '', duration: '45', notes: '', authorization: 'Patient present' });
-  const patientName = (id: string) => patients.find((p) => p.id === id)?.name || 'Unknown patient';
-  const openAdd = () => { setDraft({ id: `v-${Date.now()}`, visitNumber: nextSequentialId('VIS', visits.map((visit) => visit.visitNumber)), patientId: patients[0]?.id || '', date: today, treatment: '', modalities: '', exercises: '', duration: '45', notes: '', authorization: 'Patient present' }); setShowAdd(true); };
-  const save = () => { if (!draft.patientId || !draft.treatment.trim()) return; setVisits([draft, ...visits]); setShowAdd(false); notify('Visit note saved locally'); };
-  const filtered = visits.filter((visit) => `${patientName(visit.patientId)} ${visit.treatment} ${visit.notes}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="page-enter"><SectionHeading eyebrow="Clinical notes" title="Visits" description="The clinical thread behind every invoice. Capture enough to remember the person, not just the procedure." action={<Button onClick={openAdd} data-testid="button-add-visit"><Plus size={16} /> Log a visit</Button>} /><div className="mb-5 flex items-center gap-3"><label className="relative block flex-1"><Search className="absolute left-3.5 top-3.5 text-muted-foreground" size={17} /><input data-testid="input-search-visits" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patient or treatment" className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label><Badge tone="green">{visits.length} records</Badge></div><div className="space-y-3">{filtered.length ? filtered.map((visit) => <article key={visit.id} data-testid={`card-visit-${visit.id}`} className="rounded-2xl border bg-card p-5 transition-shadow hover:shadow-[0_8px_25px_hsl(var(--primary)/.06)]"><div className="flex flex-col gap-4 sm:flex-row sm:items-start"><div className="flex items-center gap-3 sm:w-44 sm:shrink-0"><div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-secondary text-primary"><CalendarDays size={18} /></div><div><p className="mono text-xs font-medium">{visit.visitNumber}</p><p className="mt-1 mono text-xs font-medium">{dateLabel(visit.date)}</p><p className="mt-1 text-[11px] text-muted-foreground">{visit.duration} min · {visit.authorization.split('—')[0]}</p></div></div><div className="min-w-0 flex-1 border-t pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0"><div className="flex flex-wrap items-center gap-2"><Link href={`/patients?patient=${encodeURIComponent(visit.patientId)}`} data-testid={`link-visit-patient-${visit.id}`} className="font-extrabold text-primary hover:underline">{patientName(visit.patientId)}</Link><Badge tone="blue">{visit.treatment}</Badge></div><div className="mt-3 grid gap-3 text-xs leading-5 text-muted-foreground sm:grid-cols-3"><InfoRow label="Modalities" value={visit.modalities || 'Not recorded'} /><InfoRow label="Exercises / rehab" value={visit.exercises || 'Not recorded'} /><InfoRow label="Clinical note" value={visit.notes || 'Not recorded'} /></div></div><button data-testid={`button-visit-more-${visit.id}`} className="self-end rounded-lg p-2 text-muted-foreground hover:bg-secondary"><MoreHorizontal size={18} /></button></div></article>) : <EmptyState icon={ClipboardList} title={query ? 'No visits found' : 'Your clinical notes begin here'} description={query ? 'Try searching for a different patient or treatment.' : 'Log a visit to keep the story of care clear and make billing easier later.'} action={!query && <Button onClick={openAdd} data-testid="button-empty-add-visit"><Plus size={15} /> Log first visit</Button>} />}</div>{showAdd && <VisitModal draft={draft} setDraft={setDraft} patients={patients} onSave={save} onClose={() => setShowAdd(false)} />}</div>;
-}
-function VisitModal({ draft, setDraft, patients, onSave, onClose }: { draft: Visit; setDraft: (value: Visit) => void; patients: Patient[]; onSave: () => void; onClose: () => void }) {
-  const change = (key: keyof Visit, value: string) => setDraft({ ...draft, [key]: value });
-  return <Modal title="Log a visit" subtitle="A concise note is enough. You can always add more context later." onClose={onClose}><div className="grid gap-4 sm:grid-cols-2"><SelectField label="Patient" value={draft.patientId} onChange={(e) => change('patientId', e.target.value)}>{patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</SelectField><Field label="Visit date" type="date" value={draft.date} onChange={(e) => change('date', e.target.value)} /><Field label="Treatment / focus" value={draft.treatment} onChange={(e) => change('treatment', e.target.value)} placeholder="e.g. knee rehabilitation" /><Field label="Duration (minutes)" type="number" value={draft.duration} onChange={(e) => change('duration', e.target.value)} placeholder="45" /></div><div className="mt-4 space-y-4"><TextArea label="Modalities / hands-on treatment" value={draft.modalities} onChange={(e) => change('modalities', e.target.value)} placeholder="Manual therapy, heat, taping..." /><TextArea label="Exercises / rehab prescribed" value={draft.exercises} onChange={(e) => change('exercises', e.target.value)} placeholder="Exercises, dosage, home programme..." /><TextArea label="Clinical notes" value={draft.notes} onChange={(e) => change('notes', e.target.value)} placeholder="Response, progress, next focus..." /><SelectField label="Authorization" value={draft.authorization} onChange={(e) => change('authorization', e.target.value)}><option>Patient present</option><option>Home visit — patient present</option><option>Tele-follow up — patient present</option><option>Caregiver present with consent</option></SelectField></div><ModalActions onClose={onClose} onSave={onSave} saveLabel="Save visit note" testId="button-submit-visit" /></Modal>;
-}
-
-function InvoicesPage({ invoices, patients, profile, setInvoices, notify }: { invoices: Invoice[]; patients: Patient[]; profile: Profile; setInvoices: (value: Invoice[]) => void; notify: (message: string) => void }) {
-  const [filter, setFilter] = useState<'All' | InvoiceStatus>('All'); const [preview, setPreview] = useState<Invoice | null>(null); const [query, setQuery] = useState('');
-  const patientName = (id: string) => patients.find((p) => p.id === id)?.name || 'Unknown patient';
-  const visible = invoices.filter((invoice) => (filter === 'All' || invoice.status === filter) && `${invoice.number} ${patientName(invoice.patientId)}`.toLowerCase().includes(query.toLowerCase()));
-  const setPaid = (invoice: Invoice) => { const paid = invoice.total; setInvoices(invoices.map((item) => item.id === invoice.id ? { ...item, paid, finalized: true, status: deriveInvoiceStatus(item.total, paid, true) } : item)); notify(`${invoice.number} marked as paid`); };
-  return <div className="page-enter"><SectionHeading eyebrow="Billing desk" title="Invoices" description="Professional billing documents for your patients and their reimbursement journey." action={<Link href="/invoice/new" data-testid="link-create-invoice" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_4px_12px_hsl(var(--primary)/.16)]"><Plus size={16} /> New invoice</Link>} /><div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><label className="relative block lg:w-80"><Search className="absolute left-3.5 top-3.5 text-muted-foreground" size={17} /><input data-testid="input-search-invoices" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search invoice or patient" className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label><div className="flex gap-1 overflow-auto rounded-xl border bg-card p-1">{(['All', 'Outstanding', 'Part paid', 'Paid', 'Draft'] as const).map((item) => <button key={item} data-testid={`button-filter-${item.toLowerCase().replace(' ', '-')}`} onClick={() => setFilter(item)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-colors ${filter === item ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'}`}>{item}</button>)}</div></div><section className="overflow-hidden rounded-2xl border bg-card"><div className="hidden grid-cols-[1fr_1.2fr_.8fr_.7fr_32px] gap-4 border-b bg-secondary/35 px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground md:grid"><span>Document</span><span>Patient</span><span>Issued</span><span>Amount</span><span /></div>{visible.length ? visible.map((invoice) => <div key={invoice.id} data-testid={`row-invoice-${invoice.id}`} className="grid gap-3 border-b px-5 py-4 last:border-0 md:grid-cols-[1fr_1.2fr_.8fr_.7fr_32px] md:items-center md:gap-4"><div className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary"><ReceiptIndianRupee size={16} /></span><span><p className="mono text-xs font-medium">{invoice.number}</p><p className="mt-1 text-[11px] text-muted-foreground md:hidden">{dateLabel(invoice.createdAt)}</p></span></div><div className="flex items-center justify-between border-t pt-3 md:border-0 md:pt-0"><span><p className="text-sm font-bold">{patientName(invoice.patientId)}</p><p className="mt-1 text-xs text-muted-foreground">{invoice.sessions} sessions · {invoice.description}</p></span><Badge tone={invoice.status === 'Paid' ? 'green' : invoice.status === 'Part paid' ? 'amber' : invoice.status === 'Draft' ? 'neutral' : 'coral'}>{invoice.status}</Badge></div><span className="hidden text-xs text-muted-foreground md:block">{dateLabel(invoice.createdAt)}</span><div className="flex items-center justify-between md:block"><span className="mono text-sm font-medium">{money(invoice.total)}</span><span className="ml-2 text-xs text-muted-foreground">· {money(Math.max(invoice.total - invoice.paid, 0))} due</span></div><div className="flex justify-end gap-1 md:justify-start"><button data-testid={`button-preview-invoice-${invoice.id}`} onClick={() => setPreview(invoice)} title="Preview invoice" className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary"><Printer size={16} /></button>{invoice.status !== 'Paid' && <button data-testid={`button-mark-paid-${invoice.id}`} onClick={() => setPaid(invoice)} title="Mark paid" className="rounded-lg p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary"><Check size={16} /></button>}</div></div>) : <div className="p-6"><EmptyState icon={ReceiptIndianRupee} title={filter === 'All' ? 'No invoices yet' : `No ${filter.toLowerCase()} invoices`} description="Create a professional document from your visit notes whenever you are ready." action={<Link href="/invoice/new" data-testid="link-empty-create-invoice" className="text-sm font-bold text-primary">Create invoice <ArrowRight className="ml-1 inline" size={15} /></Link>} /></div>}</section>{preview && <Modal title="Invoice preview" subtitle={`${preview.number} · ready to print or save as PDF`} onClose={() => setPreview(null)} wide><InvoicePreview invoice={preview} patients={patients} profile={profile} /><div className="mt-4 flex justify-end gap-2"><Button variant="soft" onClick={() => navigator.clipboard?.writeText(preview.number)} data-testid="button-copy-invoice-number"><Copy size={15} /> Copy number</Button><Button onClick={() => window.print()} data-testid="button-print-invoice"><Printer size={15} /> Print invoice</Button></div></Modal>}</div>;
-}
-
-function NewInvoicePage({ invoices, patients, profile, settings, setInvoices, notify }: { invoices: Invoice[]; patients: Patient[]; profile: Profile; settings: Settings; setInvoices: (value: Invoice[]) => void; notify: (message: string) => void }) {
-  const [, setLocation] = useLocation();
-  const [form, setForm] = useState({ patientId: patients[0]?.id || '', description: 'Physiotherapy treatment sessions', sessions: '1', startDate: today, endDate: today, fee: '1500', additional: '0', additionalDescription: '', discount: '0', gstRate: '0', paid: '0', paymentMethod: 'Select payment method', finalized: 'true' });
-  const update = (key: string, value: string) => setForm((old) => ({ ...old, [key]: value }));
-  const fee = Number(form.fee) || 0; const additional = Number(form.additional) || 0; const discount = Number(form.discount) || 0; const gst = Math.max(0, (fee + additional - discount) * (Number(form.gstRate) || 0) / 100); const total = Math.max(0, fee + additional - discount + gst); const paid = Math.min(total, Number(form.paid) || 0);
-  const finalized = form.finalized === 'true'; const status = deriveInvoiceStatus(total, paid, finalized);
-  const save = () => { if (!form.patientId || !form.description.trim()) return; const invoice: Invoice = { id: `inv-${Date.now()}`, number: nextSequentialId(profile.invoicePrefix || 'PB', invoices.map((item) => item.number)), patientId: form.patientId, description: form.description, sessions: form.sessions, startDate: form.startDate, endDate: form.endDate, fee, additional, additionalDescription: form.additionalDescription, discount, gstRate: Number(form.gstRate) || 0, total, paid, paymentMethod: form.paymentMethod, finalized, status, createdAt: today }; setInvoices([invoice, ...invoices]); notify(`${invoice.number} created successfully`); setLocation('/invoices'); };
-  return <div className="page-enter max-w-6xl"><div className="mb-6 flex items-center gap-3"><Link href="/invoices" data-testid="link-back-invoices" className="rounded-xl border bg-card p-2.5 text-muted-foreground hover:bg-secondary"><ArrowLeft size={17} /></Link><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-primary">New document</p><h2 className="text-2xl font-extrabold tracking-[-.04em]">Build an invoice</h2></div></div><div className="grid gap-6 xl:grid-cols-[1fr_390px]"><section className="space-y-5"><div className="rounded-2xl border bg-card p-5 sm:p-6"><div className="mb-5 flex items-start justify-between"><div><h3 className="font-extrabold">Patient & service</h3><p className="mt-1 text-xs text-muted-foreground">Start with the care that was delivered.</p></div><span className="grid size-9 place-items-center rounded-xl bg-secondary text-primary"><FileText size={17} /></span></div><div className="grid gap-4 sm:grid-cols-2"><SelectField label="Patient" value={form.patientId} onChange={(e) => update('patientId', e.target.value)}>{patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</SelectField><Field label="Number of sessions / visits" type="number" value={form.sessions} onChange={(e) => update('sessions', e.target.value)} /><div className="sm:col-span-2"><Field label="Service description" value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Physiotherapy treatment sessions" /></div><Field label="Service period · from" type="date" value={form.startDate} onChange={(e) => update('startDate', e.target.value)} /><Field label="Service period · to" type="date" value={form.endDate} onChange={(e) => update('endDate', e.target.value)} /></div></div><div className="rounded-2xl border bg-card p-5 sm:p-6"><div className="mb-5"><h3 className="font-extrabold">Fees & adjustments</h3><p className="mt-1 text-xs text-muted-foreground">Keep additional charges explicit for reimbursement review.</p></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Session / service fee (₹)" type="number" min="0" value={form.fee} onChange={(e) => update('fee', e.target.value)} /><Field label="Additional charges (₹)" type="number" min="0" value={form.additional} onChange={(e) => update('additional', e.target.value)} placeholder="Travel, equipment..." /><Field label="Additional charge description" value={form.additionalDescription} onChange={(e) => update('additionalDescription', e.target.value)} placeholder="Optional — e.g. home visit travel" /><Field label="Discount (₹)" type="number" min="0" value={form.discount} onChange={(e) => update('discount', e.target.value)} /><SelectField label="GST" value={form.gstRate} onChange={(e) => update('gstRate', e.target.value)}><option value="0">No GST</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option></SelectField></div></div><div className="rounded-2xl border bg-card p-5 sm:p-6"><div className="mb-5"><h3 className="font-extrabold">Payment received</h3><p className="mt-1 text-xs text-muted-foreground">Payment status is derived from finalization, amount paid and balance.</p></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Amount paid (₹)" type="number" min="0" value={form.paid} onChange={(e) => update('paid', e.target.value)} /><SelectField label="Payment method" value={form.paymentMethod} onChange={(e) => update('paymentMethod', e.target.value)}>{paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}</SelectField><SelectField label="Invoice state" value={form.finalized} onChange={(e) => update('finalized', e.target.value)}><option value="false">Save as draft</option><option value="true">Finalize invoice</option></SelectField></div></div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Link href="/invoices" data-testid="link-cancel-new-invoice" className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-secondary">Cancel</Link><Button onClick={save} data-testid="button-save-invoice"><Check size={16} /> Create invoice</Button></div></section><aside className="h-fit rounded-2xl border bg-card p-5 shadow-[0_10px_35px_hsl(var(--primary)/.06)] sm:p-6 xl:sticky xl:top-[94px]"><div className="mb-5 flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-primary">Live preview</p><h3 className="mt-1 font-extrabold">Payment summary</h3></div><Badge tone={invoiceTone(status)}>{status}</Badge></div><div className="space-y-3 border-b pb-5 text-sm"><SummaryLine label="Service fee" value={money(fee)} /><SummaryLine label="Additional" value={money(additional)} /><SummaryLine label="Discount" value={`− ${money(discount)}`} /><SummaryLine label={`GST${Number(form.gstRate) ? ` · ${form.gstRate}%` : ''}`} value={money(gst)} /></div><div className="flex items-end justify-between pt-5"><span><p className="text-xs font-bold text-muted-foreground">Total payable</p><p className="mt-1 text-[11px] text-muted-foreground">{form.sessions || 0} session(s)</p></span><span className="mono text-2xl font-medium">{money(total)}</span></div><div className="mt-5 rounded-xl bg-secondary/70 p-3.5"><div className="flex justify-between text-xs"><span className="text-muted-foreground">Paid now</span><span className="mono font-medium">{money(paid)}</span></div><div className="mt-2 flex justify-between text-xs"><span className="font-bold">Balance due</span><span className="mono font-medium text-primary">{money(Math.max(total - paid, 0))}</span></div></div><p className="mt-5 text-[11px] leading-5 text-muted-foreground">The finished invoice includes a clinical service description, patient details and an insurer acceptance disclaimer.</p></aside></div></div>;
-}
-function SummaryLine({ label, value }: { label: string; value: string }) { return <div className="flex justify-between text-xs"><span className="text-muted-foreground">{label}</span><span className="mono">{value}</span></div>; }
-
-function InvoiceDetail({ invoices, patients, profile }: { invoices: Invoice[]; patients: Patient[]; profile: Profile }) {
-  const { id } = useParams<{ id: string }>(); const invoice = invoices.find((item) => item.id === id);
-  if (!invoice) return <EmptyState icon={FileText} title="Invoice not found" description="This document may have been removed or the link is incorrect." action={<Link href="/invoices" data-testid="link-missing-invoice-back" className="font-bold text-primary">Back to invoices</Link>} />;
-  return <div className="page-enter"><div className="mb-5 flex items-center gap-3 no-print"><Link href="/invoices" data-testid="link-detail-back" className="rounded-xl border bg-card p-2.5 text-muted-foreground hover:bg-secondary"><ArrowLeft size={17} /></Link><div className="flex-1"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-primary">Invoice detail</p><h2 className="text-2xl font-extrabold tracking-[-.04em]">{invoice.number}</h2></div><Button onClick={() => window.print()} data-testid="button-detail-print"><Printer size={16} /> Print</Button></div><InvoicePreview invoice={invoice} patients={patients} profile={profile} /></div>;
-}
-function InvoicePreview({ invoice, patients, profile }: { invoice: Invoice; patients: Patient[]; profile: Profile }) {
-  const patient = patients.find((p) => p.id === invoice.patientId); const balance = Math.max(invoice.total - invoice.paid, 0);
-  return <article className="print-sheet mx-auto max-w-3xl rounded-2xl border bg-card p-5 shadow-sm sm:p-9" data-testid={`invoice-preview-${invoice.id}`}><div className="flex flex-col justify-between gap-5 border-b pb-7 sm:flex-row"><div className="flex items-start gap-3"><div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-primary text-lg font-extrabold text-primary-foreground">{profile.logo ? <img src={profile.logo} alt="Provider logo" className="size-full object-cover" /> : <HeartPulse size={24} />}</div><div><h2 className="text-xl font-extrabold tracking-tight">{profile.fullName || 'Your name'}</h2><p className="mt-1 text-sm text-primary">{profile.title || 'Physiotherapist'}{profile.qualification ? ` · ${profile.qualification}` : ''}</p>{profile.registration && <p className="mt-1 text-[11px] text-muted-foreground">Reg. / Council no. {profile.registration}</p>}{(profile.pan || profile.gstin) && <p className="mt-1 text-[11px] text-muted-foreground">{[profile.pan && `PAN ${profile.pan}`, profile.gstin && `GSTIN ${profile.gstin}`].filter(Boolean).join(' · ')}</p>}<p className="mt-2 max-w-xs text-xs leading-5 text-muted-foreground">{profile.address || 'Practice address to be added'}</p>{(profile.phone || profile.email) && <p className="mt-1 text-xs text-muted-foreground">{[profile.phone, profile.email].filter(Boolean).join(' · ')}</p>}</div></div><div className="sm:text-right"><p className="text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Billing document</p><p className="mono mt-2 text-xl font-medium text-primary">{invoice.number}</p><p className="mt-1 text-xs text-muted-foreground">Issued {dateLabel(invoice.createdAt)}</p><Badge tone={invoiceTone(invoice.status)}>{invoice.status}</Badge></div></div><div className="grid gap-5 border-b py-6 sm:grid-cols-2"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Billed to</p><p className="mt-2 font-extrabold">{patient?.name || 'Patient name'}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{patient?.address || 'Patient address not added'}<br />{patient?.phone || ''}</p></div><div className="sm:text-right"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">Service period</p><p className="mt-2 text-sm font-bold">{dateLabel(invoice.startDate)} — {dateLabel(invoice.endDate)}</p><p className="mt-1 text-xs text-muted-foreground">{invoice.sessions} session(s) / visit(s)</p></div></div><div className="overflow-hidden rounded-xl border"><div className="grid grid-cols-[1fr_90px_110px] gap-3 bg-secondary/60 px-4 py-3 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground"><span>Physiotherapy service</span><span className="text-right">Sessions</span><span className="text-right">Amount</span></div><div className="grid grid-cols-[1fr_90px_110px] gap-3 px-4 py-4 text-sm"><div><p className="font-bold">{invoice.description}</p><p className="mt-1 text-xs text-muted-foreground">Clinical physiotherapy care delivered by the provider above.</p></div><span className="text-right text-sm">{invoice.sessions}</span><span className="mono text-right">{money(invoice.fee)}</span></div>{invoice.additional > 0 && <div className="grid grid-cols-[1fr_90px_110px] gap-3 border-t px-4 py-3 text-sm"><span><span className="block">Additional charges</span>{invoice.additionalDescription && <span className="mt-1 block text-xs text-muted-foreground">{invoice.additionalDescription}</span>}</span><span /><span className="mono text-right">{money(invoice.additional)}</span></div>}</div><div className="ml-auto mt-6 max-w-xs space-y-3 text-sm"><SummaryLine label="Subtotal" value={money(invoice.fee + invoice.additional)} /><SummaryLine label="Discount" value={`− ${money(invoice.discount)}`} />{invoice.gstRate > 0 && <SummaryLine label={`GST · ${invoice.gstRate}%`} value={money(invoice.total - invoice.fee - invoice.additional + invoice.discount)} />}<div className="flex justify-between border-t pt-3 text-base font-extrabold"><span>Total</span><span className="mono">{money(invoice.total)}</span></div><SummaryLine label="Amount paid" value={money(invoice.paid)} /><div className="flex justify-between rounded-xl bg-secondary px-3 py-3 font-extrabold text-primary"><span>Balance due</span><span className="mono">{money(balance)}</span></div><p className="text-right text-[11px] text-muted-foreground">Payment method: {invoice.paymentMethod}</p>{(profile.upiId || profile.bankName || profile.accountNumber) && <p className="text-right text-[11px] text-muted-foreground">Payment details: {[profile.upiId && `UPI ${profile.upiId}`, profile.bankName, profile.accountNumber && `A/c ${profile.accountNumber}`].filter(Boolean).join(' · ')}</p>}</div><div className="mt-9 grid gap-8 border-t pt-6 sm:grid-cols-2"><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">Provider authorization</p><div className="mt-10 border-b" /><p className="mt-2 text-[11px] text-muted-foreground">Signature / stamp</p></div><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">Note</p><p className="mt-2 text-xs leading-5 text-muted-foreground">This document is a billing and reimbursement document for physiotherapy services. Insurer / TPA acceptance depends on their own requirements, policy terms and documentation review.</p></div></div></article>;
-}
-
-function SettingsPage({ settings, setSettings, notify }: { settings: Settings; setSettings: (value: Settings) => void; notify: (message: string) => void }) {
-  const [draft, setDraft] = useState(settings); const update = (key: keyof Settings, value: string | boolean) => setDraft({ ...draft, [key]: value });
-  return <div className="page-enter max-w-4xl"><SectionHeading eyebrow="Workspace preferences" title="Settings" description="Small choices that keep your desk feeling like yours." action={<Button onClick={() => { setSettings(draft); notify('Settings saved locally'); }} data-testid="button-save-settings"><Check size={16} /> Save settings</Button>} /><div className="space-y-5"><section className="rounded-2xl border bg-card p-5 sm:p-6"><h3 className="font-extrabold">Practice defaults</h3><p className="mt-1 text-xs text-muted-foreground">These preferences pre-fill future documents.</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><Field label="Practice display name" value={draft.practiceName} onChange={(e) => update('practiceName', e.target.value)} placeholder="Optional — shown beside your name" /><SelectField label="Default payment method" value={draft.defaultPayment} onChange={(e) => update('defaultPayment', e.target.value)}>{paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}</SelectField><SelectField label="Date format" value={draft.dateFormat} onChange={(e) => update('dateFormat', e.target.value)}><option>DD MMM YYYY</option><option>DD/MM/YYYY</option><option>YYYY-MM-DD</option></SelectField></div></section><section className="rounded-2xl border bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-4"><div><h3 className="font-extrabold">Invoice language</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Keep the reimbursement note visible on every document.</p></div><button data-testid="button-toggle-disclaimer" onClick={() => update('showGst', !draft.showGst)} className={`relative h-7 w-12 rounded-full transition-colors ${draft.showGst ? 'bg-primary' : 'bg-muted'}`}><span className={`absolute top-1 size-5 rounded-full bg-card shadow transition-transform ${draft.showGst ? 'translate-x-6' : 'translate-x-1'}`} /></button></div><div className="mt-5"><TextArea label="Invoice footer note" value={draft.footerNote} onChange={(e) => update('footerNote', e.target.value)} /></div></section><section className="rounded-2xl border border-accent/35 bg-accent/10 p-5 sm:p-6"><div className="flex gap-3"><CircleHelp className="mt-0.5 shrink-0 text-primary" size={18} /><div><h3 className="font-extrabold">About local demo data</h3><p className="mt-1 text-sm leading-6 text-foreground/70">PhysioBill is currently a local prototype. Profile, patient, visit and invoice data lives in your browser only and is not synced to an account. When authentication is added, records can be scoped to the provider workspace without changing this desk.</p><button data-testid="button-clear-demo-data" onClick={() => { if (window.confirm('Clear all local PhysioBill data and restore the demo workspace?')) { localStorage.clear(); window.location.reload(); } }} className="mt-4 text-xs font-bold text-destructive hover:underline">Reset local demo data</button></div></div></section></div></div>;
-}
-
-function Modal({ title, subtitle, onClose, children, wide = false }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
-  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/35 p-0 backdrop-blur-sm sm:items-center sm:p-5"><div className={`max-h-[92dvh] w-full overflow-y-auto rounded-t-[24px] border bg-background p-5 shadow-2xl sm:rounded-[24px] sm:p-6 ${wide ? 'max-w-3xl' : 'max-w-xl'}`}><div className="mb-5 flex items-start justify-between gap-4"><div><h2 className="text-xl font-extrabold tracking-tight">{title}</h2>{subtitle && <p className="mt-1 text-xs leading-5 text-muted-foreground">{subtitle}</p>}</div><button data-testid={`button-close-${title.toLowerCase().replaceAll(' ', '-')}`} onClick={onClose} className="rounded-xl p-2 text-muted-foreground hover:bg-secondary"><X size={18} /></button></div>{children}</div></div>;
-}
-function ModalActions({ onClose, onSave, saveLabel, testId }: { onClose: () => void; onSave: () => void; saveLabel: string; testId: string }) { return <div className="mt-6 flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end"><Button variant="ghost" onClick={onClose} data-testid="button-modal-cancel">Cancel</Button><Button onClick={onSave} data-testid={testId}><Check size={15} /> {saveLabel}</Button></div>; }
-
-function RouterContent({ profile, setProfile, patients, setPatients, visits, setVisits, invoices, setInvoices, settings, setSettings, notify }: { profile: Profile; setProfile: (value: Profile) => void; patients: Patient[]; setPatients: (value: Patient[]) => void; visits: Visit[]; setVisits: (value: Visit[]) => void; invoices: Invoice[]; setInvoices: (value: Invoice[]) => void; settings: Settings; setSettings: (value: Settings) => void; notify: (message: string) => void }) {
-  const [currentLocation] = useLocation();
-  return <AppShell profile={profile}><ErrorBoundary resetKey={currentLocation}><Switch><Route path="/dashboard"><Dashboard patients={patients} visits={visits} invoices={invoices} profile={profile} /></Route><Route path="/"><Dashboard patients={patients} visits={visits} invoices={invoices} profile={profile} /></Route><Route path="/profile"><ProfilePage profile={profile} setProfile={setProfile} notify={notify} /></Route><Route path="/patients"><PatientsPage patients={patients} setPatients={setPatients} visits={visits} notify={notify} /></Route><Route path="/visits"><VisitsPage visits={visits} patients={patients} setVisits={setVisits} notify={notify} /></Route><Route path="/invoices"><InvoicesPage invoices={invoices} patients={patients} profile={profile} setInvoices={setInvoices} notify={notify} /></Route><Route path="/invoice/new"><NewInvoicePage invoices={invoices} patients={patients} profile={profile} settings={settings} setInvoices={setInvoices} notify={notify} /></Route><Route path="/invoice/:id"><InvoiceDetail invoices={invoices} patients={patients} profile={profile} /></Route><Route path="/settings"><SettingsPage settings={settings} setSettings={setSettings} notify={notify} /></Route><Route><NotFound /></Route></Switch></ErrorBoundary></AppShell>;
-}
-function NotFound() { return <div className="mx-auto max-w-lg py-20 text-center"><div className="mx-auto mb-5 grid size-16 place-items-center rounded-2xl bg-secondary text-primary"><FileText size={28} /></div><h2 className="text-2xl font-extrabold">This page is out of range</h2><p className="mt-2 text-sm text-muted-foreground">The desk could not find that destination.</p><Link href="/dashboard" data-testid="link-not-found-home" className="mt-5 inline-flex rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">Back to overview</Link></div>; }
-
-function App() {
-  const [profile, setProfile] = usePersistentState<Profile>('physiobill-profile', defaultProfile);
-  const [patients, setPatients] = usePersistentState<Patient[]>('physiobill-patients', demoPatients, normalizePatients);
-  const [visits, setVisits] = usePersistentState<Visit[]>('physiobill-visits', demoVisits, normalizeVisits);
-  const [invoices, setInvoices] = usePersistentState<Invoice[]>('physiobill-invoices', demoInvoices, normalizeInvoices);
-  const [settings, setSettings] = usePersistentState<Settings>('physiobill-settings', defaultSettings, normalizeSettings);
-  const [toast, setToast] = useState('');
-  useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(''), 2800); return () => window.clearTimeout(timer); }, [toast]);
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><RouterContent profile={profile} setProfile={setProfile} patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} invoices={invoices} setInvoices={setInvoices} settings={settings} setSettings={setSettings} notify={setToast} /></WouterRouter><Toaster />{toast && <div role="status" data-testid="status-toast" className="fixed bottom-20 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-foreground px-4 py-3 text-xs font-bold text-background shadow-2xl lg:bottom-6">{toast}</div>}</TooltipProvider></QueryClientProvider>;
-}
-
-export default App;

@@ -1202,7 +1202,7 @@ const belongsToPhysio = (
   physioId: string | undefined,
   currentPhysioId: string,
 ): boolean =>
-  !physioId === currentPhysioId;
+  physioId === currentPhysioId;
 
 const getWorkspacePatients = (
   patients: Patient[],
@@ -1567,7 +1567,7 @@ function WorkspaceController({
 
   const [profile, setProfile] =
     usePersistentState<Profile>(
-      'physiobill-profile',
+     `physiobill-profile-${currentPhysioId}`,
       {
         ...defaultProfile,
         id: currentPhysioId,
@@ -1585,7 +1585,7 @@ function WorkspaceController({
 
   const [settings, setSettings] =
     usePersistentState<Settings>(
-      'physiobill-settings',
+      `physiobill-settings-${currentPhysioId}`,
       defaultSettings,
       normalizeSettings,
     );
@@ -1596,7 +1596,7 @@ function WorkspaceController({
 
   const [patients, setPatients] =
     usePersistentState<Patient[]>(
-      'physiobill-patients',
+      `physiobill-patients-${currentPhysioId}`,
       normalizePatientsForWorkspace(
         demoPatients,
         currentPhysioId,
@@ -1614,7 +1614,7 @@ function WorkspaceController({
 
   const [visits, setVisits] =
     usePersistentState<Visit[]>(
-      'physiobill-visits',
+      `physiobill-visits-${currentPhysioId}`,
       normalizeVisitsForWorkspace(
         demoVisits,
         currentPhysioId,
@@ -1632,7 +1632,7 @@ function WorkspaceController({
 
   const [invoices, setInvoices] =
     usePersistentState<Invoice[]>(
-      'physiobill-invoices',
+      `physiobill-invoices-${currentPhysioId}`,
       normalizeInvoicesForWorkspace(
         demoInvoices,
         currentPhysioId,

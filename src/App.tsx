@@ -4038,3 +4038,510 @@ function Field({
     </label>
   );
 }
+ 
+/* =========================================================
+   F1 — INVOICE EDITOR / FORM
+   ========================================================= */
+
+function InvoiceEditor({
+  invoice,
+  patients,
+  authUser,
+  updateInvoice,
+  finalizeInvoice,
+  recordInvoicePayment,
+  onSaved,
+  onCancel,
+}: {
+  invoice: Invoice;
+  patients: Patient[];
+  authUser: AuthUser;
+
+  updateInvoice: (
+    invoiceId: string,
+    proposed: Invoice,
+    reason?: string,
+  ) => InvoiceMutationResult;
+
+  finalizeInvoice: (
+    invoice: Invoice,
+  ) => InvoiceMutationResult;
+
+  recordInvoicePayment: (
+    invoice: Invoice,
+    actor: AuditActor,
+  ) => InvoiceMutationResult;
+
+  onSaved: (invoice: Invoice) => void;
+  onCancel: () => void;
+}) {
+  const [description, setDescription] =
+    useState(invoice.description);
+
+  const [sessions, setSessions] =
+    useState(invoice.sessions);
+
+  const [startDate, setStartDate] =
+    useState(invoice.startDate);
+
+  const [endDate, setEndDate] =
+    useState(invoice.endDate);
+
+  const [fee, setFee] =
+    useState(String(invoice.fee));
+
+  const [additional, setAdditional] =
+    useState(String(invoice.additional));
+
+  const [
+    additionalDescription,
+    setAdditionalDescription,
+  ] = useState(
+    invoice.additionalDescription,
+  );
+
+  const [discount, setDiscount] =
+    useState(String(invoice.discount));
+
+  const [gstRate, setGstRate] =
+    useState(String(invoice.gstRate));
+
+  const [paymentMethod, setPaymentMethod] =
+    useState(invoice.paymentMethod);
+
+  const [error, setError] =
+    useState('');
+
+  const [success, setSuccess] =
+    useState('');
+
+  const patientName =
+    patients.find(
+      (patient) =>
+        patient.id === invoice.patientId,
+    )?.name ?? 'Unknown patient';
+
+  /*
+   * Financial fields are locked once the invoice
+   * is finalized or paid.
+   *
+   * The controller remains the final authority.
+   */
+  const financialFieldsLocked =
+    invoice.finalized ||
+    invoice.status === 'Paid';
+
+  const numericFee =
+    Number(fee) || 0;
+
+  const numericAdditional =
+    Number(additional) || 0;
+
+  const numericDiscount =
+    Number(discount) || 0;
+
+  const numericGstRate =
+    Number(gstRate) || 0;
+
+  const calculatedTotal =
+    Math.round(
+      (
+        numericFee +
+        numericAdditional -
+        numericDiscount
+      ) *
+        (1 + numericGstRate / 100) *
+        100,
+    ) / 100;
+
+  const buildProposedInvoice =
+    (): Invoice => ({
+      ...invoice,
+
+      description:
+        description.trim(),
+
+      sessions:
+        sessions.trim(),
+
+      startDate,
+
+      endDate,
+
+      fee:
+        numericFee,
+
+      additional:
+        numericAdditional,
+
+      additionalDescription:
+        additionalDescription.trim(),
+
+      discount:
+        numericDiscount,
+
+      gstRate:
+        numericGstRate,
+
+      total:
+        calculatedTotal,
+
+      paymentMethod:
+        paymentMethod.trim(),
+    });
+
+  const saveDraft = () => {
+    setError('');
+    setSuccess('');
+
+    const result =
+      updateInvoice(
+        invoice.id,
+        buildProposedInvoice(),
+      );
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setSuccess(
+      'Invoice saved successfully.',
+    );
+
+    onSaved(result.invoice);
+  };
+
+  const finalize = () => {
+    setError('');
+    setSuccess('');
+
+    /*
+     * First persist the current draft through
+     * the existing invoice controller.
+     */
+    const updateResult =
+      updateInvoice(
+        invoice.id,
+        buildProposedInvoice(),
+      );
+
+    if (!updateResult.ok) {
+      setError(updateResult.error);
+      return;
+    }
+
+    /*
+     * Finalization is deliberately handled by
+     * the existing finalization contract.
+     */
+    const finalizeResult =
+      finalizeInvoice(
+        updateResult.invoice,
+      );
+
+    if (!finalizeResult.ok) {
+      setError(
+        finalizeResult.error,
+      );
+      return;
+    }
+
+    setSuccess(
+      'Invoice finalized successfully.',
+    );
+
+    onSaved(
+      finalizeResult.invoice,
+    );
+  };
+
+  const recordPayment = () => {
+    setError('');
+    setSuccess('');
+
+    /*
+     * Payment goes exclusively through the
+     * dedicated payment workflow.
+     */
+    const result =
+      recordInvoicePayment(
+        invoice,
+        {
+          userId:
+            authUser.id,
+
+          role:
+            authUser.role,
+
+          displayName:
+            authUser.displayName,
+        },
+      );
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setSuccess(
+      'Payment recorded successfully.',
+    );
+
+    onSaved(result.invoice);
+  };
+
+  return (
+    <div className="rounded-2xl border bg-card p-5 sm:p-7">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">
+            Invoice editor
+          </p>
+
+          <h2 className="mt-1 text-xl font-extrabold">
+            {invoice.number}
+          </h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            {patientName}
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+          aria-label="Close invoice editor"
+        >
+          <X size={18} />
+        </Button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field
+          label="Patient"
+          value={patientName}
+          onChange={() => undefined}
+          disabled
+        />
+
+        <Field
+          label="Invoice number"
+          value={invoice.number}
+          onChange={() => undefined}
+          disabled
+        />
+
+        <Field
+          label="Description"
+          value={description}
+          onChange={(event) =>
+            setDescription(
+              event.target.value,
+            )
+          }
+          disabled={
+            invoice.finalized
+          }
+        />
+
+        <Field
+          label="Sessions"
+          value={sessions}
+          onChange={(event) =>
+            setSessions(
+              event.target.value,
+            )
+          }
+          disabled={
+            invoice.finalized
+          }
+        />
+
+        <Field
+          label="Start date"
+          type="date"
+          value={startDate}
+          onChange={(event) =>
+            setStartDate(
+              event.target.value,
+            )
+          }
+          disabled={
+            invoice.finalized
+          }
+        />
+
+        <Field
+          label="End date"
+          type="date"
+          value={endDate}
+          onChange={(event) =>
+            setEndDate(
+              event.target.value,
+            )
+          }
+          disabled={
+            invoice.finalized
+          }
+        />
+
+        <Field
+          label="Fee"
+          type="number"
+          value={fee}
+          onChange={(event) =>
+            setFee(
+              event.target.value,
+            )
+          }
+          disabled={
+            financialFieldsLocked
+          }
+        />
+
+        <Field
+          label="Additional"
+          type="number"
+          value={additional}
+          onChange={(event) =>
+            setAdditional(
+              event.target.value,
+            )
+          }
+          disabled={
+            financialFieldsLocked
+          }
+        />
+
+        <Field
+          label="Additional description"
+          value={
+            additionalDescription
+          }
+          onChange={(event) =>
+            setAdditionalDescription(
+              event.target.value,
+            )
+          }
+          disabled={
+            financialFieldsLocked
+          }
+        />
+
+        <Field
+          label="Discount"
+          type="number"
+          value={discount}
+          onChange={(event) =>
+            setDiscount(
+              event.target.value,
+            )
+          }
+          disabled={
+            financialFieldsLocked
+          }
+        />
+
+        <Field
+          label="GST rate"
+          type="number"
+          value={gstRate}
+          onChange={(event) =>
+            setGstRate(
+              event.target.value,
+            )
+          }
+          disabled={
+            financialFieldsLocked
+          }
+        />
+
+        <Field
+          label="Payment method"
+          value={paymentMethod}
+          onChange={(event) =>
+            setPaymentMethod(
+              event.target.value,
+            )
+          }
+          disabled={
+            invoice.finalized
+          }
+        />
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <InfoCard
+          label="Total"
+          value={`₹${calculatedTotal.toFixed(2)}`}
+        />
+
+        <InfoCard
+          label="Paid"
+          value={`₹${invoice.paid.toFixed(2)}`}
+        />
+
+        <InfoCard
+          label="Status"
+          value={invoice.status}
+        />
+      </div>
+
+      {error && (
+        <div className="mt-5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mt-5 rounded-xl bg-primary/10 p-3 text-sm text-primary">
+          {success}
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+
+        {!invoice.finalized && (
+          <>
+            <Button
+              type="button"
+              variant="soft"
+              onClick={saveDraft}
+            >
+              <Check size={16} />
+              Save draft
+            </Button>
+
+            <Button
+              type="button"
+              onClick={finalize}
+            >
+              <ShieldCheck size={16} />
+              Finalize invoice
+            </Button>
+          </>
+        )}
+
+        {invoice.finalized &&
+          invoice.status !== 'Paid' && (
+            <Button
+              type="button"
+              onClick={recordPayment}
+            >
+              <Check size={16} />
+              Record payment
+            </Button>
+          )}
+      </div>
+    </div>
+  );
+}

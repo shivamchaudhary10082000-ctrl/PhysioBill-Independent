@@ -1,0 +1,83 @@
+name: Future Web D-H repair
+
+on:
+  push:
+    branches:
+      - futureweb-dh-repair
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: futureweb-dh-repair
+          fetch-depth: 0
+
+      - name: Remove only verified duplicate workspace declarations
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/App.tsx')
+          text = path.read_text(encoding='utf-8')
+          marker = '/* =========================================================\n   APPLICATION STATE / WORKSPACE\n   ========================================================= */'
+          persistent = '/* =========================================================\n   PERSISTENT STATE\n   ========================================================= */'
+
+          assert marker in text, 'APPLICATION STATE / WORKSPACE marker not found'
+          assert persistent in text, 'PERSISTENT STATE marker not found'
+
+          start = text.index(marker)
+          end = text.index(persistent, start)
+          block = text[start:end]
+
+          patterns = [
+              r"const DEMO_PHYSIO_ID = 'physio-demo-001';\n\nconst demoAuthUser: AuthUser = \{.*?\n\};\n\nconst demoWorkspace: WorkspaceIdentity = \{.*?\n\};\n\n",
+              r"const normalizePatientsForWorkspace = \(.*?\n\nconst normalizeVisitsForWorkspace = \(.*?\n\nconst normalizeInvoicesForWorkspace = \(.*?\n\n",
+              r"const belongsToPhysio = \(.*?\n\n",
+              r"const getWorkspacePatients = \(.*?\n\nconst getWorkspaceVisits = \(.*?\n\nconst getWorkspaceInvoices = \(.*?\n\n",
+              r"const createAuditId = \(\) =>\n  `audit-\$\{Date\.now\(\)\}-\$\{Math\.random\(\)\n    \.toString\(36\)\n    \.slice\(2, 8\)\}`;\n",
+          ]
+
+          for pattern in patterns:
+              matches = list(re.finditer(pattern, block, re.S))
+              assert len(matches) == 1, f'Expected exactly one later duplicate match; got {len(matches)} for {pattern}'
+              block = block[:matches[0].start()] + block[matches[0].end():]
+
+          assert 'const demoRelationships: PhysioPatientRelationship[]' in block, 'demoRelationships was not preserved'
+          assert 'function usePersistentState<T>' not in block, 'Unexpected persistent-state location check failed'
+
+          text = text[:start] + block + text[end:]
+          path.write_text(text, encoding='utf-8')
+
+      - name: Verify exact duplicate cleanup
+        shell: bash
+        run: |
+          test "$(grep -c "const DEMO_PHYSIO_ID = 'physio-demo-001';" src/App.tsx)" -eq 1
+          test "$(grep -c "const demoAuthUser: AuthUser =" src/App.tsx)" -eq 1
+          test "$(grep -c "const demoWorkspace: WorkspaceIdentity =" src/App.tsx)" -eq 1
+          test "$(grep -c "const normalizePatientsForWorkspace =" src/App.tsx)" -eq 1
+          test "$(grep -c "const normalizeVisitsForWorkspace =" src/App.tsx)" -eq 1
+          test "$(grep -c "const normalizeInvoicesForWorkspace =" src/App.tsx)" -eq 1
+          test "$(grep -c "const belongsToPhysio =" src/App.tsx)" -eq 1
+          test "$(grep -c "const getWorkspacePatients =" src/App.tsx)" -eq 1
+          test "$(grep -c "const getWorkspaceVisits =" src/App.tsx)" -eq 1
+          test "$(grep -c "const getWorkspaceInvoices =" src/App.tsx)" -eq 1
+          test "$(grep -c "const createAuditId =" src/App.tsx)" -eq 1
+          test "$(grep -c "const demoRelationships: PhysioPatientRelationship\[\]" src/App.tsx)" -eq 1
+          test "$(grep -c "function usePersistentState<T>" src/App.tsx)" -eq 1
+
+      - name: Commit repair and remove temporary runner
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx .github/workflows/futureweb-dh-repair.yml
+          git rm .github/workflows/futureweb-dh-repair.yml
+          git commit -m "Repair Future Web D-H duplicate workspace declarations [skip ci]"
+          git push origin HEAD:futureweb-dh-repair

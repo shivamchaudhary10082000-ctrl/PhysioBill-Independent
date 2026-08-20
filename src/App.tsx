@@ -4678,45 +4678,7 @@ function DetailRow({
     </div>
   );
 }
-/* =========================================================
-   FIELD
-   ========================================================= */
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-  disabled = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => void;
-  placeholder?: string;
-  type?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-bold text-muted-foreground">
-        {label}
-      </span>
-
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        className="h-11 w-full rounded-xl border bg-background px-3 text-sm outline-none transition focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
-      />
-    </label>
-  );
-}
- 
 /* =========================================================
    F1 — INVOICE EDITOR / FORM
    ========================================================= */

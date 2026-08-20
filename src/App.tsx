@@ -2065,6 +2065,684 @@ function WorkspaceController({
   );
 }
 /* =========================================================
+   PHYSIO WORKSPACE
+   ========================================================= */
+
+function PhysioWorkspace({
+  workspace,
+}: {
+  workspace: WorkspaceState;
+}) {
+  const [location, setLocation] =
+    useLocation();
+
+  const [editingInvoiceId, setEditingInvoiceId] =
+    useState<string | null>(null);
+
+  const [showPatientForm, setShowPatientForm] =
+    useState(false);
+
+  const [showVisitForm, setShowVisitForm] =
+    useState(false);
+
+  const editingInvoice =
+    workspace.workspaceInvoices.find(
+      (invoice) =>
+        invoice.id === editingInvoiceId,
+    ) ?? null;
+
+  const openInvoice = (invoice: Invoice) => {
+    setEditingInvoiceId(invoice.id);
+    setLocation('/invoices');
+  };
+
+  const closeInvoiceEditor = () => {
+    setEditingInvoiceId(null);
+  };
+
+  const handleInvoiceSaved = (
+    invoice: Invoice,
+  ) => {
+    /*
+     * Invoice mutations have already been
+     * performed by the existing controller.
+     *
+     * This layer only controls presentation.
+     */
+    setEditingInvoiceId(invoice.id);
+  };
+
+  const handlePatientSaved = (
+    patient: Patient,
+  ) => {
+    const patientNumber =
+      patient.patientNumber ||
+      nextSequentialId(
+        'PT',
+        workspace.patients.map(
+          (item) =>
+            item.patientNumber,
+        ),
+      );
+
+    const savedPatient: Patient = {
+      ...patient,
+      id:
+        patient.id ||
+        `patient-${Date.now()}`,
+      patientNumber,
+      physioId:
+        workspace.currentPhysioId,
+    };
+
+    workspace.setPatients(
+      (current) => [
+        ...current,
+        savedPatient,
+      ],
+    );
+
+    setShowPatientForm(false);
+  };
+
+  const handleVisitSaved = (
+    visit: Visit,
+  ) => {
+    const visitNumber =
+      visit.visitNumber ||
+      nextSequentialId(
+        'VIS',
+        workspace.visits.map(
+          (item) =>
+            item.visitNumber,
+        ),
+      );
+
+    const savedVisit: Visit = {
+      ...visit,
+      id:
+        visit.id ||
+        `visit-${Date.now()}`,
+      visitNumber,
+      physioId:
+        workspace.currentPhysioId,
+    };
+
+    workspace.setVisits(
+      (current) => [
+        ...current,
+        savedVisit,
+      ],
+    );
+
+    setShowVisitForm(false);
+  };
+
+  const renderPage = () => {
+    if (
+      location.startsWith('/patients')
+    ) {
+      if (showPatientForm) {
+        return (
+          <PatientForm
+            onSave={handlePatientSaved}
+            onCancel={() =>
+              setShowPatientForm(false)
+            }
+          />
+        );
+      }
+
+      return (
+        <PatientsPage
+          patients={
+            workspace.workspacePatients
+          }
+          visits={
+            workspace.workspaceVisits
+          }
+          invoices={
+            workspace.workspaceInvoices
+          }
+          onAddPatient={() =>
+            setShowPatientForm(true)
+          }
+        />
+      );
+    }
+
+    if (
+      location.startsWith('/visits')
+    ) {
+      if (showVisitForm) {
+        return (
+          <VisitForm
+            patients={
+              workspace.workspacePatients
+            }
+            onSave={handleVisitSaved}
+            onCancel={() =>
+              setShowVisitForm(false)
+            }
+          />
+        );
+      }
+
+      return (
+        <VisitsPage
+          visits={
+            workspace.workspaceVisits
+          }
+          patients={
+            workspace.workspacePatients
+          }
+          onAddVisit={() =>
+            setShowVisitForm(true)
+          }
+        />
+      );
+    }
+
+    if (
+      location.startsWith('/invoices')
+    ) {
+      return (
+        <InvoiceWorkspace
+          invoices={
+            workspace.workspaceInvoices
+          }
+          patients={
+            workspace.workspacePatients
+          }
+          editingInvoice={
+            editingInvoice
+          }
+          authUser={
+            workspace.authUser
+          }
+          updateInvoice={
+            workspace.updateInvoice
+          }
+          finalizeInvoice={
+            workspace.finalizeInvoice
+          }
+          recordInvoicePayment={
+            workspace.recordInvoicePayment
+          }
+          onOpenInvoice={
+            openInvoice
+          }
+          onCloseEditor={
+            closeInvoiceEditor
+          }
+          onSaved={
+            handleInvoiceSaved
+          }
+        />
+      );
+    }
+return (
+      <Dashboard
+        patients={
+          workspace.workspacePatients
+        }
+        visits={
+          workspace.workspaceVisits
+        }
+        invoices={
+          workspace.workspaceInvoices
+        }
+        profile={
+          workspace.profile
+        }
+      />
+    );
+  };
+
+  return (
+    <AppShell
+      profile={workspace.profile}
+    >
+      {renderPage()}
+    </AppShell>
+  );
+}
+
+/* =========================================================
+   F2 — INVOICE WORKSPACE / LIST
+   ========================================================= */
+
+function InvoiceWorkspace({
+  invoices,
+  patients,
+  editingInvoice,
+  authUser,
+  updateInvoice,
+  finalizeInvoice,
+  recordInvoicePayment,
+  onOpenInvoice,
+  onCloseEditor,
+  onSaved,
+}: {
+  invoices: Invoice[];
+  patients: Patient[];
+
+  editingInvoice: Invoice | null;
+
+  authUser: AuthUser;
+
+  updateInvoice: (
+    invoiceId: string,
+    proposed: Invoice,
+    reason?: string,
+  ) => InvoiceMutationResult;
+
+  finalizeInvoice: (
+    invoice: Invoice,
+  ) => InvoiceMutationResult;
+
+  recordInvoicePayment: (
+    invoice: Invoice,
+    actor: AuditActor,
+  ) => InvoiceMutationResult;
+
+  onOpenInvoice: (
+    invoice: Invoice,
+  ) => void;
+
+  onCloseEditor: () => void;
+
+  onSaved: (
+    invoice: Invoice,
+  ) => void;
+}) {
+  const [search, setSearch] =
+    useState('');
+
+  const [statusFilter, setStatusFilter] =
+    useState<
+      'All' | InvoiceStatus
+    >('All');
+
+  const patientName = (
+    patientId: string,
+  ) =>
+    patients.find(
+      (patient) =>
+        patient.id === patientId,
+    )?.name ??
+    'Unknown patient';
+
+  const filteredInvoices =
+    invoices
+      .filter((invoice) => {
+        if (
+          statusFilter === 'All'
+        ) {
+          return true;
+        }
+
+        return (
+          invoice.status ===
+          statusFilter
+        );
+      })
+      .filter((invoice) => {
+        const query =
+          search.trim().toLowerCase();
+
+        if (!query) {
+          return true;
+        }
+
+        return [
+          invoice.number,
+          invoice.description,
+          patientName(
+            invoice.patientId,
+          ),
+          invoice.status,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
+      })
+      .sort(
+        (a, b) =>
+          new Date(
+            b.createdAt,
+          ).getTime() -
+          new Date(
+            a.createdAt,
+          ).getTime(),
+      );
+
+  if (editingInvoice) {
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={
+              onCloseEditor
+            }
+          >
+            <ArrowLeft size={16} />
+            Back to invoices
+          </Button>
+        </div>
+
+        <InvoiceEditor
+          invoice={
+            editingInvoice
+          }
+          patients={patients}
+          authUser={authUser}
+          updateInvoice={
+            updateInvoice
+          }
+          finalizeInvoice={
+            finalizeInvoice
+          }
+          recordInvoicePayment={
+            recordInvoicePayment
+          }
+          onSaved={onSaved}
+          onCancel={
+            onCloseEditor
+          }
+        />
+      </div>
+    );
+  }
+
+  const paidCount =
+    invoices.filter(
+      (invoice) =>
+        invoice.status === 'Paid',
+    ).length;
+
+  const outstandingCount =
+    invoices.filter(
+      (invoice) =>
+        invoice.status ===
+          'Outstanding' ||
+        invoice.status ===
+          'Part paid',
+    ).length;
+
+  const draftCount =
+    invoices.filter(
+      (invoice) =>
+        invoice.status === 'Draft',
+    ).length;
+
+  const totalOutstanding =
+    invoices.reduce(
+      (sum, invoice) =>
+        sum +
+        Math.max(
+          invoice.total -
+            invoice.paid,
+          0,
+        ),
+      0,
+    );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">
+            Invoice workspace
+          </p>
+
+          <h2 className="mt-1 text-2xl font-extrabold tracking-tight">
+            Invoices
+          </h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage drafts, finalized invoices
+            and payment status from the
+            existing invoice-control layer.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <InfoCard
+          label="Total invoices"
+          value={String(
+            invoices.length,
+          )}
+        />
+
+        <InfoCard
+          label="Paid"
+          value={String(
+            paidCount,
+          )}
+        />
+
+        <InfoCard
+          label="Outstanding"
+          value={money(
+            totalOutstanding,
+          )}
+        />
+
+        <InfoCard
+          label="Drafts"
+          value={String(
+            draftCount,
+          )}
+        />
+      </div>
+
+      <div className="rounded-2xl border bg-card p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <label className="relative block flex-1">
+            <Search
+              size={17}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+
+            <input
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value,
+                )
+              }
+              placeholder="Search invoice number, patient or description..."
+              className="h-11 w-full rounded-xl border bg-background pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+            />
+          </label>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              'All',
+              'Draft',
+              'Outstanding',
+              'Part paid',
+              'Paid',
+            ].map(
+              (status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() =>
+                    setStatusFilter(
+                      status as
+                        | 'All'
+                        | InvoiceStatus,
+                    )
+                  }
+                  className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
+                    statusFilter ===
+                    status
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {status}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      </div>
+
+      {filteredInvoices.length ===
+      0 ? (
+        <div className="rounded-2xl border border-dashed bg-card p-10 text-center">
+          <ReceiptIndianRupee
+            size={28}
+            className="mx-auto text-muted-foreground"
+          />
+  <h3 className="mt-4 text-base font-extrabold">
+            No invoices found
+          </h3>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Try changing the search or
+            status filter.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border bg-card">
+          <div className="hidden grid-cols-[1.1fr_1.5fr_1fr_.8fr_.8fr_auto] gap-4 border-b bg-secondary/40 px-5 py-3 text-[10px] font-extrabold uppercase tracking-[.12em] text-muted-foreground lg:grid">
+            <span>Invoice</span>
+            <span>Patient</span>
+            <span>Period</span>
+            <span>Total</span>
+            <span>Status</span>
+            <span />
+          </div>
+
+          <div className="divide-y">
+            {filteredInvoices.map(
+              (invoice) => {
+                const balance =
+                  Math.max(
+                    invoice.total -
+                      invoice.paid,
+                    0,
+                  );
+
+                return (
+                  <div
+                    key={invoice.id}
+                    className="flex flex-col gap-4 p-5 transition hover:bg-secondary/20 lg:grid lg:grid-cols-[1.1fr_1.5fr_1fr_.8fr_.8fr_auto] lg:items-center lg:gap-4"
+                  >
+                    <div>
+                      <p className="text-sm font-extrabold">
+                        {invoice.number}
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {invoice.description ||
+                          'Invoice'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-bold">
+                        {patientName(
+                          invoice.patientId,
+                        )}
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {invoice.sessions ||
+                          '—'}
+                      </p>
+                    </div>
+
+                    <div className="text-sm">
+                      <p>
+                        {dateLabel(
+                          invoice.startDate,
+                        )}
+                      </p>
+
+                      <p className="text-xs text-muted-foreground">
+                        to{' '}
+                        {dateLabel(
+                          invoice.endDate,
+                        )}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-extrabold">
+                        {money(
+                          invoice.total,
+                        )}
+                      </p>
+
+                      {balance > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Due{' '}
+                          {money(
+                            balance,
+                          )}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+                          invoiceTone(
+                            invoice.status,
+                          ) ===
+                          'green'
+                            ? 'bg-emerald-500/10 text-emerald-700'
+                            : invoiceTone(
+                                  invoice.status,
+                                ) ===
+                                'amber'
+                              ? 'bg-amber-500/10 text-amber-700'
+                              : invoiceTone(
+                                    invoice.status,
+                                  ) ===
+                                  'coral'
+                                ? 'bg-destructive/10 text-destructive'
+                                : 'bg-secondary text-muted-foreground'
+                        }`}
+                      >
+                        {invoice.status}
+                      </span>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="soft"
+                      onClick={() =>
+                        onOpenInvoice(
+                          invoice,
+                        )
+                      }
+                    >
+                      <Pencil
+                        size={15}
+                      />
+                      Open
+                    </Button>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
    APPLICATION SHELL
    ========================================================= */
 

@@ -1715,6 +1715,25 @@ function WorkspaceController({
           'Invoice number cannot be changed.',
       };
     }
+    /*
+     * PAID INVOICES ARE FINANCIALLY LOCKED.
+     *
+     * This check must happen before the
+     * finalized-correction workflow.
+     */
+    if (
+      existing.status === 'Paid' &&
+      hasInvoiceFinancialChanges(
+        existing,
+        proposed,
+      )
+    ) {
+      return {
+        ok: false,
+        error:
+          'Paid invoices cannot be financially edited.',
+      };
+    }
 
     /*
      * FINALIZED INVOICE
@@ -1799,23 +1818,6 @@ function WorkspaceController({
         ok: false,
         error:
           'Finalized invoices must be corrected through the correction workflow.',
-      };
-    }
-
-    /*
-     * PAID INVOICES ARE FINANCIALLY LOCKED.
-     */
-    if (
-      existing.status === 'Paid' &&
-      hasInvoiceFinancialChanges(
-        existing,
-        proposed,
-      )
-    ) {
-      return {
-        ok: false,
-        error:
-          'Paid invoices cannot be financially edited.',
       };
     }
 

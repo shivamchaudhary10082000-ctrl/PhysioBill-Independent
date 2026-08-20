@@ -2169,12 +2169,6 @@ function AppShell({
                 <Icon size={18} />
 
                 <span>{label}</span>
-
-                {href === '/invoices' && (
-                  <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
-                    03
-                  </span>
-                )}
               </Link>
             ),
           )}

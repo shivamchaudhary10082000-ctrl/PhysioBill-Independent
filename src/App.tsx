@@ -1148,19 +1148,6 @@ function CorrectionReasonModal({
    APPLICATION STATE / WORKSPACE
    ========================================================= */
 
-const DEMO_PHYSIO_ID = 'physio-demo-001';
-
-const demoAuthUser: AuthUser = {
-  id: DEMO_PHYSIO_ID,
-  role: 'physio',
-  displayName: 'Demo Physiotherapist',
-  email: 'demo@physiobill.local',
-};
-
-const demoWorkspace: WorkspaceIdentity = {
-  physioId: DEMO_PHYSIO_ID,
-};
-
 const demoRelationships: PhysioPatientRelationship[] =
   demoPatients.map((patient) => ({
     id: `relationship-${patient.id}`,
@@ -1170,76 +1157,6 @@ const demoRelationships: PhysioPatientRelationship[] =
     createdAt: new Date().toISOString(),
   }));
 
-const normalizePatientsForWorkspace = (
-  items: Patient[],
-  physioId: string,
-): Patient[] =>
-  normalizePatients(items).map((patient) => ({
-    ...patient,
-    physioId,
-  }));
-
-const normalizeVisitsForWorkspace = (
-  items: Visit[],
-  physioId: string,
-): Visit[] =>
-  normalizeVisits(items).map((visit) => ({
-    ...visit,
-    physioId,
-  }));
-
-const normalizeInvoicesForWorkspace = (
-  items: Invoice[],
-  physioId: string,
-): Invoice[] =>
-  normalizeInvoices(items).map((invoice) => ({
-    ...invoice,
-    physioId,
-  }));
-
-const belongsToPhysio = (
-  physioId: string | undefined,
-  currentPhysioId: string,
-): boolean =>
-  physioId === currentPhysioId;
-
-const getWorkspacePatients = (
-  patients: Patient[],
-  physioId: string,
-): Patient[] =>
-  patients.filter((patient) =>
-    belongsToPhysio(
-      patient.physioId,
-      physioId,
-    ),
-  );
-
-const getWorkspaceVisits = (
-  visits: Visit[],
-  physioId: string,
-): Visit[] =>
-  visits.filter((visit) =>
-    belongsToPhysio(
-      visit.physioId,
-      physioId,
-    ),
-  );
-
-const getWorkspaceInvoices = (
-  invoices: Invoice[],
-  physioId: string,
-): Invoice[] =>
-  invoices.filter((invoice) =>
-    belongsToPhysio(
-      invoice.physioId,
-      physioId,
-    ),
-  );
-
-const createAuditId = () =>
-  `audit-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
 /* =========================================================
    PERSISTENT STATE
    ========================================================= */

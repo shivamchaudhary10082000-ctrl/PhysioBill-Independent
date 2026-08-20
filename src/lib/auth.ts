@@ -52,6 +52,20 @@ export async function signOutPhysiotherapist() {
   if (error) throw error;
 }
 
+export async function requestPasswordReset(email: string, redirectTo: string) {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo,
+  });
+  if (error) throw error;
+}
+
+export async function updatePassword(password: string) {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
 export function onAuthSessionChange(
   listener: (event: AuthChangeEvent, session: Session | null) => void,
 ) {

@@ -26,8 +26,10 @@ export function ClinicalRecordsGateway({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onLocation = () => setPath(window.location.pathname);
-    window.addEventListener('popstate', onLocation);
-    return () => window.removeEventListener('popstate', onLocation);
+    const events = ['popstate', 'pushState', 'replaceState'] as const;
+    events.forEach((eventName) => window.addEventListener(eventName, onLocation));
+    onLocation();
+    return () => events.forEach((eventName) => window.removeEventListener(eventName, onLocation));
   }, []);
 
   const isClinicalRoute = path === '/app/clinical-records' || path.startsWith('/app/clinical-records/');

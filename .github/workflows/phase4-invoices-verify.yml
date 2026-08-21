@@ -6,10 +6,13 @@ on:
       - futureweb-production-backend
     paths:
       - src/main.tsx
+      - src/App.tsx
       - src/Components/InvoiceGateway.tsx
+      - src/Components/PatientFinancialLedgerGateway.tsx
       - src/lib/invoices.ts
       - src/lib/payments.ts
       - src/lib/payment-corrections.ts
+      - src/lib/financial-ledger.ts
       - supabase/migrations/202608210006_invoice_authority.sql
       - supabase/migrations/202608210008_real_payments.sql
       - supabase/migrations/202608210009_payment_corrections.sql

@@ -1,7 +1,7 @@
 import { getSupabaseClient } from '@/lib/supabase';
 import { resolveAuthenticatedPhysiotherapist } from '@/lib/workspace';
 
-export type ProductionInvoiceStatus = 'Draft' | 'Outstanding' | 'Part paid' | 'Paid';
+export type ProductionInvoiceStatus = 'Draft' | 'Outstanding' | 'Partially Paid' | 'Paid';
 
 export type ProductionInvoice = {
   id: string;

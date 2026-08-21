@@ -186,7 +186,7 @@ export async function loadClinicalRecordForVisit(visitId: string): Promise<Clini
     .maybeSingle();
 
   if (error) throw error;
-  return data ? mapClinicalRecord(data as ClinicalRecordRow) : null;
+  return data ? mapClinicalRecord(data as unknown as ClinicalRecordRow) : null;
 }
 
 export async function loadClinicalRecordsForPatient(patientId: string): Promise<ClinicalRecord[]> {
@@ -200,7 +200,7 @@ export async function loadClinicalRecordsForPatient(patientId: string): Promise<
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []).map((row) => mapClinicalRecord(row as ClinicalRecordRow));
+  return (data ?? []).map((row) => mapClinicalRecord(row as unknown as ClinicalRecordRow));
 }
 
 export async function saveClinicalRecord(input: ClinicalRecordInput): Promise<ClinicalRecord> {
@@ -228,7 +228,7 @@ export async function saveClinicalRecord(input: ClinicalRecordInput): Promise<Cl
   const { data, error } = await query.select(clinicalRecordColumns).single();
   if (error) throw error;
 
-  const saved = mapClinicalRecord(data as ClinicalRecordRow);
+  const saved = mapClinicalRecord(data as unknown as ClinicalRecordRow);
 
   const { data: verified, error: verifyError } = await supabase
     .from('clinical_records')
@@ -238,5 +238,5 @@ export async function saveClinicalRecord(input: ClinicalRecordInput): Promise<Cl
     .single();
 
   if (verifyError) throw verifyError;
-  return mapClinicalRecord(verified as ClinicalRecordRow);
+  return mapClinicalRecord(verified as unknown as ClinicalRecordRow);
 }

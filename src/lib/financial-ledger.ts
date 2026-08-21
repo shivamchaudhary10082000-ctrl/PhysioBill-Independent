@@ -121,7 +121,8 @@ export async function loadPatientFinancialLedger(patientId: string): Promise<Pat
       .from('payments')
       .select(paymentColumns)
       .eq('physio_id', bootstrap.physioId)
-      .eq('patient_id', patientId),
+      .eq('patient_id', patientId)
+      .in('status', ['recorded', 'succeeded']),
     supabase
       .from('payment_corrections')
       .select(correctionColumns)

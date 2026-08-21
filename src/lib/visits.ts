@@ -93,17 +93,35 @@ export async function loadVisits(): Promise<ProductionVisit[]> {
 }
 
 export async function createVisit(input: VisitInput): Promise<ProductionVisit> {
-  await resolveAuthenticatedPhysiotherapist();
+  const bootstrap = await resolveAuthenticatedPhysiotherapist();
   const supabase = getSupabaseClient();
   const values = normalizeInput(input);
-  const { data, error } = await supabase
+  const { data: inserted, error: insertError } = await supabase
     .from('visits')
     .insert(values)
-    .select(visitColumns)
+    .select('id')
     .single();
 
-  if (error) throw error;
-  return mapVisit(data);
+  if (insertError) throw insertError;
+
+  // Do not report Save success until the exact committed row is readable through
+  // the authenticated physiotherapist's SELECT RLS policy. This prevents a Visit
+  // from appearing only in client state when persistence/ownership is inconsistent.
+  const { data: persisted, error: readError } = await supabase
+    .from('visits')
+    .select(visitColumns)
+    .eq('id', inserted.id)
+    .eq('physio_id', bootstrap.physioId)
+    .single();
+
+  if (readError) throw readError;
+  if (!persisted) throw new Error('Visit was created but could not be read back from the workspace.');
+
+  const visit = mapVisit(persisted);
+  if (visit.physioId !== bootstrap.physioId) {
+    throw new Error('Visit ownership did not resolve to the authenticated physiotherapist.');
+  }
+  return visit;
 }
 
 export async function updateVisit(visitId: string, input: VisitInput): Promise<ProductionVisit> {

@@ -240,3 +240,30 @@ export async function saveClinicalRecord(input: ClinicalRecordInput): Promise<Cl
   if (verifyError) throw verifyError;
   return mapClinicalRecord(verified as unknown as ClinicalRecordRow);
 }
+
+export async function deleteClinicalRecordForVisit(visitId: string): Promise<void> {
+  const bootstrap = await resolveAuthenticatedPhysiotherapist();
+  const supabase = getSupabaseClient();
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from('clinical_records')
+    .delete()
+    .eq('visit_id', visitId)
+    .eq('physio_id', bootstrap.physioId)
+    .select('id');
+
+  if (deleteError) throw deleteError;
+  if (!deleted || deleted.length !== 1) {
+    throw new Error('Clinical record was not deleted. It may not exist or may not belong to this physiotherapist.');
+  }
+
+  const { data: remaining, error: verifyError } = await supabase
+    .from('clinical_records')
+    .select('id')
+    .eq('visit_id', visitId)
+    .eq('physio_id', bootstrap.physioId)
+    .maybeSingle();
+
+  if (verifyError) throw verifyError;
+  if (remaining) throw new Error('Clinical record deletion could not be verified.');
+}

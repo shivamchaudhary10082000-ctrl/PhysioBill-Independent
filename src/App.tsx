@@ -34,6 +34,15 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/Components/ui/toaster';
 import { TooltipProvider } from '@/Components/ui/tooltip';
+import { AuthPage } from '@/pages/AuthPage';
+import { useAuthSession } from '@/hooks/use-auth-session';
+import { signOutPhysiotherapist } from '@/lib/auth';
+import {
+  loadProductionWorkspace,
+  saveProductionProfile,
+  saveProductionSettings,
+  type ProductionWorkspace,
+} from '@/lib/production-workspace';
 
 type UserRole = 'physio' | 'patient';
 
@@ -504,33 +513,62 @@ type WorkspaceState = {
   updateInvoice: (invoiceId: string, proposed: Invoice, reason?: string) => InvoiceMutationResult;
   finalizeInvoice: (invoice: Invoice) => InvoiceMutationResult;
   recordInvoicePayment: (invoice: Invoice, actor: AuditActor) => InvoiceMutationResult;
+  persistenceError: string | null;
 };
 
-function WorkspaceController({ authUser }: { authUser: AuthUser }) {
-  const currentPhysioId = authUser.id;
-  const [profile, setProfile] = usePersistentState<Profile>(
-    `physiobill-profile-${currentPhysioId}`,
-    { ...defaultProfile, id: currentPhysioId },
-    (value) => ({ ...defaultProfile, ...value, id: currentPhysioId }),
-  );
-  const [settings, setSettings] = usePersistentState<Settings>(
-    `physiobill-settings-${currentPhysioId}`,
-    defaultSettings,
-    normalizeSettings,
-  );
+function WorkspaceController({
+  authUser,
+  currentPhysioId,
+  initialProfile,
+  initialSettings,
+}: {
+  authUser: AuthUser;
+  currentPhysioId: string;
+  initialProfile: Profile;
+  initialSettings: Settings;
+}) {
+  const [profile, setProfileState] = useState<Profile>(initialProfile);
+  const [settings, setSettingsState] = useState<Settings>(initialSettings);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  const setProfile: React.Dispatch<React.SetStateAction<Profile>> = (value) => {
+    setProfileState((current) => {
+      const next = typeof value === 'function' ? value(current) : value;
+      setPersistenceError(null);
+      void saveProductionProfile(currentPhysioId, next)
+        .then((saved) => setProfileState(saved))
+        .catch((error: unknown) =>
+          setPersistenceError(error instanceof Error ? error.message : 'Unable to save profile.'),
+        );
+      return next;
+    });
+  };
+
+  const setSettings: React.Dispatch<React.SetStateAction<Settings>> = (value) => {
+    setSettingsState((current) => {
+      const next = typeof value === 'function' ? value(current) : value;
+      setPersistenceError(null);
+      void saveProductionSettings(currentPhysioId, next)
+        .then((saved) => setSettingsState(saved))
+        .catch((error: unknown) =>
+          setPersistenceError(error instanceof Error ? error.message : 'Unable to save settings.'),
+        );
+      return next;
+    });
+  };
   const [patients, setPatients] = usePersistentState<Patient[]>(
     `physiobill-patients-${currentPhysioId}`,
-    normalizePatientsForWorkspace(demoPatients, currentPhysioId),
+    [],
     (value) => normalizePatientsForWorkspace(value, currentPhysioId),
   );
   const [visits, setVisits] = usePersistentState<Visit[]>(
     `physiobill-visits-${currentPhysioId}`,
-    normalizeVisitsForWorkspace(demoVisits, currentPhysioId),
+    [],
     (value) => normalizeVisitsForWorkspace(value, currentPhysioId),
   );
   const [invoices, setInvoices] = usePersistentState<Invoice[]>(
     `physiobill-invoices-${currentPhysioId}`,
-    normalizeInvoicesForWorkspace(demoInvoices, currentPhysioId),
+    [],
     (value) => normalizeInvoicesForWorkspace(value, currentPhysioId),
   );
 
@@ -710,6 +748,7 @@ function WorkspaceController({ authUser }: { authUser: AuthUser }) {
     updateInvoice,
     finalizeInvoice,
     recordInvoicePayment,
+    persistenceError,
   };
 
   return <PhysioWorkspace workspace={workspace} />;
@@ -779,9 +818,8 @@ const physioNav = [
 
 function AppShell({ workspace, children }: { workspace: WorkspaceState; children: ReactNode }) {
   const [location] = useLocation();
-  const [, setAuthUser] = useAuthenticatedUser();
   const [menuOpen, setMenuOpen] = useState(false);
-  return <div className="min-h-screen bg-background lg:flex"><aside className="hidden w-[238px] shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground lg:flex"><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold ${location.startsWith(href) ? 'bg-sidebar-accent' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/70'}`}><Icon size={18} /> {label}</Link>)}</nav><div className="mt-auto rounded-2xl bg-sidebar-accent/55 p-3.5"><p className="font-bold">{workspace.profile.fullName || workspace.authUser.displayName}</p><p className="mt-1 text-xs text-sidebar-foreground/60">Phase-1 demo workspace</p><button type="button" onClick={() => setAuthUser(null)} className="mt-3 inline-flex items-center gap-2 text-xs font-bold"><LogOut size={14} /> Sign out</button></div></aside><div className="min-w-0 flex-1"><header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-md sm:px-7"><div className="flex items-center gap-3"><button type="button" className="rounded-xl p-2 lg:hidden" onClick={() => setMenuOpen(true)}><Menu size={20} /></button><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">PhysioBill</p><p className="text-lg font-extrabold">{workspace.settings.practiceName || 'Clinical workspace'}</p></div></div><div className="flex items-center gap-2"><Bell size={18} className="text-muted-foreground" /><span className="grid size-9 place-items-center rounded-xl bg-primary text-xs font-extrabold text-primary-foreground">{initials(workspace.profile.fullName || workspace.authUser.displayName)}</span></div></header><main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">{children}</main></div>{menuOpen && <div className="fixed inset-0 z-50 bg-foreground/30 lg:hidden"><aside className="h-full w-[280px] bg-sidebar p-5 text-sidebar-foreground"><button type="button" className="mb-5 ml-auto block" onClick={() => setMenuOpen(false)}><X size={20} /></button><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-sidebar-accent"><Icon size={18} /> {label}</Link>)}</nav></aside></div>}</div>;
+  return <div className="min-h-screen bg-background lg:flex"><aside className="hidden w-[238px] shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground lg:flex"><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold ${location.startsWith(href) ? 'bg-sidebar-accent' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/70'}`}><Icon size={18} /> {label}</Link>)}</nav><div className="mt-auto rounded-2xl bg-sidebar-accent/55 p-3.5"><p className="font-bold">{workspace.profile.fullName || workspace.authUser.displayName}</p><p className="mt-1 text-xs text-sidebar-foreground/60">Authenticated private workspace</p><button type="button" onClick={() => void signOutPhysiotherapist()} className="mt-3 inline-flex items-center gap-2 text-xs font-bold"><LogOut size={14} /> Sign out</button></div></aside><div className="min-w-0 flex-1"><header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-md sm:px-7"><div className="flex items-center gap-3"><button type="button" className="rounded-xl p-2 lg:hidden" onClick={() => setMenuOpen(true)}><Menu size={20} /></button><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">PhysioBill</p><p className="text-lg font-extrabold">{workspace.settings.practiceName || 'Clinical workspace'}</p></div></div><div className="flex items-center gap-2"><Bell size={18} className="text-muted-foreground" /><span className="grid size-9 place-items-center rounded-xl bg-primary text-xs font-extrabold text-primary-foreground">{initials(workspace.profile.fullName || workspace.authUser.displayName)}</span></div></header><main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">{workspace.persistenceError && <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{workspace.persistenceError}</div>}{children}</main></div>{menuOpen && <div className="fixed inset-0 z-50 bg-foreground/30 lg:hidden"><aside className="h-full w-[280px] bg-sidebar p-5 text-sidebar-foreground"><button type="button" className="mb-5 ml-auto block" onClick={() => setMenuOpen(false)}><X size={20} /></button><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-sidebar-accent"><Icon size={18} /> {label}</Link>)}</nav></aside></div>}</div>;
 }
 
 function Brand() { return <Link href="/app/dashboard" className="flex items-center gap-3 px-2 py-2"><span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground"><HeartPulse size={21} /></span><strong>Physio<span className="text-sidebar-primary">Bill</span></strong></Link>; }
@@ -790,7 +828,7 @@ function Dashboard({ workspace }: { workspace: WorkspaceState }) {
   const outstanding = workspace.workspaceInvoices.reduce((sum, invoice) => sum + Math.max(invoice.total - invoice.paid, 0), 0);
   const billed = workspace.workspaceInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
   const todaysVisits = workspace.workspaceVisits.filter((visit) => visit.date === today);
-  return <div className="space-y-7"><div className="relative overflow-hidden rounded-[24px] bg-primary px-6 py-8 text-primary-foreground"><p className="text-xs font-extrabold uppercase tracking-[.16em]">Demo workspace · local data</p><h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">A clear desk for better care.</h2><p className="mt-3 max-w-xl text-sm text-primary-foreground/75">Clinical records and billing share one controlled workspace state. Production authentication and database enforcement come later.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Outstanding" value={money(outstanding)} icon={WalletCards} /><StatCard label="Today’s visits" value={String(todaysVisits.length)} icon={CalendarDays} /><StatCard label="Active patients" value={String(workspace.workspacePatients.length)} icon={UsersRound} /><StatCard label="Billed" value={money(billed)} icon={ReceiptIndianRupee} /></div><div className="grid gap-6 xl:grid-cols-2"><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent visits</h3><div className="mt-4 space-y-3">{workspace.workspaceVisits.slice(-5).reverse().map((visit) => <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><p className="font-bold">{workspace.workspacePatients.find((p) => p.id === visit.patientId)?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(visit.date)} · {visit.treatment}</p></div>)}</div></section><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent invoices</h3><div className="mt-4 space-y-3">{workspace.workspaceInvoices.slice(-5).reverse().map((invoice) => <div key={invoice.id} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4"><div><p className="font-bold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.status}</p></div><p className="font-extrabold">{money(invoice.total)}</p></div>)}</div></section></div></div>;
+  return <div className="space-y-7"><div className="relative overflow-hidden rounded-[24px] bg-primary px-6 py-8 text-primary-foreground"><p className="text-xs font-extrabold uppercase tracking-[.16em]">Authenticated workspace</p><h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">A clear desk for better care.</h2><p className="mt-3 max-w-xl text-sm text-primary-foreground/75">Your identity, profile and settings are backed by Supabase Auth, Postgres and RLS. Clinical data migration follows in the next production phase.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Outstanding" value={money(outstanding)} icon={WalletCards} /><StatCard label="Today’s visits" value={String(todaysVisits.length)} icon={CalendarDays} /><StatCard label="Active patients" value={String(workspace.workspacePatients.length)} icon={UsersRound} /><StatCard label="Billed" value={money(billed)} icon={ReceiptIndianRupee} /></div><div className="grid gap-6 xl:grid-cols-2"><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent visits</h3><div className="mt-4 space-y-3">{workspace.workspaceVisits.slice(-5).reverse().map((visit) => <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><p className="font-bold">{workspace.workspacePatients.find((p) => p.id === visit.patientId)?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(visit.date)} · {visit.treatment}</p></div>)}</div></section><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent invoices</h3><div className="mt-4 space-y-3">{workspace.workspaceInvoices.slice(-5).reverse().map((invoice) => <div key={invoice.id} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4"><div><p className="font-bold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.status}</p></div><p className="font-extrabold">{money(invoice.total)}</p></div>)}</div></section></div></div>;
 }
 
 function PatientsPage({ patients, visits, invoices, onAdd }: { patients: Patient[]; visits: Visit[]; invoices: Invoice[]; onAdd: () => void }) {
@@ -837,7 +875,7 @@ function InvoiceAuditHistory({ invoice }: { invoice: Invoice }) {
 
 function ProfilePage({ workspace }: { workspace: WorkspaceState }) {
   const [draft, setDraft] = useState(workspace.profile); const set = <K extends keyof Profile>(field: K, value: Profile[K]) => setDraft((current) => ({ ...current, [field]: value }));
-  return <div><PageHeader eyebrow="Provider profile" title="Your professional details" description="Display and billing fields only. Never store secret payment credentials here." /><div className="rounded-2xl border bg-card p-6"><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={draft.fullName} onChange={(e) => set('fullName', e.target.value)} /><Field label="Title" value={draft.title} onChange={(e) => set('title', e.target.value)} /><Field label="Qualification" value={draft.qualification} onChange={(e) => set('qualification', e.target.value)} /><Field label="Registration" value={draft.registration} onChange={(e) => set('registration', e.target.value)} /><Field label="PAN" value={draft.pan} onChange={(e) => set('pan', e.target.value)} /><Field label="GSTIN" value={draft.gstin} onChange={(e) => set('gstin', e.target.value)} /><Field label="Phone" value={draft.phone} onChange={(e) => set('phone', e.target.value)} /><Field label="Email" value={draft.email} onChange={(e) => set('email', e.target.value)} /><Field label="Address" value={draft.address} onChange={(e) => set('address', e.target.value)} /><Field label="Logo URL" value={draft.logo} onChange={(e) => set('logo', e.target.value)} /><Field label="UPI display name" value={draft.upiName} onChange={(e) => set('upiName', e.target.value)} /><Field label="UPI ID" value={draft.upiId} onChange={(e) => set('upiId', e.target.value)} /><Field label="Bank name" value={draft.bankName} onChange={(e) => set('bankName', e.target.value)} /><Field label="Account number" value={draft.accountNumber} onChange={(e) => set('accountNumber', e.target.value)} /><Field label="IFSC" value={draft.ifsc} onChange={(e) => set('ifsc', e.target.value)} /><Field label="Invoice prefix" value={draft.invoicePrefix} onChange={(e) => set('invoicePrefix', e.target.value.toUpperCase())} /><Field label="Payment account ID (future display reference)" value={draft.paymentAccountId ?? ''} onChange={(e) => set('paymentAccountId', e.target.value || undefined)} /><SelectField label="Payment account status" value={draft.paymentAccountStatus ?? 'not_connected'} onChange={(value) => set('paymentAccountStatus', value as Profile['paymentAccountStatus'])} options={['not_connected', 'pending', 'connected'].map((value) => ({ value, label: value.replaceAll('_', ' ') }))} /></div><div className="mt-6 flex justify-end"><Button onClick={() => workspace.setProfile(draft)}><Check size={16} /> Save profile</Button></div></div></div>;
+  return <div><PageHeader eyebrow="Provider profile" title="Your professional details" description="Display and billing fields only. Never store secret payment credentials here." /><div className="rounded-2xl border bg-card p-6"><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={draft.fullName} onChange={(e) => set('fullName', e.target.value)} /><Field label="Title" value={draft.title} onChange={(e) => set('title', e.target.value)} /><Field label="Qualification" value={draft.qualification} onChange={(e) => set('qualification', e.target.value)} /><Field label="Registration" value={draft.registration} onChange={(e) => set('registration', e.target.value)} /><Field label="PAN" value={draft.pan} onChange={(e) => set('pan', e.target.value)} /><Field label="GSTIN" value={draft.gstin} onChange={(e) => set('gstin', e.target.value)} /><Field label="Phone" value={draft.phone} onChange={(e) => set('phone', e.target.value)} /><Field label="Email" value={draft.email} onChange={(e) => set('email', e.target.value)} /><Field label="Address" value={draft.address} onChange={(e) => set('address', e.target.value)} /><Field label="Logo URL" value={draft.logo} onChange={(e) => set('logo', e.target.value)} /><Field label="UPI display name" value={draft.upiName} onChange={(e) => set('upiName', e.target.value)} /><Field label="UPI ID" value={draft.upiId} onChange={(e) => set('upiId', e.target.value)} /><Field label="Bank name" value={draft.bankName} onChange={(e) => set('bankName', e.target.value)} /><Field label="Account number" value={draft.accountNumber} onChange={(e) => set('accountNumber', e.target.value)} /><Field label="IFSC" value={draft.ifsc} onChange={(e) => set('ifsc', e.target.value)} /><Field label="Invoice prefix" value={draft.invoicePrefix} onChange={(e) => set('invoicePrefix', e.target.value.toUpperCase())} /><Field label="Payment account ID (future display reference)" value={draft.paymentAccountId ?? ''} onChange={(e) => set('paymentAccountId', e.target.value || undefined)} /><SelectField label="Payment account status" value={draft.paymentAccountStatus ?? 'not_connected'} onChange={(value) => set('paymentAccountStatus', value as Profile['paymentAccountStatus'])} options={['not_connected', 'pending', 'connected'].map((value) => ({ value, label: value.replace(/_/g, ' ') }))} /></div><div className="mt-6 flex justify-end"><Button onClick={() => workspace.setProfile(draft)}><Check size={16} /> Save profile</Button></div></div></div>;
 }
 
 function SettingsPage({ workspace }: { workspace: WorkspaceState }) {
@@ -874,15 +912,63 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 }
 
 function ApplicationRouter() {
-  const [authUser, setAuthUser] = useAuthenticatedUser(); const [location, setLocation] = useLocation();
+  const auth = useAuthSession();
+  const [workspace, setWorkspace] = useState<ProductionWorkspace | null>(null);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!authUser && location !== '/login') setLocation('/login');
-    if (authUser?.role === 'physio' && (location === '/login' || location.startsWith('/portal'))) setLocation('/app/dashboard');
-    if (authUser?.role === 'patient' && (location === '/login' || location.startsWith('/app') || ['/dashboard', '/patients', '/visits', '/invoices', '/profile', '/settings'].some((route) => location.startsWith(route)))) setLocation('/portal');
-  }, [authUser, location, setLocation]);
-  if (!authUser) return <LoginPage onLogin={setAuthUser} />;
-  if (authUser.role === 'patient') return <PatientPortal authUser={authUser} />;
-  return <WorkspaceController authUser={authUser} />;
+    let active = true;
+    if (!auth.user) {
+      setWorkspace(null);
+      setWorkspaceError(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    setWorkspace(null);
+    setWorkspaceError(null);
+    loadProductionWorkspace(auth.user)
+      .then((resolved) => {
+        if (active) setWorkspace(resolved);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setWorkspaceError(
+          error instanceof Error ? error.message : 'Unable to resolve the physiotherapist workspace.',
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [auth.user?.id]);
+
+  if (!auth.configured) {
+    return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border bg-card p-6"><h1 className="font-extrabold">Supabase configuration required</h1><p className="mt-2 text-sm text-muted-foreground">The public Supabase URL and publishable key are not available to this deployment.</p></div></div>;
+  }
+  if (auth.loading) {
+    return <div className="grid min-h-screen place-items-center text-sm font-semibold text-muted-foreground">Restoring secure session…</div>;
+  }
+  if (auth.error) {
+    return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border border-destructive/20 bg-card p-6"><h1 className="font-extrabold text-destructive">Unable to restore session</h1><p className="mt-2 text-sm text-muted-foreground">{auth.error}</p></div></div>;
+  }
+  if (!auth.user) return <AuthPage />;
+  if (workspaceError) {
+    return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border border-destructive/20 bg-card p-6"><h1 className="font-extrabold text-destructive">Unable to open your workspace</h1><p className="mt-2 text-sm text-muted-foreground">{workspaceError}</p><button type="button" onClick={() => void signOutPhysiotherapist()} className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Sign out</button></div></div>;
+  }
+  if (!workspace) {
+    return <div className="grid min-h-screen place-items-center text-sm font-semibold text-muted-foreground">Opening your private workspace…</div>;
+  }
+
+  return (
+    <WorkspaceController
+      authUser={workspace.authUser}
+      currentPhysioId={workspace.physioId}
+      initialProfile={workspace.profile}
+      initialSettings={workspace.settings}
+    />
+  );
 }
 
 function App() {

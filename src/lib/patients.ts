@@ -39,23 +39,7 @@ type PatientRow = {
   notes: string;
 };
 
-const patientColumns = [
-  'id',
-  'physio_id',
-  'user_id',
-  'patient_number',
-  'name',
-  'phone',
-  'email',
-  'address',
-  'age',
-  'condition',
-  'referring_doctor',
-  'referral_date',
-  'insurance_tpa',
-  'policy_member_id',
-  'notes',
-].join(',');
+const patientColumns = 'id,physio_id,user_id,patient_number,name,phone,email,address,age,condition,referring_doctor,referral_date,insurance_tpa,policy_member_id,notes' as const;
 
 function clean(value: string) {
   return value.trim();
@@ -136,7 +120,7 @@ export async function loadPatients(): Promise<ProductionPatient[]> {
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return (data as PatientRow[]).map(mapPatient);
+  return data.map(mapPatient);
 }
 
 export async function createPatient(input: PatientInput): Promise<ProductionPatient> {
@@ -157,7 +141,7 @@ export async function createPatient(input: PatientInput): Promise<ProductionPati
       .select(patientColumns)
       .single();
 
-    if (!error) return mapPatient(data as PatientRow);
+    if (!error) return mapPatient(data);
     if (error.code !== '23505' || attempt === 2) throw error;
   }
 
@@ -179,7 +163,7 @@ export async function updatePatient(
     .single();
 
   if (error) throw error;
-  return mapPatient(data as PatientRow);
+  return mapPatient(data);
 }
 
 export async function deletePatient(patientId: string): Promise<void> {

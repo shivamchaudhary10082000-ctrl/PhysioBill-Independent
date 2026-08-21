@@ -1,0 +1,41 @@
+name: Apply Financial Ledger Navigation
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+    paths:
+      - .github/workflows/apply-ledger-nav.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: futureweb-production-backend
+      - name: Add ledger to shared physio navigation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/App.tsx')
+          text = path.read_text()
+          needle = "  { href: '/app/invoices', label: 'Invoices', icon: ReceiptIndianRupee },\n"
+          replacement = needle + "  { href: '/app/financial-ledger', label: 'Financial Ledger', icon: WalletCards },\n"
+          if replacement in text:
+              raise SystemExit(0)
+          if needle not in text:
+              raise SystemExit('Expected physioNav invoice entry not found')
+          path.write_text(text.replace(needle, replacement, 1))
+          PY
+      - name: Commit navigation change
+        run: |
+          if git diff --quiet -- src/App.tsx; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx
+          git commit -m "Add Financial Ledger to shared navigation"
+          git push origin HEAD:futureweb-production-backend

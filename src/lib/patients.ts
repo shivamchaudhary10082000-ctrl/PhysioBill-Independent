@@ -11,6 +11,10 @@ export type ProductionPatient = {
   email: string;
   address: string;
   age: string;
+  sex: string;
+  occupation: string;
+  referred: boolean;
+  clinicalCategory: string;
   condition: string;
   referringDoctor: string;
   referralDate: string;
@@ -31,6 +35,10 @@ type PatientRow = {
   email: string;
   address: string;
   age: string;
+  sex: string;
+  occupation: string;
+  referred: boolean;
+  clinical_category: string;
   condition: string;
   referring_doctor: string;
   referral_date: string | null;
@@ -39,7 +47,7 @@ type PatientRow = {
   notes: string;
 };
 
-const patientColumns = 'id,physio_id,user_id,patient_number,name,phone,email,address,age,condition,referring_doctor,referral_date,insurance_tpa,policy_member_id,notes' as const;
+const patientColumns = 'id,physio_id,user_id,patient_number,name,phone,email,address,age,sex,occupation,referred,clinical_category,condition,referring_doctor,referral_date,insurance_tpa,policy_member_id,notes' as const;
 
 function clean(value: string) {
   return value.trim();
@@ -59,6 +67,10 @@ function normalizeInput(input: PatientInput) {
     email: clean(input.email),
     address: clean(input.address),
     age: clean(input.age),
+    sex: clean(input.sex),
+    occupation: clean(input.occupation),
+    referred: Boolean(input.referred),
+    clinical_category: clean(input.clinicalCategory),
     condition: clean(input.condition),
     referring_doctor: clean(input.referringDoctor),
     referral_date: clean(input.referralDate) || null,
@@ -79,6 +91,10 @@ function mapPatient(row: PatientRow): ProductionPatient {
     email: row.email,
     address: row.address,
     age: row.age,
+    sex: row.sex,
+    occupation: row.occupation,
+    referred: row.referred,
+    clinicalCategory: row.clinical_category,
     condition: row.condition,
     referringDoctor: row.referring_doctor,
     referralDate: row.referral_date ?? '',

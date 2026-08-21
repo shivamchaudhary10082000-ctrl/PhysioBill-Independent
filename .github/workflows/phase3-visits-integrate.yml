@@ -5,11 +5,18 @@ on:
     branches:
       - futureweb-production-backend
     paths:
+      - src/App.tsx
+      - src/lib/visits.ts
+      - supabase/migrations/202608210004_visits_clinical_records_authority.sql
       - scripts/phase3-visits-integrate.py
       - .github/workflows/phase3-visits-integrate.yml
 
 permissions:
   contents: write
+
+concurrency:
+  group: phase3-visits-futureweb-production-backend
+  cancel-in-progress: false
 
 jobs:
   integrate-and-verify:

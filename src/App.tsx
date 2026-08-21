@@ -1030,6 +1030,7 @@ const physioNav = [
   { href: '/app/visits', label: 'Visits', icon: ClipboardList },
   { href: '/app/clinical-records', label: 'Clinical Records', icon: FileText },
   { href: '/app/invoices', label: 'Invoices', icon: ReceiptIndianRupee },
+  { href: '/app/financial-ledger', label: 'Financial Ledger', icon: WalletCards },
   { href: '/app/profile', label: 'Profile', icon: UserRound },
   { href: '/app/settings', label: 'Settings', icon: Settings2 },
 ];

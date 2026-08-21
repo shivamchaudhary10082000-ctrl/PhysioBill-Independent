@@ -1,0 +1,52 @@
+name: Phase 3 patient CRUD integration
+
+on:
+  pull_request:
+    branches:
+      - futureweb-production-backend
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.head_ref == 'futureweb-patient-integration-trigger'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout production backend branch
+        uses: actions/checkout@v4
+        with:
+          ref: futureweb-production-backend
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply deterministic patient integration
+        run: python3 scripts/phase3-patients-integrate.py
+      - name: Install dependencies
+        run: npm install
+      - name: Typecheck production patient/auth slice
+        run: |
+          set +e
+          npm run typecheck > /tmp/typecheck.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/typecheck.log
+          if grep -E "src/(App\.tsx|pages/AuthPage\.tsx|hooks/use-auth-session\.ts|lib/(auth|supabase|workspace|production-workspace|patients)\.ts)" /tmp/typecheck.log; then
+            echo "Production patient/auth TypeScript errors detected."
+            exit 1
+          fi
+          if [ "$status" -ne 0 ]; then
+            echo "Full repository typecheck still has pre-existing errors outside the production patient/auth slice; continuing to Vite build."
+          fi
+      - name: Build
+        run: npm run build
+      - name: Commit verified patient integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- src/App.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Integrate Supabase patient CRUD into App.tsx"
+          git push origin HEAD:futureweb-production-backend

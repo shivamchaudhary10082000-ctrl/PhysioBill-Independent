@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, FileText, Search, Undo2, WalletCards } from 'lucide-react';
+import { ArrowRight, FileText, Search, WalletCards } from 'lucide-react';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import {
   loadPatientFinancialLedger,

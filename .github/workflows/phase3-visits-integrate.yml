@@ -1,4 +1,4 @@
-name: Phase 3 Visits Integration Verification
+name: Phase 3 Visits Verification
 
 on:
   push:
@@ -8,32 +8,26 @@ on:
       - src/App.tsx
       - src/lib/visits.ts
       - supabase/migrations/202608210004_visits_clinical_records_authority.sql
-      - scripts/phase3-visits-integrate.py
       - .github/workflows/phase3-visits-integrate.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: phase3-visits-futureweb-production-backend
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  integrate-and-verify:
-    if: github.actor != 'github-actions[bot]'
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: futureweb-production-backend
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Integrate Visits into current App.tsx
-        run: python3 scripts/phase3-visits-integrate.py
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -43,12 +37,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      - name: Commit verified App.tsx integration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- src/App.tsx
-          git diff --cached --quiet && exit 0
-          git commit -m "Migrate visits to Supabase production authority"
-          git push origin HEAD:futureweb-production-backend

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Check, ClipboardList, Trash2 } from 'lucide-react';
 import {
+  deleteClinicalRecordForVisit,
   loadClinicalRecordForVisit,
   loadClinicalRecordsForPatient,
   saveClinicalRecord,
@@ -80,8 +81,9 @@ function Section({ title, description, children }: { title: string; description?
   return <section className="rounded-2xl border bg-card p-5 sm:p-6"><div className="mb-5"><h3 className="font-extrabold">{title}</h3>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}</div>{children}</section>;
 }
 
-function ActionButton({ children, onClick, disabled, primary = false }: { children: ReactNode; onClick: () => void; disabled?: boolean; primary?: boolean }) {
-  return <button type="button" disabled={disabled} onClick={onClick} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${primary ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>{children}</button>;
+function ActionButton({ children, onClick, disabled, primary = false, danger = false }: { children: ReactNode; onClick: () => void; disabled?: boolean; primary?: boolean; danger?: boolean }) {
+  const tone = danger ? 'bg-destructive text-destructive-foreground' : primary ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground';
+  return <button type="button" disabled={disabled} onClick={onClick} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${tone}`}>{children}</button>;
 }
 
 export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Props) {
@@ -93,6 +95,8 @@ export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Pr
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [patientBusy, setPatientBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [clinicalEditing, setClinicalEditing] = useState(true);
   const [patientEditing, setPatientEditing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -120,6 +124,7 @@ export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Pr
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setDeleteConfirmOpen(false);
     Promise.all([
       loadClinicalRecordForVisit(visit.id),
       loadClinicalRecordsForPatient(patient.id),
@@ -210,6 +215,25 @@ export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Pr
     }
   };
 
+  const confirmDelete = async () => {
+    setDeleteBusy(true);
+    setError(null);
+    try {
+      await deleteClinicalRecordForVisit(visit.id);
+      const timeline = await loadClinicalRecordsForPatient(patient.id);
+      setTimelineRecords(timeline);
+      setForm(emptyRecord(visit.id));
+      setPersistedForm(null);
+      setClinicalEditing(true);
+      setDeleteConfirmOpen(false);
+      showSuccess('✓ Clinical record deleted');
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Unable to delete clinical record.');
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   if (loading) return <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading clinical record…</div>;
 
   const clinicalReadOnly = Boolean(persistedForm) && !clinicalEditing;
@@ -242,7 +266,7 @@ export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Pr
         {patientEditing ? <>
           <ActionButton disabled={patientBusy} onClick={cancelPatientEdit}>Cancel</ActionButton>
           <ActionButton primary disabled={patientBusy || !patientDraft.name.trim()} onClick={() => void savePatientDetails()}><Check size={16} /> {patientBusy ? 'Saving…' : 'Save changes'}</ActionButton>
-        </> : <ActionButton onClick={() => { setPatientDraft(patientRecord); setPatientEditing(true); }}>Update patient details</ActionButton>}
+        </> : <ActionButton onClick={() => { setPatientDraft(patientRecord); setPatientEditing(true); }}>Edit patient details</ActionButton>}
       </div>
     </Section>
 
@@ -272,15 +296,29 @@ export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Pr
 
     {error && <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
     {success && <div className="rounded-xl bg-secondary p-3 text-sm font-semibold">{success}</div>}
-    <div className="flex justify-end gap-2">
+    <div className="flex flex-wrap justify-end gap-2">
       {!persistedForm ? <ActionButton primary disabled={busy} onClick={() => void save()}><Check size={16} /> {busy ? 'Saving…' : 'Save clinical record'}</ActionButton> : clinicalEditing ? <>
         <ActionButton disabled={busy} onClick={cancelClinicalEdit}>Cancel</ActionButton>
         <ActionButton primary disabled={busy} onClick={() => void save()}><Check size={16} /> {busy ? 'Saving…' : 'Save changes'}</ActionButton>
-      </> : <ActionButton primary onClick={() => setClinicalEditing(true)}>Update clinical record</ActionButton>}
+      </> : <>
+        <ActionButton primary onClick={() => setClinicalEditing(true)}>Edit clinical record</ActionButton>
+        <ActionButton danger onClick={() => setDeleteConfirmOpen(true)}><Trash2 size={16} /> Delete clinical record</ActionButton>
+      </>}
     </div>
 
     <Section title="Longitudinal clinical timeline" description="Each assessment remains attached to its actual Visit so change can be reviewed across time.">
       <div className="space-y-3">{patientVisits.slice().sort((a, b) => b.date.localeCompare(a.date)).map((item) => <div key={item.id} className="flex flex-col gap-2 rounded-xl bg-secondary/50 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold">{item.visitNumber} · {dateLabel(item.date)}</p><p className="text-sm text-muted-foreground">{item.treatment}</p></div><span className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground"><ClipboardList size={14} /> {recordedVisitIds.has(item.id) ? 'Clinical record saved' : 'No clinical record yet'}</span></div>)}</div>
     </Section>
+
+    {deleteConfirmOpen && <div className="fixed inset-0 z-[100] grid place-items-center bg-foreground/60 p-4" role="presentation">
+      <div role="dialog" aria-modal="true" aria-labelledby="delete-clinical-record-title" className="w-full max-w-md rounded-2xl border bg-card p-6 text-card-foreground shadow-2xl">
+        <h3 id="delete-clinical-record-title" className="text-lg font-extrabold">Delete clinical record?</h3>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">This Clinical Record/assessment for {visit.visitNumber} will be deleted. The linked Visit will remain, and the Patient will remain.</p>
+        <div className="mt-6 flex justify-end gap-2">
+          <ActionButton disabled={deleteBusy} onClick={() => setDeleteConfirmOpen(false)}>Cancel</ActionButton>
+          <ActionButton danger disabled={deleteBusy} onClick={() => void confirmDelete()}><Trash2 size={16} /> {deleteBusy ? 'Deleting…' : 'Delete clinical record'}</ActionButton>
+        </div>
+      </div>
+    </div>}
   </div>;
 }

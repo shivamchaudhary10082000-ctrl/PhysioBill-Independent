@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, ClipboardList } from 'lucide-react';
 import {
   loadClinicalRecordForVisit,
@@ -7,21 +7,7 @@ import {
   type ClinicalRecord,
   type ClinicalRecordInput,
 } from '@/lib/clinical-records';
-
-type PatientSummary = {
-  id: string;
-  patientNumber: string;
-  name: string;
-  age: string;
-  sex: string;
-  address: string;
-  phone: string;
-  occupation: string;
-  referred: boolean;
-  referringDoctor: string;
-  condition: string;
-  clinicalCategory: string;
-};
+import { updatePatient, type ProductionPatient } from '@/lib/patients';
 
 type VisitSummary = {
   id: string;
@@ -32,7 +18,7 @@ type VisitSummary = {
 };
 
 type Props = {
-  patient: PatientSummary;
+  patient: ProductionPatient;
   visit: VisitSummary;
   patientVisits: VisitSummary[];
   onBack: () => void;
@@ -82,21 +68,34 @@ function Field({ label, value, onChange, type = 'text', min, max }: { label: str
   return <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</span><input type={type} min={min} max={max} value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>;
 }
 
+function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
+  return <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10">{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
+}
+
 function TextArea({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
   return <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</span><textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="min-h-24 w-full rounded-xl border bg-card px-3.5 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></label>;
 }
 
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return <section className="rounded-2xl border bg-card p-5 sm:p-6"><div className="mb-5"><h3 className="font-extrabold">{title}</h3>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}</div>{children}</section>;
 }
 
 export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Props) {
+  const [patientRecord, setPatientRecord] = useState(patient);
+  const [patientDraft, setPatientDraft] = useState(patient);
   const [form, setForm] = useState<ClinicalRecordInput>(() => emptyRecord(visit.id));
   const [timelineRecords, setTimelineRecords] = useState<ClinicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [patientBusy, setPatientBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [patientMessage, setPatientMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPatientRecord(patient);
+    setPatientDraft(patient);
+  }, [patient]);
 
   useEffect(() => {
     let active = true;
@@ -126,6 +125,41 @@ export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Pr
   const set = <K extends keyof ClinicalRecordInput>(field: K, value: ClinicalRecordInput[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
+  const setPatient = <K extends keyof ProductionPatient>(field: K, value: ProductionPatient[K]) => {
+    setPatientDraft((current) => ({ ...current, [field]: value }));
+  };
+
+  const savePatientDetails = async () => {
+    setPatientBusy(true);
+    setPatientMessage(null);
+    setError(null);
+    try {
+      const saved = await updatePatient(patientDraft.id, {
+        name: patientDraft.name,
+        phone: patientDraft.phone,
+        email: patientDraft.email,
+        address: patientDraft.address,
+        age: patientDraft.age,
+        sex: patientDraft.sex,
+        occupation: patientDraft.occupation,
+        referred: patientDraft.referred,
+        clinicalCategory: patientDraft.clinicalCategory,
+        condition: patientDraft.condition,
+        referringDoctor: patientDraft.referringDoctor,
+        referralDate: patientDraft.referralDate,
+        insuranceTpa: patientDraft.insuranceTpa,
+        policyMemberId: patientDraft.policyMemberId,
+        notes: patientDraft.notes,
+      });
+      setPatientRecord(saved);
+      setPatientDraft(saved);
+      setPatientMessage('Patient details saved to Supabase.');
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Unable to save patient details.');
+    } finally {
+      setPatientBusy(false);
+    }
+  };
 
   const save = async () => {
     setBusy(true);
@@ -147,29 +181,30 @@ export function ClinicalRecordPage({ patient, visit, patientVisits, onBack }: Pr
   if (loading) return <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading clinical record…</div>;
 
   return <div className="space-y-5">
-    <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to visits</button>
+    <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to clinical records</button>
 
     <div className="rounded-[24px] bg-primary px-6 py-7 text-primary-foreground">
       <p className="text-[10px] font-extrabold uppercase tracking-[.16em]">Clinical Record</p>
-      <h2 className="mt-2 text-2xl font-extrabold">{patient.name} · {visit.visitNumber}</h2>
+      <h2 className="mt-2 text-2xl font-extrabold">{patientRecord.name} · {visit.visitNumber}</h2>
       <p className="mt-2 text-sm text-primary-foreground/75">{dateLabel(visit.date)} · {visit.treatment}</p>
     </div>
 
-    <Section title="Patient details" description="Stable demographics stay on the Patient record; they are shown here as context and are not duplicated into this assessment.">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ['Record no.', patient.patientNumber],
-          ['Age', patient.age || '—'],
-          ['Sex', patient.sex || '—'],
-          ['Phone', patient.phone || '—'],
-          ['Occupation', patient.occupation || '—'],
-          ['Category', patient.clinicalCategory || '—'],
-          ['Condition', patient.condition || '—'],
-          ['Referred', patient.referred ? 'Yes' : 'No'],
-          ['Referring doctor', patient.referringDoctor || '—'],
-          ['Address', patient.address || '—'],
-        ].map(([label, value]) => <div key={label} className="rounded-xl bg-secondary/50 p-3"><p className="text-[10px] font-bold uppercase tracking-[.1em] text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>)}
+    <Section title="Patient details" description="Stable demographics are saved on the Patient record and reused across visits; they are not copied into each clinical assessment.">
+      <div className="mb-4 rounded-xl bg-secondary/50 p-3 text-sm"><strong>Record number:</strong> {patientRecord.patientNumber}</div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Field label="Patient name" value={patientDraft.name} onChange={(value) => setPatient('name', value)} />
+        <Field label="Age" value={patientDraft.age} onChange={(value) => setPatient('age', value)} />
+        <SelectField label="Sex" value={patientDraft.sex} onChange={(value) => setPatient('sex', value)} options={['', 'Female', 'Male', 'Other', 'Prefer not to say'].map((value) => ({ value, label: value || 'Select' }))} />
+        <Field label="Phone number" value={patientDraft.phone} onChange={(value) => setPatient('phone', value)} />
+        <Field label="Occupation" value={patientDraft.occupation} onChange={(value) => setPatient('occupation', value)} />
+        <SelectField label="Condition / category" value={patientDraft.clinicalCategory} onChange={(value) => setPatient('clinicalCategory', value)} options={['', 'Ortho', 'Neuro', 'Pedia', 'Geriatrics'].map((value) => ({ value, label: value || 'Select' }))} />
+        <Field label="Condition" value={patientDraft.condition} onChange={(value) => setPatient('condition', value)} />
+        <SelectField label="Referred" value={patientDraft.referred ? 'Yes' : 'No'} onChange={(value) => setPatient('referred', value === 'Yes')} options={[{ value: 'No', label: 'No' }, { value: 'Yes', label: 'Yes' }]} />
+        <Field label="Referring doctor / consultant" value={patientDraft.referringDoctor} onChange={(value) => setPatient('referringDoctor', value)} />
+        <div className="md:col-span-2 lg:col-span-3"><TextArea label="Address" value={patientDraft.address} onChange={(value) => setPatient('address', value)} /></div>
       </div>
+      {patientMessage && <div className="mt-4 rounded-xl bg-secondary p-3 text-sm font-semibold">{patientMessage}</div>}
+      <div className="mt-4 flex justify-end"><button type="button" disabled={patientBusy || !patientDraft.name.trim()} onClick={() => void savePatientDetails()} className="inline-flex items-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary-foreground disabled:opacity-50"><Check size={16} /> {patientBusy ? 'Saving…' : 'Save patient details'}</button></div>
     </Section>
 
     <Section title="Subjective / History" description="Structured from your assessment form, with room for additional subjective notes.">

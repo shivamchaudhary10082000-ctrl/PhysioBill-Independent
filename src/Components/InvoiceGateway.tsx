@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Check, FileText, Plus, Search, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Search, ShieldCheck } from 'lucide-react';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import {
   createInvoice,
@@ -71,13 +71,9 @@ function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack }: {
     setMessage(null);
     try {
       let saved: ProductionInvoice;
-      if (!invoice) {
-        saved = await createInvoice({ ...draft, finalized: finalize });
-      } else if (finalize) {
-        saved = await finalizeInvoice(invoice.id, draft);
-      } else {
-        saved = await updateDraftInvoice(invoice.id, draft);
-      }
+      if (!invoice) saved = await createInvoice({ ...draft, finalized: finalize });
+      else if (finalize) saved = await finalizeInvoice(invoice.id, draft);
+      else saved = await updateDraftInvoice(invoice.id, draft);
       onSaved(saved);
       setDraft(toDraft(saved));
       setMessage(finalize ? 'Invoice finalized.' : 'Draft saved.');
@@ -127,14 +123,17 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onLocation = () => setPath(window.location.pathname);
-    window.addEventListener('popstate', onLocation);
-    return () => window.removeEventListener('popstate', onLocation);
+    const events = ['popstate', 'pushState', 'replaceState'] as const;
+    events.forEach((eventName) => window.addEventListener(eventName, onLocation));
+    onLocation();
+    return () => events.forEach((eventName) => window.removeEventListener(eventName, onLocation));
   }, []);
 
   const isInvoiceRoute = path === '/app/invoices';
   useEffect(() => {
     if (!isInvoiceRoute) return;
     let active = true;
+    setSelected(null);
     setLoading(true);
     setError(null);
     resolveAuthenticatedPhysiotherapist()

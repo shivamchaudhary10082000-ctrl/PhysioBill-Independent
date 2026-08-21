@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileText, Plus, Search, ShieldCheck, WalletCards } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, RotateCcw, Search, ShieldCheck, WalletCards } from 'lucide-react';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import {
   createInvoice,
@@ -15,6 +15,13 @@ import {
   type PaymentMethod,
   type ProductionPayment,
 } from '@/lib/payments';
+import {
+  loadPaymentCorrectionsForInvoice,
+  recordPaymentCorrection,
+  remainingReversibleAmount,
+  type PaymentCorrectionType,
+  type ProductionPaymentCorrection,
+} from '@/lib/payment-corrections';
 import { loadPhysiotherapistSettings, resolveAuthenticatedPhysiotherapist } from '@/lib/workspace';
 
 type Draft = ProductionInvoiceInput;
@@ -65,6 +72,7 @@ function Field({ label, value, onChange, type = 'text', disabled = false }: { la
 
 function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInvoice; onInvoiceReconciled: (invoice: ProductionInvoice) => void }) {
   const [payments, setPayments] = useState<ProductionPayment[]>([]);
+  const [corrections, setCorrections] = useState<ProductionPaymentCorrection[]>([]);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('UPI');
   const [recordedAt, setRecordedAt] = useState(localDateTime());
@@ -72,8 +80,20 @@ function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInv
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [correctingPayment, setCorrectingPayment] = useState<ProductionPayment | null>(null);
+  const [correctionType, setCorrectionType] = useState<PaymentCorrectionType>('correction');
+  const [correctionAmount, setCorrectionAmount] = useState('');
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [correctionBusy, setCorrectionBusy] = useState(false);
 
-  const reload = async () => setPayments(await loadPaymentsForInvoice(invoice.id));
+  const reload = async () => {
+    const [loadedPayments, loadedCorrections] = await Promise.all([
+      loadPaymentsForInvoice(invoice.id),
+      loadPaymentCorrectionsForInvoice(invoice.id),
+    ]);
+    setPayments(loadedPayments);
+    setCorrections(loadedCorrections);
+  };
   useEffect(() => { void reload().catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Unable to load payment history.')); }, [invoice.id]);
 
   const balance = Math.max(0, invoice.total - invoice.paid);
@@ -96,8 +116,49 @@ function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInv
     } finally { setBusy(false); }
   };
 
+  const startCorrection = (payment: ProductionPayment) => {
+    const remaining = remainingReversibleAmount(payment, corrections);
+    setCorrectingPayment(payment);
+    setCorrectionType('correction');
+    setCorrectionAmount(String(remaining));
+    setCorrectionReason('');
+    setError(null);
+    setMessage(null);
+  };
+
+  const changeCorrectionType = (value: PaymentCorrectionType) => {
+    setCorrectionType(value);
+    if (value === 'reversal' && correctingPayment) {
+      setCorrectionAmount(String(remainingReversibleAmount(correctingPayment, corrections)));
+    }
+  };
+
+  const submitCorrection = async () => {
+    if (!correctingPayment) return;
+    setCorrectionBusy(true); setError(null); setMessage(null);
+    try {
+      const result = await recordPaymentCorrection(invoice.id, {
+        originalPaymentId: correctingPayment.id,
+        transactionType: correctionType,
+        amount: Number(correctionAmount),
+        reason: correctionReason,
+      });
+      setPayments(result.payments);
+      setCorrections(result.corrections);
+      onInvoiceReconciled(result.invoice);
+      setCorrectingPayment(null);
+      setCorrectionAmount('');
+      setCorrectionReason('');
+      setMessage(correctionType === 'reversal' ? 'Payment reversal recorded.' : 'Payment correction recorded.');
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Unable to record payment correction.');
+    } finally { setCorrectionBusy(false); }
+  };
+
+  const selectedRemaining = correctingPayment ? remainingReversibleAmount(correctingPayment, corrections) : 0;
+
   return <div className="rounded-2xl border bg-card p-5 sm:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Payment transactions</p><h3 className="mt-1 text-lg font-extrabold">Payment history</h3><p className="mt-1 text-sm text-muted-foreground">Append-only in this slice. Corrections/reversals will use an audited workflow later.</p></div><div className="rounded-xl bg-secondary/60 px-4 py-3 text-right"><p className="text-xs text-muted-foreground">Balance</p><p className="font-extrabold">{money(balance)}</p></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Financial transactions</p><h3 className="mt-1 text-lg font-extrabold">Payment history</h3><p className="mt-1 text-sm text-muted-foreground">Payments remain immutable. Corrections and reversals are separate audited transactions.</p></div><div className="rounded-xl bg-secondary/60 px-4 py-3 text-right"><p className="text-xs text-muted-foreground">Effective balance</p><p className="font-extrabold">{money(balance)}</p></div></div>
 
     {balance > 0 && <div className="mt-5 grid gap-4 md:grid-cols-2">
       <Field type="number" label="Payment amount" value={amount} onChange={setAmount} />
@@ -107,9 +168,23 @@ function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInv
       <div className="md:col-span-2 flex justify-end"><button disabled={busy || !(Number(amount) > 0) || Number(amount) > balance} onClick={() => void submit()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><WalletCards size={16} /> {busy ? 'Recording…' : 'Record payment'}</button></div>
     </div>}
 
+    {correctingPayment && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-extrabold">Correct {money(correctingPayment.amount)} {correctingPayment.method} payment</p><p className="mt-1 text-xs">Remaining reversible amount: {money(selectedRemaining)}. The original payment will remain in history.</p></div><button type="button" onClick={() => setCorrectingPayment(null)} className="text-sm font-semibold">Cancel</button></div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em]">Transaction type</span><select value={correctionType} onChange={(event) => changeCorrectionType(event.target.value as PaymentCorrectionType)} className="h-11 w-full rounded-xl border bg-white px-3.5 text-sm"><option value="correction">Correction</option><option value="reversal">Full reversal</option></select></label>
+        <Field disabled={correctionType === 'reversal'} type="number" label="Correction amount" value={correctionAmount} onChange={setCorrectionAmount} />
+        <div className="md:col-span-2"><Field label="Reason (required)" value={correctionReason} onChange={setCorrectionReason} /></div>
+      </div>
+      <div className="mt-4 flex justify-end"><button disabled={correctionBusy || !correctionReason.trim() || !(Number(correctionAmount) > 0) || Number(correctionAmount) > selectedRemaining || (correctionType === 'reversal' && Number(correctionAmount) !== selectedRemaining)} onClick={() => void submitCorrection()} className="inline-flex items-center gap-2 rounded-xl bg-amber-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><RotateCcw size={16} /> {correctionBusy ? 'Recording…' : correctionType === 'reversal' ? 'Record full reversal' : 'Record correction'}</button></div>
+    </div>}
+
     {error && <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
     {message && <div className="mt-4 rounded-xl bg-secondary p-3 text-sm font-semibold">{message}</div>}
-    <div className="mt-5 divide-y overflow-hidden rounded-xl border">{payments.map((payment) => <div key={payment.id} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="font-bold">{payment.method} · {dateTimeLabel(payment.recordedAt)}</p><p className="text-xs text-muted-foreground">{payment.notes || 'No note'} · {payment.status}</p></div><p className="font-extrabold">{money(payment.amount)}</p></div>)}{!payments.length && <div className="p-4 text-sm text-muted-foreground">No payments recorded yet.</div>}</div>
+    <div className="mt-5 divide-y overflow-hidden rounded-xl border">{payments.map((payment) => {
+      const related = corrections.filter((item) => item.originalPaymentId === payment.id).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      const remaining = remainingReversibleAmount(payment, corrections);
+      return <div key={payment.id} className="p-4"><div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="font-bold">Payment · {payment.method} · {dateTimeLabel(payment.recordedAt)}</p><p className="text-xs text-muted-foreground">{payment.notes || 'No note'} · Recorded</p></div><div className="text-right"><p className="font-extrabold">+{money(payment.amount)}</p>{remaining > 0 && <button type="button" onClick={() => startCorrection(payment)} className="mt-1 text-xs font-bold text-primary">Correct / reverse</button>}</div></div>{related.map((correction) => <div key={correction.id} className="mt-3 ml-3 rounded-lg border-l-4 border-amber-400 bg-amber-50 p-3"><div className="flex flex-wrap justify-between gap-2"><div><p className="text-sm font-extrabold">{correction.transactionType === 'reversal' ? 'Reversal' : 'Correction'} · -{money(correction.amount)}</p><p className="mt-1 text-xs text-amber-950">{dateTimeLabel(correction.createdAt)} · Reason: {correction.reason}</p><p className="mt-1 text-xs text-amber-800">Corrects {money(payment.amount)} {payment.method} payment</p></div></div></div>)}</div>;
+    })}{!payments.length && <div className="p-4 text-sm text-muted-foreground">No payments recorded yet.</div>}</div>
   </div>;
 }
 
@@ -191,7 +266,7 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <div className="min-h-screen bg-background"><main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10"><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => setSelected(null)} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></main></div>; }
 
   return <div className="min-h-screen bg-background"><main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10">
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Phase 4 · Real invoices</p><h1 className="mt-1 text-3xl font-extrabold">Invoices</h1><p className="mt-2 text-sm text-muted-foreground">Finalized invoices accept append-only partial payments. Corrections/reversals are intentionally deferred to the audited correction slice.</p></div><button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button></div>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Phase 4 · Real invoices</p><h1 className="mt-1 text-3xl font-extrabold">Invoices</h1><p className="mt-2 text-sm text-muted-foreground">Finalized invoices use append-only payments with separate audited correction/reversal transactions.</p></div><button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button></div>
     <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search invoices…" className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" /></div>
     <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return <button key={invoice.id} onClick={() => setSelected(invoice)} className="grid w-full gap-3 p-5 text-left hover:bg-secondary/40 md:grid-cols-[1fr_1.3fr_.8fr_.8fr_auto] md:items-center"><div><p className="font-extrabold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.description}</p></div><p>{patient?.name ?? 'Patient'}</p><p className="font-bold">{money(invoice.total)}</p><p className="text-sm">{invoice.status}</p><span className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><FileText size={15} /> Open</span></button>; })}{!filtered.length && <div className="p-6 text-sm text-muted-foreground">{patients.length ? 'No real invoices yet.' : 'Create a Patient before creating an invoice.'}</div>}</div>
   </main></div>;

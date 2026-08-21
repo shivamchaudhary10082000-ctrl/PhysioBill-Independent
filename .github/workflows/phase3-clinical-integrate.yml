@@ -1,0 +1,44 @@
+name: Phase 3 Clinical Records Integration
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+    paths:
+      - scripts/phase3-clinical-integrate.py
+      - .github/workflows/phase3-clinical-integrate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: futureweb-production-backend
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Integrate clinical records UI
+        run: python3 scripts/phase3-clinical-integrate.py
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck and build
+        run: npm run build
+
+      - name: Commit verified integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- src/App.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Integrate real clinical records UI"
+          git push origin HEAD:futureweb-production-backend

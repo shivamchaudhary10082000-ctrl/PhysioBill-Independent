@@ -23,7 +23,8 @@ export type ProductionPatient = {
   notes: string;
 };
 
-export type PatientInput = Omit<ProductionPatient, 'id' | 'physioId' | 'userId' | 'patientNumber'>;
+type NewDemographicFields = Pick<ProductionPatient, 'sex' | 'occupation' | 'referred' | 'clinicalCategory'>;
+export type PatientInput = Omit<ProductionPatient, 'id' | 'physioId' | 'userId' | 'patientNumber' | keyof NewDemographicFields> & Partial<NewDemographicFields>;
 
 type PatientRow = {
   id: string;
@@ -49,15 +50,15 @@ type PatientRow = {
 
 const patientColumns = 'id,physio_id,user_id,patient_number,name,phone,email,address,age,sex,occupation,referred,clinical_category,condition,referring_doctor,referral_date,insurance_tpa,policy_member_id,notes' as const;
 
-function clean(value: string) {
-  return value.trim();
+function clean(value: string | undefined) {
+  return (value ?? '').trim();
 }
 
 function cleanPhone(value: string) {
   return value.trim().replace(/\s+/g, ' ');
 }
 
-function normalizeInput(input: PatientInput) {
+function normalizeInput(input: PatientInput, existing?: Pick<ProductionPatient, 'sex' | 'occupation' | 'referred' | 'clinicalCategory'>) {
   const name = clean(input.name);
   if (!name) throw new Error('Patient name is required.');
 
@@ -67,10 +68,10 @@ function normalizeInput(input: PatientInput) {
     email: clean(input.email),
     address: clean(input.address),
     age: clean(input.age),
-    sex: clean(input.sex),
-    occupation: clean(input.occupation),
-    referred: Boolean(input.referred),
-    clinical_category: clean(input.clinicalCategory),
+    sex: clean(input.sex ?? existing?.sex),
+    occupation: clean(input.occupation ?? existing?.occupation),
+    referred: input.referred ?? existing?.referred ?? false,
+    clinical_category: clean(input.clinicalCategory ?? existing?.clinicalCategory),
     condition: clean(input.condition),
     referring_doctor: clean(input.referringDoctor),
     referral_date: clean(input.referralDate) || null,
@@ -136,7 +137,7 @@ export async function loadPatients(): Promise<ProductionPatient[]> {
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return data.map(mapPatient);
+  return data.map((row) => mapPatient(row as PatientRow));
 }
 
 export async function createPatient(input: PatientInput): Promise<ProductionPatient> {
@@ -157,7 +158,7 @@ export async function createPatient(input: PatientInput): Promise<ProductionPati
       .select(patientColumns)
       .single();
 
-    if (!error) return mapPatient(data);
+    if (!error) return mapPatient(data as PatientRow);
     if (error.code !== '23505' || attempt === 2) throw error;
   }
 
@@ -170,16 +171,27 @@ export async function updatePatient(
 ): Promise<ProductionPatient> {
   const bootstrap = await resolveAuthenticatedPhysiotherapist();
   const supabase = getSupabaseClient();
+
+  const { data: currentRow, error: currentError } = await supabase
+    .from('patients')
+    .select(patientColumns)
+    .eq('id', patientId)
+    .eq('physio_id', bootstrap.physioId)
+    .single();
+
+  if (currentError) throw currentError;
+  const current = mapPatient(currentRow as PatientRow);
+
   const { data, error } = await supabase
     .from('patients')
-    .update(normalizeInput(input))
+    .update(normalizeInput(input, current))
     .eq('id', patientId)
     .eq('physio_id', bootstrap.physioId)
     .select(patientColumns)
     .single();
 
   if (error) throw error;
-  return mapPatient(data);
+  return mapPatient(data as PatientRow);
 }
 
 export async function deletePatient(patientId: string): Promise<void> {

@@ -109,6 +109,7 @@ text = text.replace("onClick={() => setAuthUser(null)} className=\"mt-3 inline-f
 text = text.replace('Phase-1 demo workspace', 'Authenticated private workspace', 1)
 text = text.replace('Demo workspace · local data', 'Authenticated workspace', 1)
 text = text.replace('Clinical records and billing share one controlled workspace state. Production authentication and database enforcement come later.', 'Your identity, profile and settings are backed by Supabase Auth, Postgres and RLS. Clinical data migration follows in the next production phase.', 1)
+text = text.replace("value.replaceAll('_', ' ')", "value.replace(/_/g, ' ')", 1)
 
 main_anchor = '<main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">{children}</main>'
 if main_anchor not in text:

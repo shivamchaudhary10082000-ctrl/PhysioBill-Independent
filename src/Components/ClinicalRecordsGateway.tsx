@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ClipboardList, FileText } from 'lucide-react';
-import { ClinicalRecordPage } from '@/Components/ClinicalRecordPage';
+import { ClinicalRecordPage } from '@/Components/ClinicalRecordPageProduction';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import { loadVisits, type ProductionVisit } from '@/lib/visits';
 

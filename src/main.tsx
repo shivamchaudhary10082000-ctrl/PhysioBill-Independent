@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 
 import App from './App';
 import { ClinicalRecordsGateway } from '@/Components/ClinicalRecordsGateway';
+import { InvoiceGateway } from '@/Components/InvoiceGateway';
 import { ErrorBoundary } from '@/Components/error-boundary';
 
 import './index.css';
@@ -13,8 +14,10 @@ createRoot(document.getElementById('root')!, {
   },
 }).render(
   <ErrorBoundary>
-    <ClinicalRecordsGateway>
-      <App />
-    </ClinicalRecordsGateway>
+    <InvoiceGateway>
+      <ClinicalRecordsGateway>
+        <App />
+      </ClinicalRecordsGateway>
+    </InvoiceGateway>
   </ErrorBoundary>,
 );

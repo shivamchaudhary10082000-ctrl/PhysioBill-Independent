@@ -1,5 +1,8 @@
 begin;
 
+alter table public.payments
+  add constraint payments_id_physio_id_key unique (id, physio_id);
+
 create table if not exists public.payment_corrections (
   id uuid primary key default gen_random_uuid(),
   physio_id uuid not null references public.physiotherapists(id) on delete cascade,

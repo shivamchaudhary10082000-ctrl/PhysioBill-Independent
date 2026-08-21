@@ -23,11 +23,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Apply deterministic App.tsx auth integration
         run: python3 scripts/phase2-auth-integrate.py
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       - name: Typecheck
         run: npm run typecheck
       - name: Build

@@ -43,6 +43,12 @@ import {
   saveProductionSettings,
   type ProductionWorkspace,
 } from '@/lib/production-workspace';
+import {
+  createPatient as createProductionPatient,
+  deletePatient as deleteProductionPatient,
+  loadPatients as loadProductionPatients,
+  updatePatient as updateProductionPatient,
+} from '@/lib/patients';
 
 type UserRole = 'physio' | 'patient';
 
@@ -501,7 +507,10 @@ type WorkspaceState = {
   settings: Settings;
   setSettings: React.Dispatch<React.SetStateAction<Settings>>;
   patients: Patient[];
-  setPatients: React.Dispatch<React.SetStateAction<Patient[]>>;
+  patientsLoading: boolean;
+  createPatientRecord: (patient: Patient) => Promise<Patient>;
+  updatePatientRecord: (patient: Patient) => Promise<Patient>;
+  deletePatientRecord: (patientId: string) => Promise<void>;
   visits: Visit[];
   setVisits: React.Dispatch<React.SetStateAction<Visit[]>>;
   invoices: Invoice[];
@@ -556,11 +565,77 @@ function WorkspaceController({
       return next;
     });
   };
-  const [patients, setPatients] = usePersistentState<Patient[]>(
-    `physiobill-patients-${currentPhysioId}`,
-    [],
-    (value) => normalizePatientsForWorkspace(value, currentPhysioId),
-  );
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patientsLoading, setPatientsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setPatientsLoading(true);
+    setPersistenceError(null);
+    loadProductionPatients()
+      .then((loaded) => {
+        if (active) setPatients(loaded);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setPersistenceError(error instanceof Error ? error.message : 'Unable to load patients.');
+      })
+      .finally(() => {
+        if (active) setPatientsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentPhysioId]);
+
+  const patientInput = (patient: Patient) => ({
+    name: patient.name,
+    phone: patient.phone,
+    email: patient.email,
+    address: patient.address,
+    age: patient.age,
+    condition: patient.condition,
+    referringDoctor: patient.referringDoctor,
+    referralDate: patient.referralDate,
+    insuranceTpa: patient.insuranceTpa,
+    policyMemberId: patient.policyMemberId,
+    notes: patient.notes,
+  });
+
+  const createPatientRecord = async (patient: Patient): Promise<Patient> => {
+    setPersistenceError(null);
+    try {
+      const saved = await createProductionPatient(patientInput(patient));
+      setPatients((current) => [...current, saved]);
+      return saved;
+    } catch (error: unknown) {
+      setPersistenceError(error instanceof Error ? error.message : 'Unable to create patient.');
+      throw error;
+    }
+  };
+
+  const updatePatientRecord = async (patient: Patient): Promise<Patient> => {
+    setPersistenceError(null);
+    try {
+      const saved = await updateProductionPatient(patient.id, patientInput(patient));
+      setPatients((current) => current.map((item) => (item.id === saved.id ? saved : item)));
+      return saved;
+    } catch (error: unknown) {
+      setPersistenceError(error instanceof Error ? error.message : 'Unable to update patient.');
+      throw error;
+    }
+  };
+
+  const deletePatientRecord = async (patientId: string): Promise<void> => {
+    setPersistenceError(null);
+    try {
+      await deleteProductionPatient(patientId);
+      setPatients((current) => current.filter((item) => item.id !== patientId));
+    } catch (error: unknown) {
+      setPersistenceError(error instanceof Error ? error.message : 'Unable to delete patient.');
+      throw error;
+    }
+  };
   const [visits, setVisits] = usePersistentState<Visit[]>(
     `physiobill-visits-${currentPhysioId}`,
     [],
@@ -736,7 +811,10 @@ function WorkspaceController({
     settings,
     setSettings,
     patients,
-    setPatients,
+    patientsLoading,
+    createPatientRecord,
+    updatePatientRecord,
+    deletePatientRecord,
     visits,
     setVisits,
     invoices,
@@ -782,14 +860,46 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string; 
 function PhysioWorkspace({ workspace }: { workspace: WorkspaceState }) {
   const [location, setLocation] = useLocation();
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [showVisitForm, setShowVisitForm] = useState(false);
   const normalized = location.startsWith('/app/') ? location.slice(4) : location;
   const editingInvoice = workspace.workspaceInvoices.find((invoice) => invoice.id === editingInvoiceId) ?? null;
+  const editingPatient = workspace.workspacePatients.find((patient) => patient.id === editingPatientId) ?? null;
 
   const content = (() => {
     if (normalized.startsWith('/patients')) {
-      return showPatientForm ? <PatientForm onCancel={() => setShowPatientForm(false)} onSave={(patient) => { const saved: Patient = { ...patient, id: `patient-${Date.now()}`, physioId: workspace.currentPhysioId, patientNumber: formatSequentialId('PT', workspace.workspacePatients.length + 1) }; workspace.setPatients((current) => [...current, saved]); setShowPatientForm(false); }} /> : <PatientsPage patients={workspace.workspacePatients} visits={workspace.workspaceVisits} invoices={workspace.workspaceInvoices} onAdd={() => setShowPatientForm(true)} />;
+      if (showPatientForm || editingPatient) {
+        return (
+          <PatientForm
+            initialPatient={editingPatient}
+            onCancel={() => {
+              setShowPatientForm(false);
+              setEditingPatientId(null);
+            }}
+            onSave={async (patient) => {
+              if (editingPatient) await workspace.updatePatientRecord({ ...editingPatient, ...patient });
+              else await workspace.createPatientRecord(patient);
+              setShowPatientForm(false);
+              setEditingPatientId(null);
+            }}
+          />
+        );
+      }
+      return (
+        <PatientsPage
+          patients={workspace.workspacePatients}
+          visits={workspace.workspaceVisits}
+          invoices={workspace.workspaceInvoices}
+          loading={workspace.patientsLoading}
+          onAdd={() => setShowPatientForm(true)}
+          onEdit={(patient) => setEditingPatientId(patient.id)}
+          onDelete={async (patient) => {
+            if (!window.confirm(`Delete ${patient.name}? This cannot be undone.`)) return;
+            await workspace.deletePatientRecord(patient.id);
+          }}
+        />
+      );
     }
     if (normalized.startsWith('/visits')) {
       return showVisitForm ? <VisitForm patients={workspace.workspacePatients} onCancel={() => setShowVisitForm(false)} onSave={(visit) => { const saved: Visit = { ...visit, id: `visit-${Date.now()}`, physioId: workspace.currentPhysioId, visitNumber: formatSequentialId('VIS', workspace.workspaceVisits.length + 1) }; workspace.setVisits((current) => [...current, saved]); setShowVisitForm(false); }} /> : <VisitsPage visits={workspace.workspaceVisits} patients={workspace.workspacePatients} onAdd={() => setShowVisitForm(true)} />;
@@ -831,15 +941,32 @@ function Dashboard({ workspace }: { workspace: WorkspaceState }) {
   return <div className="space-y-7"><div className="relative overflow-hidden rounded-[24px] bg-primary px-6 py-8 text-primary-foreground"><p className="text-xs font-extrabold uppercase tracking-[.16em]">Authenticated workspace</p><h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">A clear desk for better care.</h2><p className="mt-3 max-w-xl text-sm text-primary-foreground/75">Your identity, profile and settings are backed by Supabase Auth, Postgres and RLS. Clinical data migration follows in the next production phase.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Outstanding" value={money(outstanding)} icon={WalletCards} /><StatCard label="Today’s visits" value={String(todaysVisits.length)} icon={CalendarDays} /><StatCard label="Active patients" value={String(workspace.workspacePatients.length)} icon={UsersRound} /><StatCard label="Billed" value={money(billed)} icon={ReceiptIndianRupee} /></div><div className="grid gap-6 xl:grid-cols-2"><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent visits</h3><div className="mt-4 space-y-3">{workspace.workspaceVisits.slice(-5).reverse().map((visit) => <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><p className="font-bold">{workspace.workspacePatients.find((p) => p.id === visit.patientId)?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(visit.date)} · {visit.treatment}</p></div>)}</div></section><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent invoices</h3><div className="mt-4 space-y-3">{workspace.workspaceInvoices.slice(-5).reverse().map((invoice) => <div key={invoice.id} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4"><div><p className="font-bold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.status}</p></div><p className="font-extrabold">{money(invoice.total)}</p></div>)}</div></section></div></div>;
 }
 
-function PatientsPage({ patients, visits, invoices, onAdd }: { patients: Patient[]; visits: Visit[]; invoices: Invoice[]; onAdd: () => void }) {
+function PatientsPage({ patients, visits, invoices, loading, onAdd, onEdit, onDelete }: { patients: Patient[]; visits: Visit[]; invoices: Invoice[]; loading: boolean; onAdd: () => void; onEdit: (patient: Patient) => void; onDelete: (patient: Patient) => Promise<void> }) {
   const [search, setSearch] = useState('');
   const filtered = patients.filter((patient) => [patient.name, patient.phone, patient.patientNumber, patient.condition].join(' ').toLowerCase().includes(search.toLowerCase()));
-  return <div><PageHeader eyebrow="Patient directory" title="Patients" description="Only patients belonging to the current physiotherapist workspace are shown." action={<Button onClick={onAdd}><Plus size={16} /> Add patient</Button>} /><div className="mb-4 relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" placeholder="Search patients..." /></div><div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((patient) => { const visitCount = visits.filter((visit) => visit.patientId === patient.id).length; const outstanding = invoices.filter((invoice) => invoice.patientId === patient.id).reduce((sum, invoice) => sum + Math.max(invoice.total - invoice.paid, 0), 0); return <div key={patient.id} className="grid gap-3 p-5 md:grid-cols-[1.4fr_1fr_1fr] md:items-center"><div><p className="font-extrabold">{patient.name}</p><p className="text-xs text-muted-foreground">{patient.patientNumber}</p></div><div><p className="text-sm">{patient.condition || '—'}</p><p className="text-xs text-muted-foreground">{visitCount} visits</p></div><div className="md:text-right"><p className="font-bold">{money(outstanding)}</p><p className="text-xs text-muted-foreground">outstanding</p></div></div>; })}</div></div>;
+  return <div><PageHeader eyebrow="Patient directory" title="Patients" description="Patient records are stored in the authenticated physiotherapist workspace and protected by database RLS." action={<Button onClick={onAdd}><Plus size={16} /> Add patient</Button>} /><div className="mb-4 relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" placeholder="Search patients..." /></div>{loading ? <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading patients…</div> : <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((patient) => { const visitCount = visits.filter((visit) => visit.patientId === patient.id).length; const outstanding = invoices.filter((invoice) => invoice.patientId === patient.id).reduce((sum, invoice) => sum + Math.max(invoice.total - invoice.paid, 0), 0); return <div key={patient.id} className="grid gap-3 p-5 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-center"><div><p className="font-extrabold">{patient.name}</p><p className="text-xs text-muted-foreground">{patient.patientNumber}</p></div><div><p className="text-sm">{patient.condition || '—'}</p><p className="text-xs text-muted-foreground">{visitCount} visits</p></div><div className="md:text-right"><p className="font-bold">{money(outstanding)}</p><p className="text-xs text-muted-foreground">outstanding</p></div><div className="flex gap-1 md:justify-end"><Button variant="ghost" onClick={() => onEdit(patient)}><Pencil size={15} /> Edit</Button><Button variant="danger" onClick={() => void onDelete(patient)}><X size={15} /> Delete</Button></div></div>; })}{filtered.length === 0 && <div className="p-6 text-sm text-muted-foreground">No patients found.</div>}</div>}</div>;
 }
 
-function PatientForm({ onSave, onCancel }: { onSave: (patient: Patient) => void; onCancel: () => void }) {
-  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [email, setEmail] = useState(''); const [condition, setCondition] = useState('');
-  return <div className="rounded-2xl border bg-card p-6"><PageHeader eyebrow="New record" title="Add patient" /><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={name} onChange={(e) => setName(e.target.value)} /><Field label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} /><Field label="Email" value={email} onChange={(e) => setEmail(e.target.value)} /><Field label="Condition" value={condition} onChange={(e) => setCondition(e.target.value)} /></div><div className="mt-6 flex justify-end gap-2"><Button variant="ghost" onClick={onCancel}>Cancel</Button><Button disabled={!name.trim()} onClick={() => onSave({ id: '', physioId: undefined, userId: undefined, patientNumber: '', name: name.trim(), phone: phone.trim(), email: email.trim(), address: '', age: '', condition: condition.trim(), referringDoctor: '', referralDate: '', insuranceTpa: '', policyMemberId: '', notes: '' })}><Check size={16} /> Save</Button></div></div>;
+function PatientForm({ initialPatient, onSave, onCancel }: { initialPatient?: Patient | null; onSave: (patient: Patient) => Promise<void>; onCancel: () => void }) {
+  const [name, setName] = useState(initialPatient?.name ?? '');
+  const [phone, setPhone] = useState(initialPatient?.phone ?? '');
+  const [email, setEmail] = useState(initialPatient?.email ?? '');
+  const [condition, setCondition] = useState(initialPatient?.condition ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const base: Patient = initialPatient ?? { id: '', physioId: undefined, userId: undefined, patientNumber: '', name: '', phone: '', email: '', address: '', age: '', condition: '', referringDoctor: '', referralDate: '', insuranceTpa: '', policyMemberId: '', notes: '' };
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave({ ...base, name: name.trim(), phone: phone.trim(), email: email.trim(), condition: condition.trim() });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to save patient.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <div className="rounded-2xl border bg-card p-6"><PageHeader eyebrow={initialPatient ? 'Patient record' : 'New record'} title={initialPatient ? 'Edit patient' : 'Add patient'} /><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={name} onChange={(e) => setName(e.target.value)} /><Field label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} /><Field label="Email" value={email} onChange={(e) => setEmail(e.target.value)} /><Field label="Condition" value={condition} onChange={(e) => setCondition(e.target.value)} /></div>{error && <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}<div className="mt-6 flex justify-end gap-2"><Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button><Button disabled={busy || !name.trim()} onClick={() => void save()}><Check size={16} /> {busy ? 'Saving…' : 'Save'}</Button></div></div>;
 }
 
 function VisitsPage({ visits, patients, onAdd }: { visits: Visit[]; patients: Patient[]; onAdd: () => void }) {

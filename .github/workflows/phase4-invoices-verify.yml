@@ -8,7 +8,11 @@ on:
       - src/main.tsx
       - src/Components/InvoiceGateway.tsx
       - src/lib/invoices.ts
+      - src/lib/payments.ts
+      - src/lib/payment-corrections.ts
       - supabase/migrations/202608210006_invoice_authority.sql
+      - supabase/migrations/202608210008_real_payments.sql
+      - supabase/migrations/202608210009_payment_corrections.sql
       - .github/workflows/phase4-invoices-verify.yml
 
 permissions:

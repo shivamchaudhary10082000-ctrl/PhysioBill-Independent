@@ -77,6 +77,21 @@ export async function loadTreatmentEpisodes(): Promise<TreatmentEpisode[]> {
   return (data as TreatmentEpisodeRow[]).map(mapEpisode);
 }
 
+export async function loadTreatmentEpisodesForPatient(patientId: string): Promise<TreatmentEpisode[]> {
+  const bootstrap = await resolveAuthenticatedPhysiotherapist();
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('treatment_episodes')
+    .select(episodeColumns)
+    .eq('physio_id', bootstrap.physioId)
+    .eq('patient_id', patientId)
+    .order('started_at', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data as TreatmentEpisodeRow[]).map(mapEpisode);
+}
+
 export async function createTreatmentEpisode(input: {
   patientId: string;
   title: string;

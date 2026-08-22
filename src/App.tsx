@@ -35,10 +35,13 @@ import { TooltipProvider } from '@/Components/ui/tooltip';
 import { PatientFinancialLedgerPage } from '@/Components/PatientFinancialLedgerGateway';
 import { PatientPeriodAnalytics } from '@/Components/PatientPeriodAnalytics';
 import { TreatmentEpisodeStatusCell } from '@/Components/TreatmentEpisodeStatusCell';
+import { ClinicalRecordsGateway } from '@/Components/ClinicalRecordsGateway';
+import { InvoiceGateway } from '@/Components/InvoiceGateway';
+import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
 import { AuthPage } from '@/pages/AuthPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { useAuthSession } from '@/hooks/use-auth-session';
-import { PASSWORD_RECOVERY_PATH, signOutPhysiotherapist } from '@/lib/auth';
+import { PASSWORD_RECOVERY_PATH } from '@/lib/auth';
 import {
   loadProductionWorkspace,
   saveProductionProfile,
@@ -814,7 +817,7 @@ const physioNav = [
 function AppShell({ workspace, children }: { workspace: WorkspaceState; children: ReactNode }) {
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  return <div className="min-h-screen bg-background lg:flex"><aside className="hidden w-[238px] shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground lg:flex"><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold ${location.startsWith(href) ? 'bg-sidebar-accent' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/70'}`}><Icon size={18} /> {label}</Link>)}</nav><div className="mt-auto rounded-2xl bg-sidebar-accent/55 p-3.5"><p className="font-bold">{workspace.profile.fullName || workspace.authUser.displayName}</p><p className="mt-1 text-xs text-sidebar-foreground/60">Authenticated private workspace</p><button type="button" onClick={() => void signOutPhysiotherapist()} className="mt-3 inline-flex items-center gap-2 text-xs font-bold"><LogOut size={14} /> Sign out</button></div></aside><div className="min-w-0 flex-1"><header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-md sm:px-7"><div className="flex items-center gap-3"><button type="button" className="rounded-xl p-2 lg:hidden" onClick={() => setMenuOpen(true)}><Menu size={20} /></button><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">PhysioBill</p><p className="text-lg font-extrabold">{workspace.settings.practiceName || 'Clinical workspace'}</p></div></div><div className="flex items-center gap-2"><Bell size={18} className="text-muted-foreground" /><span className="grid size-9 place-items-center rounded-xl bg-primary text-xs font-extrabold text-primary-foreground">{initials(workspace.profile.fullName || workspace.authUser.displayName)}</span></div></header><main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">{workspace.persistenceError && <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{workspace.persistenceError}</div>}{children}</main></div>{menuOpen && <div className="fixed inset-0 z-50 bg-foreground/50 lg:hidden"><aside className="relative z-[60] h-full w-[280px] bg-background p-5 text-foreground shadow-2xl"><button type="button" className="mb-5 ml-auto block" onClick={() => setMenuOpen(false)}><X size={20} /></button><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-secondary"><Icon size={18} /> {label}</Link>)}</nav></aside></div>}</div>;
+  return <div className="min-h-screen bg-background lg:flex"><aside className="hidden w-[238px] shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground lg:flex"><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold ${location.startsWith(href) ? 'bg-sidebar-accent' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/70'}`}><Icon size={18} /> {label}</Link>)}</nav><div className="mt-auto rounded-2xl bg-sidebar-accent/55 p-3.5"><p className="font-bold">{workspace.profile.fullName || workspace.authUser.displayName}</p><p className="mt-1 text-xs text-sidebar-foreground/60">Authenticated private workspace</p><WorkspaceSignOut className="mt-3 text-xs font-bold" /></div></aside><div className="min-w-0 flex-1"><header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-md sm:px-7"><div className="flex items-center gap-3"><button type="button" className="rounded-xl p-2 lg:hidden" onClick={() => setMenuOpen(true)}><Menu size={20} /></button><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">PhysioBill</p><p className="text-lg font-extrabold">{workspace.settings.practiceName || 'Clinical workspace'}</p></div></div><div className="flex items-center gap-2"><Bell size={18} className="text-muted-foreground" /><span className="grid size-9 place-items-center rounded-xl bg-primary text-xs font-extrabold text-primary-foreground">{initials(workspace.profile.fullName || workspace.authUser.displayName)}</span></div></header><main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">{workspace.persistenceError && <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{workspace.persistenceError}</div>}{children}</main></div>{menuOpen && <div className="fixed inset-0 z-50 bg-foreground/50 lg:hidden"><aside className="relative z-[60] flex h-full w-[280px] flex-col bg-background p-5 text-foreground shadow-2xl"><button type="button" className="mb-5 ml-auto block" onClick={() => setMenuOpen(false)}><X size={20} /></button><Brand /><nav className="mt-8 space-y-1">{physioNav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold hover:bg-secondary"><Icon size={18} /> {label}</Link>)}</nav><div className="mt-auto border-t pt-4"><WorkspaceSignOut className="w-full rounded-xl bg-secondary px-3 py-3 text-sm font-semibold" /></div></aside></div>}</div>;
 }
 
 function Brand() { return <Link href="/app/dashboard" className="flex items-center gap-3 px-2 py-2"><span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground"><HeartPulse size={21} /></span><strong>Physio<span className="text-sidebar-primary">Bill</span></strong></Link>; }
@@ -1068,19 +1071,23 @@ function ApplicationRouter() {
   }
   if (!auth.user) return <AuthPage notice={authNotice} />;
   if (workspaceError) {
-    return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border border-destructive/20 bg-card p-6"><h1 className="font-extrabold text-destructive">Unable to open your workspace</h1><p className="mt-2 text-sm text-muted-foreground">{workspaceError}</p><button type="button" onClick={() => void signOutPhysiotherapist()} className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Sign out</button></div></div>;
+    return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border border-destructive/20 bg-card p-6"><h1 className="font-extrabold text-destructive">Unable to open your workspace</h1><p className="mt-2 text-sm text-muted-foreground">{workspaceError}</p><WorkspaceSignOut className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground" /></div></div>;
   }
   if (!workspace) {
     return <div className="grid min-h-screen place-items-center text-sm font-semibold text-muted-foreground">Opening your private workspace…</div>;
   }
 
   return (
-    <WorkspaceController
-      authUser={workspace.authUser}
-      currentPhysioId={workspace.physioId}
-      initialProfile={workspace.profile}
-      initialSettings={workspace.settings}
-    />
+    <InvoiceGateway>
+      <ClinicalRecordsGateway>
+        <WorkspaceController
+          authUser={workspace.authUser}
+          currentPhysioId={workspace.physioId}
+          initialProfile={workspace.profile}
+          initialSettings={workspace.settings}
+        />
+      </ClinicalRecordsGateway>
+    </InvoiceGateway>
   );
 }
 

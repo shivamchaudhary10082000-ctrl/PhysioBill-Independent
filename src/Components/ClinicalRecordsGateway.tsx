@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ClipboardList, FileText } from 'lucide-react';
+import { ClipboardList, FileText } from 'lucide-react';
 import { ClinicalRecordPage } from '@/Components/ClinicalRecordPageProduction';
+import { GatewaySessionControls } from '@/Components/WorkspaceSessionControls';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import { loadVisits, type ProductionVisit } from '@/lib/visits';
 
@@ -15,6 +16,17 @@ function dateLabel(value: string) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(`${value}T00:00:00`));
+}
+
+function ClinicalRecordsGatewayFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10">
+        <GatewaySessionControls backPath="/app/visits" backLabel="Back to visits" />
+        {children}
+      </main>
+    </div>
+  );
 }
 
 export function ClinicalRecordsGateway({ children }: { children: ReactNode }) {
@@ -71,16 +83,15 @@ export function ClinicalRecordsGateway({ children }: { children: ReactNode }) {
     </>;
   }
 
-  if (loading) return <div className="min-h-screen bg-background p-6"><div className="mx-auto max-w-6xl rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading clinical records…</div></div>;
+  if (loading) return <ClinicalRecordsGatewayFrame><div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading clinical records…</div></ClinicalRecordsGatewayFrame>;
 
-  if (error) return <div className="min-h-screen bg-background p-6"><div className="mx-auto max-w-6xl"><button type="button" onClick={() => navigate('/app/visits')} className="mb-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to visits</button><div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div></div></div>;
+  if (error) return <ClinicalRecordsGatewayFrame><div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div></ClinicalRecordsGatewayFrame>;
 
   if (selectedVisit && selectedPatient) {
-    return <div className="min-h-screen bg-background"><main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10"><ClinicalRecordPage patient={selectedPatient} visit={selectedVisit} patientVisits={patientVisits} onBack={() => navigate('/app/clinical-records')} /></main></div>;
+    return <ClinicalRecordsGatewayFrame><ClinicalRecordPage patient={selectedPatient} visit={selectedVisit} patientVisits={patientVisits} onBack={() => navigate('/app/clinical-records')} /></ClinicalRecordsGatewayFrame>;
   }
 
-  return <div className="min-h-screen bg-background"><main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10">
-    <button type="button" onClick={() => navigate('/app/visits')} className="mb-5 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to visits</button>
+  return <ClinicalRecordsGatewayFrame>
     <div className="mb-6 rounded-[24px] bg-primary px-6 py-7 text-primary-foreground"><p className="text-[10px] font-extrabold uppercase tracking-[.16em]">Phase 3 · Clinical records</p><h1 className="mt-2 text-3xl font-extrabold">Patient → Visit → Clinical Record</h1><p className="mt-2 max-w-2xl text-sm text-primary-foreground/75">Choose an existing real Visit. Each record is persisted in Supabase and remains linked to that Visit for longitudinal review.</p></div>
     <div className="overflow-hidden rounded-2xl border bg-card divide-y">
       {visits.slice().sort((a, b) => b.date.localeCompare(a.date)).map((visit) => {
@@ -89,5 +100,5 @@ export function ClinicalRecordsGateway({ children }: { children: ReactNode }) {
       })}
       {!visits.length && <div className="p-6 text-sm text-muted-foreground">No visits recorded yet. Create a Visit first.</div>}
     </div>
-  </main></div>;
+  </ClinicalRecordsGatewayFrame>;
 }

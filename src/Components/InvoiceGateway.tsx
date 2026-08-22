@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, FileText, Plus, RotateCcw, Search, ShieldCheck, WalletCards } from 'lucide-react';
+import { GatewaySessionControls } from '@/Components/WorkspaceSessionControls';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import {
   createInvoice,
@@ -72,6 +73,17 @@ const toDraft = (invoice: ProductionInvoice): Draft => ({
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const calculatePreview = (draft: Draft) => Math.max(0, Math.round((draft.fee + draft.additional - draft.discount) * (1 + draft.gstRate / 100) * 100) / 100);
 const dateTimeLabel = (value: string) => new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+
+function InvoiceGatewayFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10">
+        <GatewaySessionControls backPath="/app/dashboard" backLabel="Back to Overview" />
+        {children}
+      </main>
+    </div>
+  );
+}
 
 function Field({ label, value, onChange, type = 'text', disabled = false }: { label: string; value: string | number; onChange: (value: string) => void; type?: string; disabled?: boolean }) {
   return <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{label}</span><input disabled={disabled} type={type} value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:bg-muted/40 disabled:opacity-100" /></label>;
@@ -277,14 +289,14 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   const filtered = useMemo(() => invoices.filter((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return [invoice.number, invoice.description, invoice.status, patient?.name ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()); }), [invoices, patients, search]);
 
   if (!isInvoiceRoute) return <>{children}</>;
-  if (loading) return <div className="min-h-screen bg-background p-6"><div className="mx-auto max-w-6xl rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading invoices…</div></div>;
-  if (error) return <div className="min-h-screen bg-background p-6"><div className="mx-auto max-w-6xl rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div></div>;
+  if (loading) return <InvoiceGatewayFrame><div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading invoices…</div></InvoiceGatewayFrame>;
+  if (error) return <InvoiceGatewayFrame><div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div></InvoiceGatewayFrame>;
 
-  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <div className="min-h-screen bg-background"><main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10"><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => setSelected(null)} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></main></div>; }
+  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <InvoiceGatewayFrame><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => setSelected(null)} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></InvoiceGatewayFrame>; }
 
-  return <div className="min-h-screen bg-background"><main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10">
+  return <InvoiceGatewayFrame>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Phase 4 · Real invoices</p><h1 className="mt-1 text-3xl font-extrabold">Invoices</h1><p className="mt-2 text-sm text-muted-foreground">Finalized invoices use append-only payments with separate audited correction/reversal transactions.</p></div><button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button></div>
     <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search invoices…" className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" /></div>
     <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return <button key={invoice.id} onClick={() => setSelected(invoice)} className="grid w-full gap-3 p-5 text-left hover:bg-secondary/40 md:grid-cols-[1fr_1.3fr_.8fr_.8fr_auto] md:items-center"><div><p className="font-extrabold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.description}</p></div><p>{patient?.name ?? 'Patient'}</p><p className="font-bold">{money(invoice.total)}</p><p className="text-sm">{invoice.status}</p><span className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><FileText size={15} /> Open</span></button>; })}{!filtered.length && <div className="p-6 text-sm text-muted-foreground">{patients.length ? 'No real invoices yet.' : 'Create a Patient before creating an invoice.'}</div>}</div>
-  </main></div>;
+  </InvoiceGatewayFrame>;
 }

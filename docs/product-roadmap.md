@@ -13,6 +13,20 @@ This roadmap records future requirements only. Unless explicitly stated otherwis
 - Accepted/completed appointments should eventually feed the existing production chain: Patient → Visit → Clinical Record → Invoice → Payment.
 - Discovery/booking must preserve physiotherapist ownership isolation and the production authority model.
 
+## Patient & Therapist Platform Identifiers
+
+Future visible identifiers should use unambiguous platform-specific prefixes:
+- Patient visible ID: `PAT-YYYY-NNNNNN`;
+- Therapist platform ID: `PHY-YYYY-NNNNNN`.
+
+`PT-` must not be used as the future Patient-facing identifier because PT can mean Physiotherapist / Physical Therapist in clinical and mediclaim contexts.
+
+Existing Patient identifiers must eventually be migrated safely without breaking Patient → Visit → Invoice → Payment → Ledger relationships, immutable financial audit history, or ownership/RLS relationships.
+
+Therapist platform IDs should later support registration/activity analytics, including registered, verified and active therapists by month/year. "Active therapist" must be defined by a meaningful-activity criterion rather than simply counting registrations.
+
+This identifier migration and therapist analytics are roadmap requirements only and are not implemented in the current UX repair.
+
 ## Patient Directory & Treatment Episode Analytics
 
 Future architecture should add an explicit authoritative treatment-episode model before monthly/yearly treatment analytics are shown. It should support:

@@ -1,0 +1,61 @@
+name: Slice 5 UX Repair
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: futureweb-production-backend
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Patch Patient Directory UX seams
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/App.tsx')
+          text = path.read_text()
+
+          old_search = '''<input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full rounded-xl border bg-card pl-10 pr-10 text-sm" placeholder="Search by Patient name or record number..." />'''
+          new_search = '''<input type="text" value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full appearance-none rounded-xl border bg-card pl-10 pr-10 text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden" placeholder="Search by Patient name or record number..." />'''
+          if text.count(old_search) != 1:
+              raise SystemExit(f'Patient search seam count was {text.count(old_search)}; refusing edit.')
+          text = text.replace(old_search, new_search, 1)
+
+          old_visits = '''<p className="text-xs text-muted-foreground">{visitCount} visits</p>'''
+          new_visits = '''<p className="text-xs text-muted-foreground">{visitCount} {visitCount === 1 ? 'visit' : 'visits'}</p>'''
+          if text.count(old_visits) != 1:
+              raise SystemExit(f'Patient visit grammar seam count was {text.count(old_visits)}; refusing edit.')
+          text = text.replace(old_visits, new_visits, 1)
+          path.write_text(text)
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Production typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Commit verified UX repair
+        run: |
+          rm .github/workflows/slice5-ux-repair.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx .github/workflows/slice5-ux-repair.yml
+          git commit -m "Complete Slice 5 browser acceptance UX repair"
+          git push origin HEAD:futureweb-production-backend

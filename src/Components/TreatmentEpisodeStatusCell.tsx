@@ -9,6 +9,7 @@ import {
 } from '@/lib/treatment-episodes';
 
 const today = new Date().toISOString().slice(0, 10);
+type MutableTreatmentEpisodeStatus = Exclude<TreatmentEpisodeStatus, 'LEGACY_UNSPECIFIED'>;
 
 function label(status: TreatmentEpisodeStatus) {
   if (status === 'ONGOING') return 'Ongoing';
@@ -45,7 +46,7 @@ export function TreatmentEpisodeStatusCell({
       : 'Other',
   );
   const [startedAt, setStartedAt] = useState(today);
-  const [nextStatus, setNextStatus] = useState<'RECOVERED_DISCHARGED' | 'LEFT_DISCONTINUED'>('RECOVERED_DISCHARGED');
+  const [nextStatus, setNextStatus] = useState<MutableTreatmentEpisodeStatus | ''>('');
   const [note, setNote] = useState('');
 
   const reload = async () => {
@@ -65,6 +66,7 @@ export function TreatmentEpisodeStatusCell({
 
   const current = useMemo(() => episodes[0] ?? null, [episodes]);
   const hasOngoing = episodes.some((episode) => episode.status === 'ONGOING');
+  const classifyingLegacy = current?.status === 'LEGACY_UNSPECIFIED';
 
   const startEpisode = async () => {
     setBusy(true); setError('');
@@ -77,28 +79,28 @@ export function TreatmentEpisodeStatusCell({
     } finally { setBusy(false); }
   };
 
-  const setLegacyOngoing = async () => {
-    if (!current) return;
+  const saveStatus = async () => {
+    if (!current || !nextStatus) return;
     setBusy(true); setError('');
     try {
-      await transitionTreatmentEpisode(current.id, 'ONGOING');
+      await transitionTreatmentEpisode(current.id, nextStatus, nextStatus === 'ONGOING' ? '' : note);
       await reload();
-      setMode('idle');
+      setMode('idle'); setNextStatus(''); setNote('');
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : 'Unable to update treatment status.');
     } finally { setBusy(false); }
   };
 
-  const finishEpisode = async () => {
-    if (!current) return;
-    setBusy(true); setError('');
-    try {
-      await transitionTreatmentEpisode(current.id, nextStatus, note);
-      await reload();
-      setMode('idle'); setNote('');
-    } catch (caught: unknown) {
-      setError(caught instanceof Error ? caught.message : 'Unable to update treatment status.');
-    } finally { setBusy(false); }
+  const openLegacyClassification = () => {
+    setNextStatus('');
+    setNote('');
+    setMode('status');
+  };
+
+  const openStatusChange = () => {
+    setNextStatus('RECOVERED_DISCHARGED');
+    setNote('');
+    setMode('status');
   };
 
   if (loading) return <p className="text-xs text-muted-foreground">Loading treatment status…</p>;
@@ -107,14 +109,13 @@ export function TreatmentEpisodeStatusCell({
     {current ? <>
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${badgeClass(current.status)}`}>{label(current.status)}</span>
-        <span className="text-xs text-muted-foreground">{current.title} · {current.category}</span>
       </div>
       {current.dischargeNote && <p className="text-xs text-muted-foreground">Note: {current.dischargeNote}</p>}
     </> : <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-extrabold text-muted-foreground">No treatment episode</span>}
 
     {mode === 'idle' && <div className="flex flex-wrap gap-2">
-      {current?.status === 'LEGACY_UNSPECIFIED' && <button type="button" disabled={busy} onClick={() => void setLegacyOngoing()} className="text-xs font-bold text-primary">Mark Ongoing</button>}
-      {(current?.status === 'ONGOING' || current?.status === 'LEGACY_UNSPECIFIED') && <button type="button" disabled={busy} onClick={() => setMode('status')} className="text-xs font-bold text-primary">Change status</button>}
+      {current?.status === 'LEGACY_UNSPECIFIED' && <button type="button" disabled={busy} onClick={openLegacyClassification} className="text-xs font-bold text-primary">Classify historical episode</button>}
+      {current?.status === 'ONGOING' && <button type="button" disabled={busy} onClick={openStatusChange} className="text-xs font-bold text-primary">Change status</button>}
       {current && !hasOngoing && current.status !== 'LEGACY_UNSPECIFIED' && <button type="button" disabled={busy} onClick={() => setMode('start')} className="text-xs font-bold text-primary">Start new episode</button>}
       {!current && <button type="button" disabled={busy} onClick={() => setMode('start')} className="text-xs font-bold text-primary">Start treatment episode</button>}
     </div>}
@@ -129,9 +130,14 @@ export function TreatmentEpisodeStatusCell({
     </div>}
 
     {mode === 'status' && current && <div className="grid gap-2 rounded-xl border bg-secondary/30 p-3">
-      <select value={nextStatus} onChange={(event) => setNextStatus(event.target.value as typeof nextStatus)} className="h-9 rounded-lg border bg-card px-3 text-xs"><option value="RECOVERED_DISCHARGED">Recovered / Discharged</option><option value="LEFT_DISCONTINUED">Left / Discontinued</option></select>
-      <input value={note} onChange={(event) => setNote(event.target.value)} className="h-9 rounded-lg border bg-card px-3 text-xs" placeholder="Optional discharge/discontinuation note" />
-      <div className="flex gap-2"><button type="button" disabled={busy} onClick={() => void finishEpisode()} className="text-xs font-bold text-primary">{busy ? 'Saving…' : 'Save status'}</button><button type="button" disabled={busy} onClick={() => setMode('idle')} className="text-xs font-bold text-muted-foreground">Cancel</button></div>
+      <select value={nextStatus} onChange={(event) => setNextStatus(event.target.value as MutableTreatmentEpisodeStatus | '')} className="h-9 rounded-lg border bg-card px-3 text-xs">
+        {classifyingLegacy && <option value="">Choose historical classification…</option>}
+        {classifyingLegacy && <option value="ONGOING">Ongoing</option>}
+        <option value="RECOVERED_DISCHARGED">Recovered / Discharged</option>
+        <option value="LEFT_DISCONTINUED">Left / Discontinued</option>
+      </select>
+      {nextStatus !== 'ONGOING' && <input value={note} onChange={(event) => setNote(event.target.value)} className="h-9 rounded-lg border bg-card px-3 text-xs" placeholder="Optional discharge/discontinuation note" />}
+      <div className="flex gap-2"><button type="button" disabled={busy || !nextStatus} onClick={() => void saveStatus()} className="text-xs font-bold text-primary">{busy ? 'Saving…' : classifyingLegacy ? 'Save classification' : 'Save status'}</button><button type="button" disabled={busy} onClick={() => { setMode('idle'); setNextStatus(''); setNote(''); }} className="text-xs font-bold text-muted-foreground">Cancel</button></div>
     </div>}
 
     {error && <p className="text-xs text-destructive">{error}</p>}

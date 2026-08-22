@@ -6,6 +6,8 @@ export type AuthSessionState = {
   user: User | null;
 };
 
+export const PASSWORD_RECOVERY_PATH = '/auth/reset-password';
+
 export async function getAuthSession(): Promise<AuthSessionState> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.getSession();
@@ -52,8 +54,12 @@ export async function signOutPhysiotherapist() {
   if (error) throw error;
 }
 
-export async function requestPasswordReset(email: string, redirectTo: string) {
+export async function requestPasswordReset(email: string) {
   const supabase = getSupabaseClient();
+  const redirectTo = new URL(
+    PASSWORD_RECOVERY_PATH,
+    window.location.origin,
+  ).toString();
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo,
   });

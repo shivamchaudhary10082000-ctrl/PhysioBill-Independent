@@ -8,6 +8,7 @@ export type AuthSessionView = {
   configured: boolean;
   session: Session | null;
   user: User | null;
+  passwordRecovery: boolean;
   error: string | null;
 };
 
@@ -17,6 +18,7 @@ export function useAuthSession(): AuthSessionView {
     configured: isSupabaseConfigured,
     session: null,
     user: null,
+    passwordRecovery: false,
     error: null,
   });
 
@@ -25,38 +27,48 @@ export function useAuthSession(): AuthSessionView {
 
     let active = true;
 
-    getAuthSession()
-      .then(({ session, user }) => {
-        if (!active) return;
-        setState({
-          loading: false,
-          configured: true,
-          session,
-          user,
-          error: null,
-        });
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setState({
-          loading: false,
-          configured: true,
-          session: null,
-          user: null,
-          error: error instanceof Error ? error.message : 'Unable to restore the session.',
-        });
-      });
-
-    const unsubscribe = onAuthSessionChange((_event, session) => {
+    // Subscribe before restoring the session so the one-time recovery event
+    // emitted while Supabase processes the callback cannot be missed.
+    const unsubscribe = onAuthSessionChange((event, session) => {
       if (!active) return;
-      setState({
+      setState((current) => ({
         loading: false,
         configured: true,
         session,
         user: session?.user ?? null,
+        passwordRecovery:
+          event === 'PASSWORD_RECOVERY'
+            ? true
+            : event === 'SIGNED_OUT'
+              ? false
+              : current.passwordRecovery,
         error: null,
-      });
+      }));
     });
+
+    getAuthSession()
+      .then(({ session, user }) => {
+        if (!active) return;
+        setState((current) => ({
+          loading: false,
+          configured: true,
+          session,
+          user,
+          passwordRecovery: current.passwordRecovery,
+          error: null,
+        }));
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setState((current) => ({
+          loading: false,
+          configured: true,
+          session: null,
+          user: null,
+          passwordRecovery: current.passwordRecovery,
+          error: error instanceof Error ? error.message : 'Unable to restore the session.',
+        }));
+      });
 
     return () => {
       active = false;

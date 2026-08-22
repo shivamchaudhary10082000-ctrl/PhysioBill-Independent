@@ -36,8 +36,9 @@ import { PatientFinancialLedgerPage } from '@/Components/PatientFinancialLedgerG
 import { PatientPeriodAnalytics } from '@/Components/PatientPeriodAnalytics';
 import { TreatmentEpisodeStatusCell } from '@/Components/TreatmentEpisodeStatusCell';
 import { AuthPage } from '@/pages/AuthPage';
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { useAuthSession } from '@/hooks/use-auth-session';
-import { signOutPhysiotherapist } from '@/lib/auth';
+import { PASSWORD_RECOVERY_PATH, signOutPhysiotherapist } from '@/lib/auth';
 import {
   loadProductionWorkspace,
   saveProductionProfile,
@@ -994,12 +995,21 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
 function ApplicationRouter() {
   const auth = useAuthSession();
+  const [location, navigate] = useLocation();
   const [workspace, setWorkspace] = useState<ProductionWorkspace | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [recoveryCallbackDetected, setRecoveryCallbackDetected] = useState(
+    () => new URLSearchParams(window.location.hash.slice(1)).get('type') === 'recovery',
+  );
+  const recoveryMode =
+    auth.passwordRecovery ||
+    recoveryCallbackDetected ||
+    location === PASSWORD_RECOVERY_PATH;
 
   useEffect(() => {
     let active = true;
-    if (!auth.user) {
+    if (!auth.user || recoveryMode) {
       setWorkspace(null);
       setWorkspaceError(null);
       return () => {
@@ -1023,7 +1033,11 @@ function ApplicationRouter() {
     return () => {
       active = false;
     };
-  }, [auth.user?.id]);
+  }, [auth.user?.id, recoveryMode]);
+
+  useEffect(() => {
+    if (auth.user && !recoveryMode) setAuthNotice(null);
+  }, [auth.user?.id, recoveryMode]);
 
   if (!auth.configured) {
     return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border bg-card p-6"><h1 className="font-extrabold">Supabase configuration required</h1><p className="mt-2 text-sm text-muted-foreground">The public Supabase URL and publishable key are not available to this deployment.</p></div></div>;
@@ -1031,10 +1045,28 @@ function ApplicationRouter() {
   if (auth.loading) {
     return <div className="grid min-h-screen place-items-center text-sm font-semibold text-muted-foreground">Restoring secure session…</div>;
   }
+  if (recoveryMode) {
+    return (
+      <ResetPasswordPage
+        recoveryReady={auth.passwordRecovery && Boolean(auth.user)}
+        recoveryError={auth.error}
+        onComplete={() => {
+          setRecoveryCallbackDetected(false);
+          navigate('/', { replace: true });
+          setAuthNotice('Password updated. Sign in with your new password.');
+        }}
+        onCancel={() => {
+          setRecoveryCallbackDetected(false);
+          navigate('/', { replace: true });
+          setAuthNotice(null);
+        }}
+      />
+    );
+  }
   if (auth.error) {
     return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border border-destructive/20 bg-card p-6"><h1 className="font-extrabold text-destructive">Unable to restore session</h1><p className="mt-2 text-sm text-muted-foreground">{auth.error}</p></div></div>;
   }
-  if (!auth.user) return <AuthPage />;
+  if (!auth.user) return <AuthPage notice={authNotice} />;
   if (workspaceError) {
     return <div className="grid min-h-screen place-items-center p-6"><div className="max-w-lg rounded-2xl border border-destructive/20 bg-card p-6"><h1 className="font-extrabold text-destructive">Unable to open your workspace</h1><p className="mt-2 text-sm text-muted-foreground">{workspaceError}</p><button type="button" onClick={() => void signOutPhysiotherapist()} className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">Sign out</button></div></div>;
   }

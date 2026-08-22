@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Search, WalletCards } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Search, WalletCards, X } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import { loadVisits, type ProductionVisit } from '@/lib/visits';
@@ -128,7 +128,7 @@ export function PatientFinancialLedgerPage() {
 
   return <div>
     <div className="mb-6"><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Phase 4 · Read-only financial ledger</p><h2 className="mt-1 text-2xl font-extrabold tracking-tight">Financial Ledger</h2><p className="mt-1 text-sm text-muted-foreground">Search a Patient to open a dedicated authoritative invoice, payment and correction history.</p></div>
-    <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" placeholder="Search by Patient name or record number…" /></div>
+    <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full rounded-xl border bg-card pl-10 pr-10 text-sm" placeholder="Search by Patient name or record number…" />{search && <button type="button" aria-label="Clear search" onClick={() => setSearch('')} className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"><X size={16} /></button>}</div>
     {error && <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
     {loading ? <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading Patients…</div> : <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filteredPatients.map((item) => <button key={item.id} type="button" onClick={() => setLocation(`/app/financial-ledger/${encodeURIComponent(item.id)}`)} className="w-full p-4 text-left hover:bg-secondary/50"><p className="font-extrabold">{item.name}</p><PatientContext patient={item} therapyStart={starts.get(item.id)} /></button>)}{!filteredPatients.length && <div className="p-6 text-sm text-muted-foreground">No matching Patients found.</div>}</div>}
     {!search.trim() && patients.length > 8 && <p className="mt-3 text-xs text-muted-foreground">Showing the first 8 Patients. Search by name or record number to find others.</p>}

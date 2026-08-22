@@ -29,10 +29,12 @@ export function TreatmentEpisodeStatusCell({
   patientId,
   defaultTitle,
   defaultCategory,
+  onChanged,
 }: {
   patientId: string;
   defaultTitle: string;
   defaultCategory?: string;
+  onChanged?: () => void;
 }) {
   const [episodes, setEpisodes] = useState<TreatmentEpisode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,7 @@ export function TreatmentEpisodeStatusCell({
     try {
       await createTreatmentEpisode({ patientId, title, category, startedAt });
       await reload();
+      onChanged?.();
       setMode('idle');
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : 'Unable to start treatment episode.');
@@ -85,6 +88,7 @@ export function TreatmentEpisodeStatusCell({
     try {
       await transitionTreatmentEpisode(current.id, nextStatus, nextStatus === 'ONGOING' ? '' : note);
       await reload();
+      onChanged?.();
       setMode('idle'); setNextStatus(''); setNote('');
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : 'Unable to update treatment status.');

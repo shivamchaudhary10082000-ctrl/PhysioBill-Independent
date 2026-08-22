@@ -1,0 +1,51 @@
+name: Apply Treatment Episode UI
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+    paths:
+      - .github/workflows/apply-treatment-episode-ui.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-verify-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: futureweb-production-backend
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Patch Patient Directory episode status only
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/App.tsx')
+          text = path.read_text()
+          import_old = "import { PatientFinancialLedgerPage } from '@/Components/PatientFinancialLedgerGateway';"
+          import_new = import_old + "\nimport { TreatmentEpisodeStatusCell } from '@/Components/TreatmentEpisodeStatusCell';"
+          if text.count(import_old) != 1:
+              raise SystemExit('Ledger import seam not unique; refusing edit.')
+          text = text.replace(import_old, import_new, 1)
+          old = '<p className="text-xs text-muted-foreground">{patient.patientNumber}</p></div><div><p className="text-xs text-muted-foreground">{visitCount} visits</p>'
+          new = '<p className="text-xs text-muted-foreground">{patient.patientNumber}</p><TreatmentEpisodeStatusCell patientId={patient.id} defaultTitle={patient.condition} defaultCategory={patient.clinicalCategory} /></div><div><p className="text-xs text-muted-foreground">{visitCount} visits</p>'
+          if text.count(old) != 1:
+              raise SystemExit('Patient card seam not unique; refusing edit.')
+          path.write_text(text.replace(old, new, 1))
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Remove helper and commit verified patch
+        run: |
+          rm .github/workflows/apply-treatment-episode-ui.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx .github/workflows/apply-treatment-episode-ui.yml
+          git commit -m "Show Treatment Episode status in Patient Directory"
+          git push origin HEAD:futureweb-production-backend

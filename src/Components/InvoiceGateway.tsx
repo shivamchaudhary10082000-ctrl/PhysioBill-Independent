@@ -26,6 +26,13 @@ import { loadPhysiotherapistSettings, resolveAuthenticatedPhysiotherapist } from
 
 type Draft = ProductionInvoiceInput;
 
+const canonicalInvoicePath = '/app/invoices';
+const isBoundedInvoicePath = (path: string) =>
+  path === canonicalInvoicePath ||
+  path.startsWith(`${canonicalInvoicePath}/`) ||
+  path === '/app/invoice' ||
+  path.startsWith('/app/invoice/');
+
 const today = () => new Date().toISOString().slice(0, 10);
 const localDateTime = () => {
   const date = new Date();
@@ -249,7 +256,17 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
 
   useEffect(() => { const onLocation = () => setPath(window.location.pathname); const events = ['popstate', 'pushState', 'replaceState'] as const; events.forEach((eventName) => window.addEventListener(eventName, onLocation)); onLocation(); return () => events.forEach((eventName) => window.removeEventListener(eventName, onLocation)); }, []);
 
-  const isInvoiceRoute = path === '/app/invoices';
+  const isInvoiceRoute = isBoundedInvoicePath(path);
+  useEffect(() => {
+    if (!isInvoiceRoute || path === canonicalInvoicePath) return;
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${canonicalInvoicePath}${window.location.search}${window.location.hash}`,
+    );
+    setPath(canonicalInvoicePath);
+  }, [isInvoiceRoute, path]);
+
   useEffect(() => {
     if (!isInvoiceRoute) return;
     let active = true; setSelected(null); setLoading(true); setError(null);

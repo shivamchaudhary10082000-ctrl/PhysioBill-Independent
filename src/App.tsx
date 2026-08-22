@@ -9,7 +9,6 @@ import {
 } from 'react';
 import { Link, Router as WouterRouter, useLocation } from 'wouter';
 import {
-  ArrowLeft,
   Bell,
   CalendarDays,
   Check,
@@ -25,7 +24,6 @@ import {
   ReceiptIndianRupee,
   Search,
   Settings2,
-  ShieldCheck,
   UserRound,
   UsersRound,
   WalletCards,
@@ -58,6 +56,10 @@ import {
   loadVisits as loadProductionVisits,
   updateVisit as updateProductionVisit,
 } from '@/lib/visits';
+import {
+  loadInvoices as loadProductionInvoices,
+  type ProductionInvoice,
+} from '@/lib/invoices';
 
 type UserRole = 'physio' | 'patient';
 
@@ -176,10 +178,6 @@ type Invoice = {
   createdAt: string;
   auditTrail?: InvoiceAuditEntry[];
 };
-
-type InvoiceMutationResult =
-  | { ok: true; invoice: Invoice }
-  | { ok: false; error: string };
 
 const queryClient = new QueryClient();
 const DEMO_PHYSIO_ID = 'physio-demo-001';
@@ -364,9 +362,6 @@ const normalizeInvoices = (items: Invoice[]) =>
 const normalizePatientsForWorkspace = (items: Patient[], physioId: string) =>
   normalizePatients(items).map((patient) => ({ ...patient, physioId }));
 
-const normalizeInvoicesForWorkspace = (items: Invoice[], physioId: string) =>
-  normalizeInvoices(items).map((invoice) => ({ ...invoice, physioId }));
-
 const belongsToPhysio = (physioId: string | undefined, currentPhysioId: string) =>
   physioId === currentPhysioId;
 
@@ -375,90 +370,6 @@ const getWorkspacePatients = (patients: Patient[], physioId: string) =>
 
 const getWorkspaceVisits = (visits: Visit[], physioId: string) =>
   visits.filter((visit) => belongsToPhysio(visit.physioId, physioId));
-
-const getWorkspaceInvoices = (invoices: Invoice[], physioId: string) =>
-  invoices.filter((invoice) => belongsToPhysio(invoice.physioId, physioId));
-
-const invoiceEditableFields = [
-  'description',
-  'sessions',
-  'startDate',
-  'endDate',
-  'fee',
-  'additional',
-  'additionalDescription',
-  'discount',
-  'gstRate',
-  'total',
-  'paymentMethod',
-] as const satisfies readonly (keyof Invoice)[];
-
-const financialFields = [
-  'fee',
-  'additional',
-  'additionalDescription',
-  'discount',
-  'gstRate',
-  'total',
-  'paid',
-] as const satisfies readonly (keyof Invoice)[];
-
-const invoiceAuditFields = [
-  ...invoiceEditableFields,
-  'paid',
-  'status',
-  'finalized',
-] as const satisfies readonly (keyof Invoice)[];
-
-const getInvoiceChangedFields = (before: Invoice, after: Invoice) =>
-  invoiceAuditFields.filter((field) => before[field] !== after[field]);
-
-const hasInvoiceFinancialChanges = (before: Invoice, after: Invoice) =>
-  financialFields.some((field) => before[field] !== after[field]);
-
-const createAuditId = () =>
-  `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-const createAuditEntry = (
-  action: InvoiceAuditAction,
-  reason: string,
-  before: Invoice,
-  after: Invoice,
-  actor: AuditActor,
-): InvoiceAuditEntry => {
-  const changedFields = getInvoiceChangedFields(before, after);
-  const beforeValues: Partial<Invoice> = {};
-  const afterValues: Partial<Invoice> = {};
-  changedFields.forEach((field) => {
-    (beforeValues as Record<string, unknown>)[field] = before[field];
-    (afterValues as Record<string, unknown>)[field] = after[field];
-  });
-  return {
-    id: createAuditId(),
-    action,
-    reason: reason.trim(),
-    changedAt: new Date().toISOString(),
-    changedBy: actor.displayName,
-    changedByUserId: actor.userId,
-    changedByRole: actor.role,
-    changedFields,
-    before: beforeValues,
-    after: afterValues,
-  };
-};
-
-const calculateInvoiceTotal = (invoice: Invoice) =>
-  Math.max(
-    0,
-    Math.round(
-      (invoice.fee + invoice.additional - invoice.discount) *
-        (1 + invoice.gstRate / 100) *
-        100,
-    ) / 100,
-  );
-
-const formatSequentialId = (prefix: string, sequence: number) =>
-  `${prefix}-${currentYear}-${String(sequence).padStart(6, '0')}`;
 
 const money = (value: number) =>
   `₹${Math.round(value).toLocaleString('en-IN')}`;
@@ -524,15 +435,11 @@ type WorkspaceState = {
   createVisitRecord: (visit: Visit) => Promise<Visit>;
   updateVisitRecord: (visit: Visit) => Promise<Visit>;
   deleteVisitRecord: (visitId: string) => Promise<void>;
-  invoices: Invoice[];
-  setInvoices: React.Dispatch<React.SetStateAction<Invoice[]>>;
+  productionInvoices: ProductionInvoice[];
+  productionInvoicesLoading: boolean;
+  productionInvoicesError: string | null;
   workspacePatients: Patient[];
   workspaceVisits: Visit[];
-  workspaceInvoices: Invoice[];
-  createInvoice: (patientId: string) => Invoice;
-  updateInvoice: (invoiceId: string, proposed: Invoice, reason?: string) => InvoiceMutationResult;
-  finalizeInvoice: (invoice: Invoice) => InvoiceMutationResult;
-  recordInvoicePayment: (invoice: Invoice, actor: AuditActor) => InvoiceMutationResult;
   persistenceError: string | null;
 };
 
@@ -718,168 +625,35 @@ function WorkspaceController({
     }
   };
 
-  const [invoices, setInvoices] = usePersistentState<Invoice[]>(
-    `physiobill-invoices-${currentPhysioId}`,
-    [],
-    (value) => normalizeInvoicesForWorkspace(value, currentPhysioId),
-  );
+  const [productionInvoices, setProductionInvoices] = useState<ProductionInvoice[]>([]);
+  const [productionInvoicesLoading, setProductionInvoicesLoading] = useState(true);
+  const [productionInvoicesError, setProductionInvoicesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setProductionInvoices([]);
+    setProductionInvoicesLoading(true);
+    setProductionInvoicesError(null);
+    loadProductionInvoices()
+      .then((loaded) => {
+        if (active) setProductionInvoices(loaded);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setProductionInvoicesError(
+          error instanceof Error ? error.message : 'Unable to load production invoices.',
+        );
+      })
+      .finally(() => {
+        if (active) setProductionInvoicesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentPhysioId]);
 
   const workspacePatients = getWorkspacePatients(patients, currentPhysioId);
   const workspaceVisits = getWorkspaceVisits(visits, currentPhysioId);
-  const workspaceInvoices = getWorkspaceInvoices(invoices, currentPhysioId);
-
-  const createInvoice = (patientId: string) => {
-    const next = workspaceInvoices.length + 1;
-    const prefix = profile.invoicePrefix.trim() || 'PB';
-    const invoice: Invoice = {
-      id: `invoice-${Date.now()}`,
-      physioId: currentPhysioId,
-      patientId,
-      number: formatSequentialId(prefix, next),
-      description: 'Physiotherapy treatment',
-      sessions: '',
-      startDate: today,
-      endDate: today,
-      fee: 0,
-      additional: 0,
-      additionalDescription: '',
-      discount: 0,
-      gstRate: settings.showGst ? 18 : 0,
-      total: 0,
-      paid: 0,
-      paymentMethod: settings.defaultPayment,
-      finalized: false,
-      status: 'Draft',
-      createdAt: new Date().toISOString(),
-      auditTrail: [],
-    };
-    setInvoices((current) => [...current, invoice]);
-    return invoice;
-  };
-
-  const updateInvoice = (
-    invoiceId: string,
-    proposed: Invoice,
-    reason?: string,
-  ): InvoiceMutationResult => {
-    const existing = workspaceInvoices.find((invoice) => invoice.id === invoiceId);
-    if (!existing) return { ok: false, error: 'Invoice not found.' };
-    if (proposed.physioId && proposed.physioId !== currentPhysioId) {
-      return { ok: false, error: 'Invoice does not belong to the current workspace.' };
-    }
-    if (proposed.number !== existing.number) {
-      return { ok: false, error: 'Invoice number cannot be changed.' };
-    }
-    if (proposed.patientId !== existing.patientId) {
-      return { ok: false, error: 'Patient ownership cannot be changed on an existing invoice.' };
-    }
-    if (existing.status === 'Paid' && hasInvoiceFinancialChanges(existing, proposed)) {
-      return { ok: false, error: 'Paid invoices cannot be financially edited.' };
-    }
-    if (existing.finalized && hasInvoiceFinancialChanges(existing, proposed)) {
-      if (!reason?.trim()) {
-        return { ok: false, error: 'A correction reason is required for finalized financial changes.' };
-      }
-      if (proposed.paid !== existing.paid) {
-        return { ok: false, error: 'Payment changes must use the payment workflow.' };
-      }
-      const correctedBase: Invoice = {
-        ...existing,
-        ...proposed,
-        id: existing.id,
-        number: existing.number,
-        patientId: existing.patientId,
-        physioId: existing.physioId ?? currentPhysioId,
-        finalized: true,
-        paid: existing.paid,
-      };
-      correctedBase.total = calculateInvoiceTotal(correctedBase);
-      correctedBase.status = deriveInvoiceStatus(correctedBase.total, correctedBase.paid, true);
-      const audit = createAuditEntry('correction', reason, existing, correctedBase, {
-        userId: authUser.id,
-        role: authUser.role,
-        displayName: authUser.displayName,
-      });
-      const corrected = {
-        ...correctedBase,
-        auditTrail: [...(existing.auditTrail ?? []), audit],
-      };
-      setInvoices((current) =>
-        current.map((invoice) => (invoice.id === invoiceId ? corrected : invoice)),
-      );
-      return { ok: true, invoice: corrected };
-    }
-    if (existing.finalized) {
-      return { ok: false, error: 'Finalized invoices must use the correction workflow.' };
-    }
-    const updated: Invoice = {
-      ...proposed,
-      id: existing.id,
-      number: existing.number,
-      patientId: existing.patientId,
-      physioId: existing.physioId ?? currentPhysioId,
-      paid: existing.paid,
-      auditTrail: existing.auditTrail ?? [],
-    };
-    updated.total = calculateInvoiceTotal(updated);
-    updated.status = deriveInvoiceStatus(updated.total, updated.paid, updated.finalized);
-    setInvoices((current) =>
-      current.map((invoice) => (invoice.id === invoiceId ? updated : invoice)),
-    );
-    return { ok: true, invoice: updated };
-  };
-
-  const finalizeInvoice = (invoice: Invoice): InvoiceMutationResult => {
-    const existing = workspaceInvoices.find((item) => item.id === invoice.id);
-    if (!existing) return { ok: false, error: 'Invoice not found.' };
-    if (!belongsToPhysio(existing.physioId, currentPhysioId)) {
-      return { ok: false, error: 'Invoice does not belong to the current workspace.' };
-    }
-    if (existing.finalized) return { ok: false, error: 'Invoice is already finalized.' };
-    const finalized: Invoice = {
-      ...existing,
-      total: calculateInvoiceTotal(existing),
-      finalized: true,
-      status: deriveInvoiceStatus(calculateInvoiceTotal(existing), existing.paid, true),
-    };
-    setInvoices((current) =>
-      current.map((item) => (item.id === existing.id ? finalized : item)),
-    );
-    return { ok: true, invoice: finalized };
-  };
-
-  const recordInvoicePayment = (
-    invoice: Invoice,
-    actor: AuditActor,
-  ): InvoiceMutationResult => {
-    const existing = workspaceInvoices.find((item) => item.id === invoice.id);
-    if (!existing) return { ok: false, error: 'Invoice not found.' };
-    if (!existing.finalized) {
-      return { ok: false, error: 'A draft invoice must be finalized before payment.' };
-    }
-    if (existing.status === 'Paid' || existing.paid >= existing.total) {
-      return { ok: false, error: 'This invoice has no outstanding balance.' };
-    }
-    const paid: Invoice = {
-      ...existing,
-      paid: existing.total,
-      status: 'Paid',
-      finalized: true,
-    };
-    const audit = createAuditEntry(
-      'payment',
-      'Invoice marked as paid.',
-      existing,
-      paid,
-      actor,
-    );
-    paid.auditTrail = [...(existing.auditTrail ?? []), audit];
-    setInvoices((current) =>
-      current.map((item) => (item.id === existing.id ? paid : item)),
-    );
-    return { ok: true, invoice: paid };
-  };
-
   const workspace: WorkspaceState = {
     authUser,
     currentPhysioId,
@@ -897,15 +671,11 @@ function WorkspaceController({
     createVisitRecord,
     updateVisitRecord,
     deleteVisitRecord,
-    invoices,
-    setInvoices,
+    productionInvoices,
+    productionInvoicesLoading,
+    productionInvoicesError,
     workspacePatients,
     workspaceVisits,
-    workspaceInvoices,
-    createInvoice,
-    updateInvoice,
-    finalizeInvoice,
-    recordInvoicePayment,
     persistenceError,
   };
 
@@ -939,13 +709,11 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string; 
 
 function PhysioWorkspace({ workspace }: { workspace: WorkspaceState }) {
   const [location, setLocation] = useLocation();
-  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [showVisitForm, setShowVisitForm] = useState(false);
   const normalized = location.startsWith('/app/') ? location.slice(4) : location;
-  const editingInvoice = workspace.workspaceInvoices.find((invoice) => invoice.id === editingInvoiceId) ?? null;
   const editingPatient = workspace.workspacePatients.find((patient) => patient.id === editingPatientId) ?? null;
   const editingVisit = workspace.workspaceVisits.find((visit) => visit.id === editingVisitId) ?? null;
 
@@ -972,7 +740,9 @@ function PhysioWorkspace({ workspace }: { workspace: WorkspaceState }) {
         <PatientsPage
           patients={workspace.workspacePatients}
           visits={workspace.workspaceVisits}
-          invoices={workspace.workspaceInvoices}
+          invoices={workspace.productionInvoices}
+          invoicesLoading={workspace.productionInvoicesLoading}
+          invoicesError={workspace.productionInvoicesError}
           loading={workspace.patientsLoading}
           onAdd={() => setShowPatientForm(true)}
           onEdit={(patient) => setEditingPatientId(patient.id)}
@@ -1017,7 +787,6 @@ function PhysioWorkspace({ workspace }: { workspace: WorkspaceState }) {
       );
     }
     if (normalized.startsWith('/financial-ledger')) return <PatientFinancialLedgerPage />;
-    if (normalized.startsWith('/invoices') || normalized.startsWith('/invoice')) return <InvoiceWorkspace workspace={workspace} editingInvoice={editingInvoice} onOpen={(invoice) => setEditingInvoiceId(invoice.id)} onClose={() => setEditingInvoiceId(null)} />;
     if (normalized.startsWith('/profile')) return <ProfilePage workspace={workspace} />;
     if (normalized.startsWith('/settings')) return <SettingsPage workspace={workspace} />;
     return <Dashboard workspace={workspace} />;
@@ -1050,19 +819,87 @@ function AppShell({ workspace, children }: { workspace: WorkspaceState; children
 function Brand() { return <Link href="/app/dashboard" className="flex items-center gap-3 px-2 py-2"><span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground"><HeartPulse size={21} /></span><strong>Physio<span className="text-sidebar-primary">Bill</span></strong></Link>; }
 
 function Dashboard({ workspace }: { workspace: WorkspaceState }) {
-  const outstanding = workspace.workspaceInvoices.reduce((sum, invoice) => sum + Math.max(invoice.total - invoice.paid, 0), 0);
-  const billed = workspace.workspaceInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
+  const finalizedInvoices = workspace.productionInvoices.filter((invoice) => invoice.finalized);
+  const outstanding = finalizedInvoices.reduce(
+    (sum, invoice) => sum + Math.max(invoice.total - invoice.paid, 0),
+    0,
+  );
+  const finalizedBilled = finalizedInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
   const todaysVisits = workspace.workspaceVisits.filter((visit) => visit.date === today);
-  return <div className="space-y-7"><div className="relative overflow-hidden rounded-[24px] bg-primary px-6 py-8 text-primary-foreground"><p className="text-xs font-extrabold uppercase tracking-[.16em]">Authenticated workspace</p><h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">A clear desk for better care.</h2><p className="mt-3 max-w-xl text-sm text-primary-foreground/75">Your identity, profile, settings, patients and visits are backed by Supabase Auth, Postgres and RLS.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><StatCard label="Outstanding" value={money(outstanding)} icon={WalletCards} /><StatCard label="Today’s visits" value={String(todaysVisits.length)} icon={CalendarDays} /><StatCard label="Active patients" value={String(workspace.workspacePatients.length)} icon={UsersRound} /><StatCard label="Billed" value={money(billed)} icon={ReceiptIndianRupee} /></div><div className="grid gap-6 xl:grid-cols-2"><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent visits</h3><div className="mt-4 space-y-3">{workspace.workspaceVisits.slice(-5).reverse().map((visit) => <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><p className="font-bold">{workspace.workspacePatients.find((p) => p.id === visit.patientId)?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(visit.date)} · {visit.treatment}</p></div>)}</div></section><section className="rounded-2xl border bg-card p-5"><h3 className="font-extrabold">Recent invoices</h3><div className="mt-4 space-y-3">{workspace.workspaceInvoices.slice(-5).reverse().map((invoice) => <div key={invoice.id} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4"><div><p className="font-bold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.status}</p></div><p className="font-extrabold">{money(invoice.total)}</p></div>)}</div></section></div></div>;
+  const outstandingValue = workspace.productionInvoicesLoading
+    ? 'Loading…'
+    : workspace.productionInvoicesError
+      ? 'Unavailable'
+      : money(outstanding);
+  const finalizedBilledValue = workspace.productionInvoicesLoading
+    ? 'Loading…'
+    : workspace.productionInvoicesError
+      ? 'Unavailable'
+      : money(finalizedBilled);
+
+  return (
+    <div className="space-y-7">
+      <div className="relative overflow-hidden rounded-[24px] bg-primary px-6 py-8 text-primary-foreground">
+        <p className="text-xs font-extrabold uppercase tracking-[.16em]">Authenticated workspace</p>
+        <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">A clear desk for better care.</h2>
+        <p className="mt-3 max-w-xl text-sm text-primary-foreground/75">Your identity, profile, settings, patients, visits and invoices are backed by Supabase Auth, Postgres and RLS.</p>
+      </div>
+      {workspace.productionInvoicesError && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+          Financial data is unavailable: {workspace.productionInvoicesError}
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Outstanding" value={outstandingValue} icon={WalletCards} />
+        <StatCard label="Today’s visits" value={String(todaysVisits.length)} icon={CalendarDays} />
+        <StatCard label="Patients" value={String(workspace.workspacePatients.length)} icon={UsersRound} />
+        <StatCard label="Finalized billed" value={finalizedBilledValue} icon={ReceiptIndianRupee} />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border bg-card p-5">
+          <h3 className="font-extrabold">Recent visits</h3>
+          <div className="mt-4 space-y-3">{workspace.workspaceVisits.slice(-5).reverse().map((visit) => <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><p className="font-bold">{workspace.workspacePatients.find((p) => p.id === visit.patientId)?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(visit.date)} · {visit.treatment}</p></div>)}</div>
+        </section>
+        <section className="rounded-2xl border bg-card p-5">
+          <h3 className="font-extrabold">Recent invoices</h3>
+          <div className="mt-4 space-y-3">
+            {workspace.productionInvoicesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading production invoices…</p>
+            ) : workspace.productionInvoicesError ? (
+              <p className="text-sm text-destructive">Recent invoices are unavailable.</p>
+            ) : workspace.productionInvoices.length ? (
+              workspace.productionInvoices.slice(0, 5).map((invoice) => (
+                <div key={invoice.id} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4">
+                  <div><p className="font-bold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.status}</p></div>
+                  <p className="font-extrabold">{money(invoice.total)}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No production invoices yet.</p>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 }
 
-function PatientsPage({ patients, visits, invoices, loading, onAdd, onEdit, onDelete }: { patients: Patient[]; visits: Visit[]; invoices: Invoice[]; loading: boolean; onAdd: () => void; onEdit: (patient: Patient) => void; onDelete: (patient: Patient) => Promise<void> }) {
+function PatientsPage({ patients, visits, invoices, invoicesLoading, invoicesError, loading, onAdd, onEdit, onDelete }: { patients: Patient[]; visits: Visit[]; invoices: ProductionInvoice[]; invoicesLoading: boolean; invoicesError: string | null; loading: boolean; onAdd: () => void; onEdit: (patient: Patient) => void; onDelete: (patient: Patient) => Promise<void> }) {
   const [search, setSearch] = useState('');
   const [analyticsRefreshKey, setAnalyticsRefreshKey] = useState(0);
   const therapyStarts = new Map<string, string>();
   visits.forEach((visit) => { const current = therapyStarts.get(visit.patientId); if (!current || visit.date < current) therapyStarts.set(visit.patientId, visit.date); });
   const filtered = patients.filter((patient) => [patient.name, patient.patientNumber].join(' ').toLowerCase().includes(search.toLowerCase()));
-  return <div><PageHeader eyebrow="Patient directory" title="Patients" description="Search by Patient name or record number. Therapy start is derived from the earliest persisted Visit." action={<Button onClick={onAdd}><Plus size={16} /> Add patient</Button>} /><PatientPeriodAnalytics patients={patients} refreshKey={analyticsRefreshKey} /><div className="mb-4 relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input type="text" value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full appearance-none rounded-xl border bg-card pl-10 pr-10 text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden" placeholder="Search by Patient name or record number..." />{search && <button type="button" aria-label="Clear patient search" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X size={16} /></button>}</div>{loading ? <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading patients…</div> : <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((patient) => { const visitCount = visits.filter((visit) => visit.patientId === patient.id).length; const outstanding = invoices.filter((invoice) => invoice.patientId === patient.id).reduce((sum, invoice) => sum + Math.max(invoice.total - invoice.paid, 0), 0); const therapyStart = therapyStarts.get(patient.id); const clinical = [patient.condition, patient.clinicalCategory].filter(Boolean).join(' · '); return <div key={patient.id} className="grid gap-3 p-5 md:grid-cols-[1.5fr_1fr_auto] md:items-center"><div><p className="font-extrabold">{patient.name}</p><p className="mt-1 text-xs text-muted-foreground">{clinical || 'No condition/category recorded'}</p><p className="text-xs text-muted-foreground">{therapyStart ? `Therapy started: ${dateLabel(therapyStart)}` : 'Therapy not started · No visits yet'}</p><p className="text-xs text-muted-foreground">{patient.patientNumber}</p><TreatmentEpisodeStatusCell patientId={patient.id} defaultTitle={patient.condition} defaultCategory={patient.clinicalCategory} onChanged={() => setAnalyticsRefreshKey((current) => current + 1)} /></div><div><p className="text-xs text-muted-foreground">{visitCount} {visitCount === 1 ? 'visit' : 'visits'}</p><p className="font-bold">{money(outstanding)} <span className="text-xs font-normal text-muted-foreground">outstanding</span></p></div><div className="flex gap-1 md:justify-end"><Button variant="ghost" onClick={() => onEdit(patient)}><Pencil size={15} /> Edit</Button><Button variant="danger" onClick={() => void onDelete(patient)}><X size={15} /> Delete</Button></div></div>; })}{filtered.length === 0 && <div className="p-6 text-sm text-muted-foreground">No patients found.</div>}</div>}</div>;
+  const outstandingByPatient = new Map<string, number>();
+  invoices.forEach((invoice) => {
+    if (!invoice.finalized) return;
+    const balance = Math.max(invoice.total - invoice.paid, 0);
+    outstandingByPatient.set(
+      invoice.patientId,
+      (outstandingByPatient.get(invoice.patientId) ?? 0) + balance,
+    );
+  });
+  return <div><PageHeader eyebrow="Patient directory" title="Patients" description="Search by Patient name or record number. Therapy start is derived from the earliest persisted Visit." action={<Button onClick={onAdd}><Plus size={16} /> Add patient</Button>} /><PatientPeriodAnalytics patients={patients} refreshKey={analyticsRefreshKey} />{invoicesError && <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">Patient outstanding balances are unavailable: {invoicesError}</div>}<div className="mb-4 relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input type="text" value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full appearance-none rounded-xl border bg-card pl-10 pr-10 text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden" placeholder="Search by Patient name or record number..." />{search && <button type="button" aria-label="Clear patient search" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X size={16} /></button>}</div>{loading ? <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading patients…</div> : <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((patient) => { const visitCount = visits.filter((visit) => visit.patientId === patient.id).length; const outstanding = outstandingByPatient.get(patient.id) ?? 0; const outstandingValue = invoicesLoading ? 'Loading…' : invoicesError ? 'Unavailable' : money(outstanding); const therapyStart = therapyStarts.get(patient.id); const clinical = [patient.condition, patient.clinicalCategory].filter(Boolean).join(' · '); return <div key={patient.id} className="grid gap-3 p-5 md:grid-cols-[1.5fr_1fr_auto] md:items-center"><div><p className="font-extrabold">{patient.name}</p><p className="mt-1 text-xs text-muted-foreground">{clinical || 'No condition/category recorded'}</p><p className="text-xs text-muted-foreground">{therapyStart ? `Therapy started: ${dateLabel(therapyStart)}` : 'Therapy not started · No visits yet'}</p><p className="text-xs text-muted-foreground">{patient.patientNumber}</p><TreatmentEpisodeStatusCell patientId={patient.id} defaultTitle={patient.condition} defaultCategory={patient.clinicalCategory} onChanged={() => setAnalyticsRefreshKey((current) => current + 1)} /></div><div><p className="text-xs text-muted-foreground">{visitCount} {visitCount === 1 ? 'visit' : 'visits'}</p><p className="font-bold">{outstandingValue} <span className="text-xs font-normal text-muted-foreground">outstanding</span></p></div><div className="flex gap-1 md:justify-end"><Button variant="ghost" onClick={() => onEdit(patient)}><Pencil size={15} /> Edit</Button><Button variant="danger" onClick={() => void onDelete(patient)}><X size={15} /> Delete</Button></div></div>; })}{filtered.length === 0 && <div className="p-6 text-sm text-muted-foreground">No patients found.</div>}</div>}</div>;
 }
 
 function PatientForm({ initialPatient, onSave, onCancel }: { initialPatient?: Patient | null; onSave: (patient: Patient) => Promise<void>; onCancel: () => void }) {
@@ -1115,28 +952,6 @@ function VisitForm({ patients, initialVisit, onSave, onCancel }: { patients: Pat
     }
   };
   return <div className="rounded-2xl border bg-card p-6"><PageHeader eyebrow="Clinical record" title={initialVisit ? `Edit ${initialVisit.visitNumber}` : 'Log visit'} description={initialVisit ? 'Patient, visit number and historical visit date are locked. Clinical content remains editable.' : 'The database assigns ownership and the next visit number.'} /><div className="grid gap-4 md:grid-cols-2"><SelectField label="Patient" value={patientId} onChange={setPatientId} disabled={Boolean(initialVisit)} options={patients.map((p) => ({ value: p.id, label: p.name }))} /><Field label="Date" type="date" value={date} disabled={Boolean(initialVisit)} onChange={(e) => setDate(e.target.value)} /><Field label="Treatment" value={treatment} onChange={(e) => setTreatment(e.target.value)} /><Field label="Duration (minutes)" type="number" min="0" step="1" value={duration} onChange={(e) => setDuration(e.target.value)} /><Field label="Modalities" value={modalities} onChange={(e) => setModalities(e.target.value)} /><Field label="Exercises" value={exercises} onChange={(e) => setExercises(e.target.value)} /><Field label="Authorization" value={authorization} onChange={(e) => setAuthorization(e.target.value)} /><div className="md:col-span-2"><TextArea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div></div>{error && <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}<div className="mt-6 flex justify-end gap-2"><Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button><Button disabled={busy || !patientId || !treatment.trim()} onClick={() => void save()}><Check size={16} /> {busy ? 'Saving…' : initialVisit ? 'Save changes' : 'Save visit'}</Button></div></div>;
-}
-
-function InvoiceWorkspace({ workspace, editingInvoice, onOpen, onClose }: { workspace: WorkspaceState; editingInvoice: Invoice | null; onOpen: (invoice: Invoice) => void; onClose: () => void }) {
-  const [search, setSearch] = useState('');
-  if (editingInvoice) { const current = workspace.workspaceInvoices.find((invoice) => invoice.id === editingInvoice.id) ?? editingInvoice; return <InvoiceEditor workspace={workspace} invoice={current} onClose={onClose} />; }
-  const filtered = workspace.workspaceInvoices.filter((invoice) => [invoice.number, invoice.description, invoice.status, workspace.workspacePatients.find((p) => p.id === invoice.patientId)?.name ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()));
-  return <div><PageHeader eyebrow="Invoice workspace" title="Invoices" description="Drafts, corrections, finalization and payments all flow through WorkspaceController." action={<Button disabled={!workspace.workspacePatients.length} onClick={() => onOpen(workspace.createInvoice(workspace.workspacePatients[0].id))}><Plus size={16} /> New invoice</Button>} /><div className="mb-4 relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" placeholder="Search invoices..." /></div><div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((invoice) => <div key={invoice.id} className="grid gap-3 p-5 md:grid-cols-[1fr_1.3fr_.8fr_.8fr_auto] md:items-center"><div><p className="font-extrabold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.description}</p></div><p>{workspace.workspacePatients.find((p) => p.id === invoice.patientId)?.name ?? 'Patient'}</p><p className="font-bold">{money(invoice.total)}</p><p className="text-sm">{invoice.status}</p><Button variant="soft" onClick={() => onOpen(invoice)}><Pencil size={15} /> Open</Button></div>)}</div></div>;
-}
-
-function InvoiceEditor({ workspace, invoice, onClose }: { workspace: WorkspaceState; invoice: Invoice; onClose: () => void }) {
-  const [form, setForm] = useState(invoice); const [correctionMode, setCorrectionMode] = useState(false); const [reason, setReason] = useState(''); const [message, setMessage] = useState('');
-  useEffect(() => { setForm(invoice); setCorrectionMode(false); setReason(''); }, [invoice.id, invoice.status, invoice.total, invoice.paid]);
-  const financialLocked = invoice.status === 'Paid' || (invoice.finalized && !correctionMode); const update = <K extends keyof Invoice>(field: K, value: Invoice[K]) => setForm((current) => ({ ...current, [field]: value })); const previewTotal = calculateInvoiceTotal(form);
-  const save = () => { const proposed = { ...form, total: previewTotal }; const result = workspace.updateInvoice(invoice.id, proposed, correctionMode ? reason : undefined); setMessage(result.ok ? (correctionMode ? 'Correction saved with audit entry.' : 'Draft saved.') : result.error); if (result.ok) setForm(result.invoice); };
-  const finalize = () => { const saveResult = workspace.updateInvoice(invoice.id, { ...form, total: previewTotal }); if (!saveResult.ok) return setMessage(saveResult.error); const result = workspace.finalizeInvoice(saveResult.invoice); setMessage(result.ok ? 'Invoice finalized.' : result.error); };
-  const pay = () => { const result = workspace.recordInvoicePayment(invoice, { userId: workspace.authUser.id, role: workspace.authUser.role, displayName: workspace.authUser.displayName }); setMessage(result.ok ? 'Payment recorded with audit entry.' : result.error); };
-  return <div className="space-y-5"><Button variant="ghost" onClick={onClose}><ArrowLeft size={16} /> Back to invoices</Button><div className="rounded-2xl border bg-card p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Invoice editor</p><h2 className="mt-1 text-xl font-extrabold">{invoice.number}</h2><p className="text-sm text-muted-foreground">{invoice.status}</p></div>{invoice.finalized && invoice.status !== 'Paid' && !correctionMode && <Button variant="soft" onClick={() => setCorrectionMode(true)}><Pencil size={15} /> Correct invoice</Button>}</div>{correctionMode && <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Financial correction mode. A reason is mandatory and will be added to the audit trail.</div>}<div className="mt-6 grid gap-4 md:grid-cols-2"><Field label="Invoice number" value={invoice.number} disabled /><SelectField label="Patient" value={invoice.patientId} onChange={() => undefined} disabled options={workspace.workspacePatients.map((p) => ({ value: p.id, label: p.name }))} /><Field label="Description" value={form.description} onChange={(e) => update('description', e.target.value)} disabled={invoice.finalized} /><Field label="Sessions" value={form.sessions} onChange={(e) => update('sessions', e.target.value)} disabled={invoice.finalized} /><Field label="Start date" type="date" value={form.startDate} onChange={(e) => update('startDate', e.target.value)} disabled={invoice.finalized} /><Field label="End date" type="date" value={form.endDate} onChange={(e) => update('endDate', e.target.value)} disabled={invoice.finalized} /><Field label="Fee" type="number" value={form.fee} onChange={(e) => update('fee', Number(e.target.value) || 0)} disabled={financialLocked} /><Field label="Additional" type="number" value={form.additional} onChange={(e) => update('additional', Number(e.target.value) || 0)} disabled={financialLocked} /><Field label="Additional description" value={form.additionalDescription} onChange={(e) => update('additionalDescription', e.target.value)} disabled={financialLocked} /><Field label="Discount" type="number" value={form.discount} onChange={(e) => update('discount', Number(e.target.value) || 0)} disabled={financialLocked} /><Field label="GST rate" type="number" value={form.gstRate} onChange={(e) => update('gstRate', Number(e.target.value) || 0)} disabled={financialLocked} /><SelectField label="Payment method" value={form.paymentMethod} onChange={(value) => update('paymentMethod', value)} disabled={invoice.finalized} options={['Select payment method', 'UPI', 'Cash', 'Bank transfer', 'Card', 'Cheque', 'Other'].map((value) => ({ value, label: value }))} /></div>{correctionMode && <div className="mt-4"><TextArea label="Correction reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explain why this finalized invoice needs a financial correction." /></div>}<div className="mt-5 grid gap-3 sm:grid-cols-3"><StatCard label="Total" value={money(previewTotal)} icon={ReceiptIndianRupee} /><StatCard label="Paid" value={money(invoice.paid)} icon={Check} /><StatCard label="Status" value={invoice.status} icon={ShieldCheck} /></div>{message && <div className="mt-4 rounded-xl bg-secondary p-3 text-sm">{message}</div>}<div className="mt-6 flex flex-wrap justify-end gap-2">{!invoice.finalized && <><Button variant="soft" onClick={save}>Save draft</Button><Button onClick={finalize}><ShieldCheck size={16} /> Finalize</Button></>}{correctionMode && <Button disabled={!reason.trim()} onClick={save}><Check size={16} /> Save correction</Button>}{invoice.finalized && invoice.status !== 'Paid' && !correctionMode && <Button onClick={pay}><Check size={16} /> Record payment</Button>}</div></div><InvoiceAuditHistory invoice={invoice} /></div>;
-}
-
-function InvoiceAuditHistory({ invoice }: { invoice: Invoice }) {
-  const entries = invoice.auditTrail ?? [];
-  return <section className="rounded-2xl border bg-card p-5"><h3 className="flex items-center gap-2 font-extrabold"><ShieldCheck size={18} /> Audit history</h3>{!entries.length && <p className="mt-2 text-sm text-muted-foreground">No recorded changes yet.</p>}<div className="mt-4 space-y-4">{entries.slice().reverse().map((entry) => <div key={entry.id} className="rounded-xl border p-4"><div className="flex flex-wrap justify-between gap-2"><p className="font-bold capitalize">{entry.action}</p><p className="text-xs text-muted-foreground">{new Date(entry.changedAt).toLocaleString('en-IN')}</p></div><p className="mt-2 text-sm"><strong>{entry.changedBy}</strong> · {entry.reason}</p><div className="mt-3 grid gap-3 md:grid-cols-2"><pre className="overflow-auto rounded-lg bg-secondary/50 p-3 text-xs">{JSON.stringify(entry.before, null, 2)}</pre><pre className="overflow-auto rounded-lg bg-secondary/50 p-3 text-xs">{JSON.stringify(entry.after, null, 2)}</pre></div></div>)}</div></section>;
 }
 
 function ProfilePage({ workspace }: { workspace: WorkspaceState }) {

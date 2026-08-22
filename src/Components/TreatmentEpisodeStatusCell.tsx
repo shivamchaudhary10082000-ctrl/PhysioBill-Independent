@@ -115,7 +115,7 @@ export function TreatmentEpisodeStatusCell({
     {mode === 'idle' && <div className="flex flex-wrap gap-2">
       {current?.status === 'LEGACY_UNSPECIFIED' && <button type="button" disabled={busy} onClick={() => void setLegacyOngoing()} className="text-xs font-bold text-primary">Mark Ongoing</button>}
       {(current?.status === 'ONGOING' || current?.status === 'LEGACY_UNSPECIFIED') && <button type="button" disabled={busy} onClick={() => setMode('status')} className="text-xs font-bold text-primary">Change status</button>}
-      {!hasOngoing && current?.status !== 'LEGACY_UNSPECIFIED' && <button type="button" disabled={busy} onClick={() => setMode('start')} className="text-xs font-bold text-primary">Start new episode</button>}
+      {current && !hasOngoing && current.status !== 'LEGACY_UNSPECIFIED' && <button type="button" disabled={busy} onClick={() => setMode('start')} className="text-xs font-bold text-primary">Start new episode</button>}
       {!current && <button type="button" disabled={busy} onClick={() => setMode('start')} className="text-xs font-bold text-primary">Start treatment episode</button>}
     </div>}
 

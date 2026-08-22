@@ -14,7 +14,7 @@ function label(status: TreatmentEpisodeStatus) {
   if (status === 'ONGOING') return 'Ongoing';
   if (status === 'RECOVERED_DISCHARGED') return 'Recovered / Discharged';
   if (status === 'LEFT_DISCONTINUED') return 'Left / Discontinued';
-  return 'Review status';
+  return 'Needs review / classify historical episode';
 }
 
 function badgeClass(status: TreatmentEpisodeStatus) {

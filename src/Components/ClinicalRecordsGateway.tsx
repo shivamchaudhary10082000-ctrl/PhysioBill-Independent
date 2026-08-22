@@ -92,7 +92,7 @@ export function ClinicalRecordsGateway({ children }: { children: ReactNode }) {
   }
 
   return <ClinicalRecordsGatewayFrame>
-    <div className="mb-6 rounded-[24px] bg-primary px-6 py-7 text-primary-foreground"><p className="text-[10px] font-extrabold uppercase tracking-[.16em]">Phase 3 · Clinical records</p><h1 className="mt-2 text-3xl font-extrabold">Patient → Visit → Clinical Record</h1><p className="mt-2 max-w-2xl text-sm text-primary-foreground/75">Choose an existing real Visit. Each record is persisted in Supabase and remains linked to that Visit for longitudinal review.</p></div>
+    <div className="mb-6 rounded-[24px] bg-primary px-6 py-7 text-primary-foreground"><p className="text-[10px] font-extrabold uppercase tracking-[.16em]">Clinical documentation</p><h1 className="mt-2 text-3xl font-extrabold">Clinical Records</h1><p className="mt-2 max-w-2xl text-sm text-primary-foreground/75">Review or continue documentation from a patient visit.</p></div>
     <div className="overflow-hidden rounded-2xl border bg-card divide-y">
       {visits.slice().sort((a, b) => b.date.localeCompare(a.date)).map((visit) => {
         const patient = patients.find((item) => item.id === visit.patientId);

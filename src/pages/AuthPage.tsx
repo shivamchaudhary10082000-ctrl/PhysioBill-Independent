@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ArrowRight,
   HeartPulse,
-  KeyRound,
   LogIn,
   Mail,
   UserPlus,
@@ -123,11 +122,6 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
             {!busy && <ArrowRight size={16} />}
           </button>
         </form>
-
-        <div className="mt-6 flex items-start gap-2 rounded-xl bg-secondary/60 p-3 text-xs leading-5 text-muted-foreground">
-          <KeyRound size={15} className="mt-0.5 shrink-0" />
-          Authentication is handled by Supabase. PhysioBill does not store your password in application data.
-        </div>
       </section>
     </main>
   );

@@ -149,7 +149,7 @@ export function PatientPeriodAnalytics({
           </p>
           <h3 className="mt-1 text-lg font-extrabold">Month / year</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Persisted Visits and Treatment Episode status history only.
+            Review treatment activity and patient progress by month.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:w-[300px]">
@@ -196,7 +196,7 @@ export function PatientPeriodAnalytics({
 
       {loading ? (
         <div className="mt-4 rounded-xl bg-secondary/40 p-4 text-sm font-semibold text-muted-foreground">
-          Loading authoritative analytics…
+          Loading treatment analytics…
         </div>
       ) : analytics ? (
         <>
@@ -213,7 +213,7 @@ export function PatientPeriodAnalytics({
               <div>
                 <h4 className="font-extrabold">Patients treated in {months[month - 1]} {year}</h4>
                 <p className="text-xs text-muted-foreground">
-                  A Patient appears here only when a persisted Visit exists in this period.
+                  Patients with treatment visits during this period.
                 </p>
               </div>
             </div>
@@ -256,7 +256,7 @@ export function PatientPeriodAnalytics({
 
                       {periodPatient.unlinkedVisitCount > 0 && (
                         <p className="mt-2 text-xs text-amber-700">
-                          {periodPatient.unlinkedVisitCount} persisted{' '}
+                          {periodPatient.unlinkedVisitCount}{' '}
                           {periodPatient.unlinkedVisitCount === 1 ? 'Visit has' : 'Visits have'} no Treatment Episode link.
                         </p>
                       )}

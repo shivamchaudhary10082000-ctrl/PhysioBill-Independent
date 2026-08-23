@@ -50,11 +50,13 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
       } else {
         await signInPhysiotherapist(email, password);
       }
-    } catch (caught) {
+    } catch {
       if (mode === 'recovery-request') {
         setError('The recovery request could not be completed right now. Please wait and try again.');
+      } else if (mode === 'signup') {
+        setError('Unable to create the account. Review your details and try again.');
       } else {
-        setError(caught instanceof Error ? caught.message : 'Authentication failed.');
+        setError('Unable to sign in. Check your credentials and try again.');
       }
     } finally {
       setBusy(false);

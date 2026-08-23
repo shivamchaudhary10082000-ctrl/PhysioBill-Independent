@@ -69,13 +69,13 @@ export function ResetPasswordPage({
       setNotice('Password updated. Ending the recovery session securely…');
       await signOutPhysiotherapist();
       onComplete();
-    } catch (caught) {
+    } catch {
       if (updateSucceeded) {
         setError(
           'Your password was updated, but secure sign-out did not finish. Retry below before leaving this recovery page.',
         );
       } else {
-        setError(caught instanceof Error ? caught.message : 'Unable to update the password.');
+        setError('Unable to update the password. Review the password requirements and try again.');
       }
     } finally {
       setBusy(false);

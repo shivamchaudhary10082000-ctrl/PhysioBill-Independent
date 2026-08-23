@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
 import type { InvoicePdfDto } from './document-dto.ts';
 
 const A4: [number, number] = [595.28, 841.89];
@@ -27,17 +27,6 @@ function servicePeriod(dto: InvoicePdfDto) {
   if (!start && !end) return '-';
   if (start && start === end) return start;
   return `${start || '-'} - ${end || '-'}`;
-}
-
-function drawRupee(page: PDFPage, x: number, y: number, size: number) {
-  const w = size * 0.62;
-  const t = Math.max(0.8, size * 0.07);
-  page.drawLine({ start: { x, y: y + size * 0.82 }, end: { x: x + w, y: y + size * 0.82 }, thickness: t, color: TEXT });
-  page.drawLine({ start: { x, y: y + size * 0.62 }, end: { x: x + w * 0.9, y: y + size * 0.62 }, thickness: t, color: TEXT });
-  page.drawLine({ start: { x: x + w * 0.08, y: y + size }, end: { x: x + w * 0.55, y: y + size }, thickness: t, color: TEXT });
-  page.drawLine({ start: { x: x + w * 0.55, y: y + size }, end: { x: x + w * 0.55, y: y + size * 0.55 }, thickness: t, color: TEXT });
-  page.drawLine({ start: { x: x + w * 0.55, y: y + size * 0.55 }, end: { x: x + w * 0.08, y: y + size * 0.08 }, thickness: t, color: TEXT });
-  return w + size * 0.18;
 }
 
 function wrap(font: PDFFont, value: string, size: number, maxWidth: number) {
@@ -89,15 +78,14 @@ export async function renderInvoicePdf(dto: InvoicePdfDto): Promise<Uint8Array> 
   const amount = (label: string, value: number, negative = false) => {
     ensure(19);
     page.drawText(safeText(label), { x: MARGIN, y, size: 10, font: regular, color: TEXT });
-    const numberText = `${negative ? '-' : ''}${moneyNumber(value)}`;
-    const numberWidth = regular.widthOfTextAtSize(numberText, 10);
-    const rupeeX = A4[0] - MARGIN - numberWidth - 10;
-    const rupeeWidth = drawRupee(page, rupeeX, y - 1, 10);
-    page.drawText(numberText, { x: rupeeX + rupeeWidth, y, size: 10, font: bold, color: TEXT });
+    const amountText = `Rs ${negative ? '-' : ''}${moneyNumber(value)}`;
+    const amountWidth = bold.widthOfTextAtSize(amountText, 10);
+    page.drawText(amountText, { x: A4[0] - MARGIN - amountWidth, y, size: 10, font: bold, color: TEXT });
     y -= 17;
   };
 
   line('PhysioBill', { bold: true, size: 11, color: ACCENT });
+  y -= 6;
   line('INVOICE', { bold: true, size: 24 });
   line(dto.invoiceNumber, { bold: true, size: 12, color: MUTED });
   line(dto.issuedAt ? `Issued on: ${dateLabel(dto.issuedAt)}` : 'Issue date unavailable for this legacy invoice.', { color: MUTED });

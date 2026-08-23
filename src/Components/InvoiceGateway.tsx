@@ -304,7 +304,7 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isInvoiceRoute) return;
     let active = true; setSelected(null); setLoading(true); setError(null);
-    resolveAuthenticatedPhysiotherapist().then(async (bootstrap) => Promise.all([loadPatients(), loadInvoices(), loadPhysiotherapistSettings(bootstrap.physioId)])).then(([loadedPatients, loadedInvoices, settings]) => { if (!active) return; setPatients(loadedPatients); setInvoices(loadedInvoices); setDefaultPayment(settings.default_payment); }).catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : 'Unable to load invoices.'); }).finally(() => { if (active) setLoading(false); });
+    resolveAuthenticatedPhysiotherapist().then(async (bootstrap) => Promise.all([loadPatients(), loadInvoices(), loadPhysiotherapistSettings(bootstrap.physioId)])).then(([loadedPatients, loadedInvoices, settings]) => { if (!active) return; const routedInvoiceId = invoiceDetailId(window.location.pathname); setPatients(loadedPatients); setInvoices(loadedInvoices); setDefaultPayment(settings.default_payment); setSelected(routedInvoiceId ? loadedInvoices.find((invoice) => invoice.id === routedInvoiceId) ?? null : null); }).catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : 'Unable to load invoices.'); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [isInvoiceRoute]);
 

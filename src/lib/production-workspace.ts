@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js';
+import { toast } from '@/hooks/use-toast';
 import {
   loadPhysiotherapistProfessionalVerification,
   loadPhysiotherapistProfile,
@@ -133,7 +134,12 @@ export async function saveProductionProfile(
     address: profile.address,
     invoice_prefix: profile.invoicePrefix,
   });
-  return mapProfile(updated);
+  const savedProfile = mapProfile(updated);
+  toast({
+    title: 'Profile saved',
+    description: 'Your professional details have been updated.',
+  });
+  return savedProfile;
 }
 
 export async function loadProductionProfessionalVerification(

@@ -27,6 +27,7 @@ import {
 import { loadPhysiotherapistSettings, resolveAuthenticatedPhysiotherapist } from '@/lib/workspace';
 
 type Draft = ProductionInvoiceInput;
+type NumericEditingState = Pick<Record<'fee' | 'additional' | 'discount' | 'gstRate', string>, 'fee' | 'additional' | 'discount' | 'gstRate'>;
 
 const canonicalInvoicePath = '/app/invoices';
 const invoiceDetailPath = (invoiceId: string) => `${canonicalInvoicePath}/${encodeURIComponent(invoiceId)}`;
@@ -89,6 +90,19 @@ const toDraft = (invoice: ProductionInvoice): Draft => ({
   paymentMethod: invoice.paymentMethod,
   finalized: invoice.finalized,
 });
+
+const numericEditingFromDraft = (draft: Draft): NumericEditingState => ({
+  fee: String(draft.fee),
+  additional: String(draft.additional),
+  discount: String(draft.discount),
+  gstRate: String(draft.gstRate),
+});
+
+const normalizeEditingNumber = (value: string) => {
+  if (!value.trim()) return 0;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
+};
 
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const calculatePreview = (draft: Draft) => Math.max(0, Math.round((draft.fee + draft.additional - draft.discount) * (1 + draft.gstRate / 100) * 100) / 100);
@@ -228,28 +242,44 @@ function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInv
 }
 
 function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onViewIssuedInvoice }: { invoice: ProductionInvoice | null; patients: ProductionPatient[]; defaultPayment: string; onSaved: (invoice: ProductionInvoice) => void; onBack: () => void; onViewIssuedInvoice: (invoiceId: string) => void }) {
-  const [draft, setDraft] = useState<Draft>(() => invoice ? toDraft(invoice) : emptyDraft(patients[0]?.id ?? '', defaultPayment));
+  const initialDraft = invoice ? toDraft(invoice) : emptyDraft(patients[0]?.id ?? '', defaultPayment);
+  const [draft, setDraft] = useState<Draft>(() => initialDraft);
+  const [numericEditing, setNumericEditing] = useState<NumericEditingState>(() => numericEditingFromDraft(initialDraft));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const readOnly = Boolean(invoice?.finalized);
 
-  useEffect(() => { setDraft(invoice ? toDraft(invoice) : emptyDraft(patients[0]?.id ?? '', defaultPayment)); setError(null); setMessage(null); }, [invoice?.id, invoice?.paid, invoice?.status, defaultPayment, patients]);
+  useEffect(() => {
+    const nextDraft = invoice ? toDraft(invoice) : emptyDraft(patients[0]?.id ?? '', defaultPayment);
+    setDraft(nextDraft);
+    setNumericEditing(numericEditingFromDraft(nextDraft));
+    setError(null);
+    setMessage(null);
+  }, [invoice?.id, invoice?.paid, invoice?.status, defaultPayment, patients]);
 
   const update = <K extends keyof Draft>(field: K, value: Draft[K]) => setDraft((current) => ({ ...current, [field]: value }));
+  const normalizedDraft: Draft = {
+    ...draft,
+    fee: normalizeEditingNumber(numericEditing.fee),
+    additional: normalizeEditingNumber(numericEditing.additional),
+    discount: normalizeEditingNumber(numericEditing.discount),
+    gstRate: normalizeEditingNumber(numericEditing.gstRate),
+  };
   const persist = async (finalize: boolean) => {
     setBusy(true); setError(null); setMessage(null);
     try {
       let saved: ProductionInvoice;
-      if (!invoice) saved = await createInvoice({ ...draft, finalized: finalize });
-      else if (finalize) saved = await finalizeInvoice(invoice.id, draft);
-      else saved = await updateDraftInvoice(invoice.id, draft);
-      onSaved(saved); setDraft(toDraft(saved)); setMessage(finalize ? 'Invoice finalized.' : 'Draft saved.');
+      if (!invoice) saved = await createInvoice({ ...normalizedDraft, finalized: finalize });
+      else if (finalize) saved = await finalizeInvoice(invoice.id, normalizedDraft);
+      else saved = await updateDraftInvoice(invoice.id, normalizedDraft);
+      const savedDraft = toDraft(saved);
+      onSaved(saved); setDraft(savedDraft); setNumericEditing(numericEditingFromDraft(savedDraft)); setMessage(finalize ? 'Invoice finalized.' : 'Draft saved.');
     } catch (caught: unknown) { setError(caught instanceof Error ? caught.message : 'Unable to save invoice.'); }
     finally { setBusy(false); }
   };
 
-  const previewTotal = calculatePreview(draft);
+  const previewTotal = calculatePreview(normalizedDraft);
   return <div className="space-y-5">
     <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to invoices</button>
     <div className="rounded-2xl border bg-card p-5 sm:p-6">
@@ -261,11 +291,11 @@ function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onV
         <Field disabled={readOnly} label="Sessions" value={draft.sessions} onChange={(value) => update('sessions', value)} />
         <Field disabled={readOnly} type="date" label="Start date" value={draft.startDate} onChange={(value) => update('startDate', value)} />
         <Field disabled={readOnly} type="date" label="End date" value={draft.endDate} onChange={(value) => update('endDate', value)} />
-        <Field disabled={readOnly} type="number" label="Fee" value={draft.fee} onChange={(value) => update('fee', Number(value) || 0)} />
-        <Field disabled={readOnly} type="number" label="Additional" value={draft.additional} onChange={(value) => update('additional', Number(value) || 0)} />
+        <Field disabled={readOnly} type="number" label="Fee" value={numericEditing.fee} onChange={(value) => setNumericEditing((current) => ({ ...current, fee: value }))} />
+        <Field disabled={readOnly} type="number" label="Additional" value={numericEditing.additional} onChange={(value) => setNumericEditing((current) => ({ ...current, additional: value }))} />
         <Field disabled={readOnly} label="Additional description" value={draft.additionalDescription} onChange={(value) => update('additionalDescription', value)} />
-        <Field disabled={readOnly} type="number" label="Discount" value={draft.discount} onChange={(value) => update('discount', Number(value) || 0)} />
-        <Field disabled={readOnly} type="number" label="GST rate" value={draft.gstRate} onChange={(value) => update('gstRate', Number(value) || 0)} />
+        <Field disabled={readOnly} type="number" label="Discount" value={numericEditing.discount} onChange={(value) => setNumericEditing((current) => ({ ...current, discount: value }))} />
+        <Field disabled={readOnly} type="number" label="GST rate" value={numericEditing.gstRate} onChange={(value) => setNumericEditing((current) => ({ ...current, gstRate: value }))} />
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-4"><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Total</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.total ?? previewTotal)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Paid</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.paid ?? 0)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Balance</p><p className="mt-1 text-lg font-extrabold">{money(Math.max(0, (invoice?.total ?? previewTotal) - (invoice?.paid ?? 0)))}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Status</p><p className="mt-1 text-lg font-extrabold">{invoice?.status ?? 'Draft'}</p></div></div>
       {error && <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}

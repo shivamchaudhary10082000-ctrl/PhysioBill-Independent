@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, FileText, Plus, RotateCcw, Search, ShieldCheck, WalletCards } from 'lucide-react';
+import { IssuedInvoiceDocument } from '@/Components/IssuedInvoiceDocument';
 import { GatewaySessionControls } from '@/Components/WorkspaceSessionControls';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import {
@@ -28,6 +29,15 @@ import { loadPhysiotherapistSettings, resolveAuthenticatedPhysiotherapist } from
 type Draft = ProductionInvoiceInput;
 
 const canonicalInvoicePath = '/app/invoices';
+const issuedDocumentPath = (invoiceId: string) => `${canonicalInvoicePath}/${encodeURIComponent(invoiceId)}/document`;
+const issuedDocumentInvoiceId = (path: string) => {
+  const match = /^\/app\/invoices\/([^/]+)\/document\/?$/.exec(path);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+const navigate = (path: string) => {
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+};
 const isBoundedInvoicePath = (path: string) =>
   path === canonicalInvoicePath ||
   path.startsWith(`${canonicalInvoicePath}/`) ||
@@ -78,7 +88,7 @@ function InvoiceGatewayFrame({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-[1420px] px-4 py-6 sm:px-7 lg:px-10">
-        <GatewaySessionControls backPath="/app/dashboard" backLabel="Back to Overview" />
+        <div className="no-print"><GatewaySessionControls backPath="/app/dashboard" backLabel="Back to Overview" /></div>
         {children}
       </main>
     </div>
@@ -207,7 +217,7 @@ function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInv
   </div>;
 }
 
-function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack }: { invoice: ProductionInvoice | null; patients: ProductionPatient[]; defaultPayment: string; onSaved: (invoice: ProductionInvoice) => void; onBack: () => void }) {
+function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onViewIssuedInvoice }: { invoice: ProductionInvoice | null; patients: ProductionPatient[]; defaultPayment: string; onSaved: (invoice: ProductionInvoice) => void; onBack: () => void; onViewIssuedInvoice: (invoiceId: string) => void }) {
   const [draft, setDraft] = useState<Draft>(() => invoice ? toDraft(invoice) : emptyDraft(patients[0]?.id ?? '', defaultPayment));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -233,7 +243,7 @@ function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack }: {
   return <div className="space-y-5">
     <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to invoices</button>
     <div className="rounded-2xl border bg-card p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Invoice details</p><h2 className="mt-1 text-xl font-extrabold">{invoice?.number ?? 'New invoice'}</h2><p className="text-sm text-muted-foreground">{invoice?.status ?? 'Not saved yet'}</p></div>{invoice?.finalized && <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">Finalized · read-only</span>}</div>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Invoice details</p><h2 className="mt-1 text-xl font-extrabold">{invoice?.number ?? 'New invoice'}</h2><p className="text-sm text-muted-foreground">{invoice?.status ?? 'Not saved yet'}</p></div>{invoice?.finalized && <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">Finalized · read-only</span><button type="button" onClick={() => onViewIssuedInvoice(invoice.id)} className="inline-flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary"><FileText size={16} /> View issued invoice</button></div>}</div>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Patient</span><select disabled={Boolean(invoice) || readOnly} value={draft.patientId} onChange={(event) => update('patientId', event.target.value)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:bg-muted/40 disabled:opacity-100">{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} · {patient.patientNumber}</option>)}</select></label>
         <Field disabled label="Invoice number" value={invoice?.number ?? 'Assigned when saved'} onChange={() => undefined} />
@@ -269,15 +279,16 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   useEffect(() => { const onLocation = () => setPath(window.location.pathname); const events = ['popstate', 'pushState', 'replaceState'] as const; events.forEach((eventName) => window.addEventListener(eventName, onLocation)); onLocation(); return () => events.forEach((eventName) => window.removeEventListener(eventName, onLocation)); }, []);
 
   const isInvoiceRoute = isBoundedInvoicePath(path);
+  const documentInvoiceId = issuedDocumentInvoiceId(path);
   useEffect(() => {
-    if (!isInvoiceRoute || path === canonicalInvoicePath) return;
+    if (!isInvoiceRoute || path === canonicalInvoicePath || documentInvoiceId) return;
     window.history.replaceState(
       window.history.state,
       '',
       `${canonicalInvoicePath}${window.location.search}${window.location.hash}`,
     );
     setPath(canonicalInvoicePath);
-  }, [isInvoiceRoute, path]);
+  }, [documentInvoiceId, isInvoiceRoute, path]);
 
   useEffect(() => {
     if (!isInvoiceRoute) return;
@@ -289,10 +300,11 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   const filtered = useMemo(() => invoices.filter((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return [invoice.number, invoice.description, invoice.status, patient?.name ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()); }), [invoices, patients, search]);
 
   if (!isInvoiceRoute) return <>{children}</>;
+  if (documentInvoiceId) return <InvoiceGatewayFrame><IssuedInvoiceDocument invoiceId={documentInvoiceId} onBack={() => { if (window.history.length > 1) window.history.back(); else navigate(canonicalInvoicePath); }} /></InvoiceGatewayFrame>;
   if (loading) return <InvoiceGatewayFrame><div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading invoices…</div></InvoiceGatewayFrame>;
   if (error) return <InvoiceGatewayFrame><div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div></InvoiceGatewayFrame>;
 
-  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <InvoiceGatewayFrame><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => setSelected(null)} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></InvoiceGatewayFrame>; }
+  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <InvoiceGatewayFrame><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => setSelected(null)} onViewIssuedInvoice={(invoiceId) => navigate(issuedDocumentPath(invoiceId))} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></InvoiceGatewayFrame>; }
 
   return <InvoiceGatewayFrame>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Billing</p><h1 className="mt-1 text-3xl font-extrabold">Invoices</h1><p className="mt-2 text-sm text-muted-foreground">Create invoices, track payments and keep your billing organized.</p></div><button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button></div>

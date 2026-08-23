@@ -12,20 +12,24 @@ export type PhysiotherapistProfileRecord = {
   title: string;
   qualification: string;
   registration: string;
+  registration_authority: string;
   pan: string;
   gstin: string;
   phone: string;
   email: string;
   address: string;
-  logo_url: string;
-  upi_name: string;
-  upi_id: string;
-  bank_name: string;
-  account_number_display: string;
-  ifsc_display: string;
   invoice_prefix: string;
-  payment_account_id: string | null;
-  payment_account_status: 'not_connected' | 'pending' | 'connected';
+};
+
+export type TherapistEditableProfileUpdate = Omit<PhysiotherapistProfileRecord, 'physio_id'>;
+
+export type PhysiotherapistProfessionalVerificationRecord = {
+  physio_id: string;
+  verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verified_at: string | null;
+  verified_qualification: string;
+  verified_registration_number: string;
+  verified_registration_authority: string;
 };
 
 export type PhysiotherapistSettingsRecord = {
@@ -36,6 +40,9 @@ export type PhysiotherapistSettingsRecord = {
   show_gst: boolean;
   date_format: string;
 };
+
+const profileColumns = 'physio_id,full_name,title,qualification,registration,registration_authority,pan,gstin,phone,email,address,invoice_prefix' as const;
+const verificationColumns = 'physio_id,verification_status,verified_at,verified_qualification,verified_registration_number,verified_registration_authority' as const;
 
 export async function resolveAuthenticatedPhysiotherapist(): Promise<PhysiotherapistWorkspaceBootstrap> {
   const supabase = getSupabaseClient();
@@ -76,28 +83,54 @@ export async function loadPhysiotherapistProfile(
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('physiotherapist_profiles')
-    .select('*')
+    .select(profileColumns)
     .eq('physio_id', physioId)
     .single();
 
   if (error) throw error;
-  return data as PhysiotherapistProfileRecord;
+  return data as unknown as PhysiotherapistProfileRecord;
 }
 
 export async function updatePhysiotherapistProfile(
   physioId: string,
-  patch: Partial<Omit<PhysiotherapistProfileRecord, 'physio_id'>>,
+  input: TherapistEditableProfileUpdate,
 ): Promise<PhysiotherapistProfileRecord> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('physiotherapist_profiles')
-    .update(patch)
+    .update({
+      full_name: input.full_name,
+      title: input.title,
+      qualification: input.qualification,
+      registration: input.registration,
+      registration_authority: input.registration_authority,
+      pan: input.pan,
+      gstin: input.gstin,
+      phone: input.phone,
+      email: input.email,
+      address: input.address,
+      invoice_prefix: input.invoice_prefix,
+    })
     .eq('physio_id', physioId)
-    .select('*')
+    .select(profileColumns)
     .single();
 
   if (error) throw error;
-  return data as PhysiotherapistProfileRecord;
+  return data as unknown as PhysiotherapistProfileRecord;
+}
+
+export async function loadPhysiotherapistProfessionalVerification(
+  physioId: string,
+): Promise<PhysiotherapistProfessionalVerificationRecord> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('physiotherapist_professional_verifications')
+    .select(verificationColumns)
+    .eq('physio_id', physioId)
+    .single();
+
+  if (error) throw error;
+  return data as unknown as PhysiotherapistProfessionalVerificationRecord;
 }
 
 export async function loadPhysiotherapistSettings(

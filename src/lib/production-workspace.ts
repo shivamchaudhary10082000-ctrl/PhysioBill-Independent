@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js';
 import {
+  loadPhysiotherapistProfessionalVerification,
   loadPhysiotherapistProfile,
   loadPhysiotherapistSettings,
   resolveAuthenticatedPhysiotherapist,
@@ -13,20 +14,23 @@ export type ProductionProfile = {
   title: string;
   qualification: string;
   registration: string;
+  registrationAuthority: string;
   pan: string;
   gstin: string;
   phone: string;
   email: string;
   address: string;
-  logo: string;
-  upiName: string;
-  upiId: string;
-  bankName: string;
-  accountNumber: string;
-  ifsc: string;
   invoicePrefix: string;
-  paymentAccountId?: string;
-  paymentAccountStatus?: 'not_connected' | 'pending' | 'connected';
+};
+
+export type TherapistEditableProductionProfile = Omit<ProductionProfile, 'id'>;
+
+export type ProductionProfessionalVerification = {
+  status: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verifiedAt: string | null;
+  verifiedQualification: string;
+  verifiedRegistrationNumber: string;
+  verifiedRegistrationAuthority: string;
 };
 
 export type ProductionSettings = {
@@ -47,6 +51,7 @@ export type ProductionWorkspace = {
     email: string;
   };
   profile: ProductionProfile;
+  verification: ProductionProfessionalVerification;
   settings: ProductionSettings;
 };
 
@@ -56,20 +61,23 @@ const mapProfile = (row: Awaited<ReturnType<typeof loadPhysiotherapistProfile>>)
   title: row.title,
   qualification: row.qualification,
   registration: row.registration,
+  registrationAuthority: row.registration_authority,
   pan: row.pan,
   gstin: row.gstin,
   phone: row.phone,
   email: row.email,
   address: row.address,
-  logo: row.logo_url,
-  upiName: row.upi_name,
-  upiId: row.upi_id,
-  bankName: row.bank_name,
-  accountNumber: row.account_number_display,
-  ifsc: row.ifsc_display,
   invoicePrefix: row.invoice_prefix,
-  paymentAccountId: row.payment_account_id ?? undefined,
-  paymentAccountStatus: row.payment_account_status,
+});
+
+const mapVerification = (
+  row: Awaited<ReturnType<typeof loadPhysiotherapistProfessionalVerification>>,
+): ProductionProfessionalVerification => ({
+  status: row.verification_status,
+  verifiedAt: row.verified_at,
+  verifiedQualification: row.verified_qualification,
+  verifiedRegistrationNumber: row.verified_registration_number,
+  verifiedRegistrationAuthority: row.verified_registration_authority,
 });
 
 const mapSettings = (row: Awaited<ReturnType<typeof loadPhysiotherapistSettings>>): ProductionSettings => ({
@@ -86,8 +94,9 @@ export async function loadProductionWorkspace(user: User): Promise<ProductionWor
     throw new Error('Authenticated workspace identity does not match the current session.');
   }
 
-  const [profileRow, settingsRow] = await Promise.all([
+  const [profileRow, verificationRow, settingsRow] = await Promise.all([
     loadPhysiotherapistProfile(bootstrap.physioId),
+    loadPhysiotherapistProfessionalVerification(bootstrap.physioId),
     loadPhysiotherapistSettings(bootstrap.physioId),
   ]);
 
@@ -102,35 +111,35 @@ export async function loadProductionWorkspace(user: User): Promise<ProductionWor
       email: user.email || profile.email,
     },
     profile,
+    verification: mapVerification(verificationRow),
     settings: mapSettings(settingsRow),
   };
 }
 
 export async function saveProductionProfile(
   physioId: string,
-  profile: ProductionProfile,
+  profile: TherapistEditableProductionProfile,
 ): Promise<ProductionProfile> {
   const updated = await updatePhysiotherapistProfile(physioId, {
     full_name: profile.fullName,
     title: profile.title,
     qualification: profile.qualification,
     registration: profile.registration,
+    registration_authority: profile.registrationAuthority,
     pan: profile.pan,
     gstin: profile.gstin,
     phone: profile.phone,
     email: profile.email,
     address: profile.address,
-    logo_url: profile.logo,
-    upi_name: profile.upiName,
-    upi_id: profile.upiId,
-    bank_name: profile.bankName,
-    account_number_display: profile.accountNumber,
-    ifsc_display: profile.ifsc,
     invoice_prefix: profile.invoicePrefix,
-    payment_account_id: profile.paymentAccountId ?? null,
-    payment_account_status: profile.paymentAccountStatus ?? 'not_connected',
   });
   return mapProfile(updated);
+}
+
+export async function loadProductionProfessionalVerification(
+  physioId: string,
+): Promise<ProductionProfessionalVerification> {
+  return mapVerification(await loadPhysiotherapistProfessionalVerification(physioId));
 }
 
 export async function saveProductionSettings(

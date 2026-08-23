@@ -43,9 +43,11 @@ import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { useAuthSession } from '@/hooks/use-auth-session';
 import { PASSWORD_RECOVERY_PATH } from '@/lib/auth';
 import {
+  loadProductionProfessionalVerification,
   loadProductionWorkspace,
   saveProductionProfile,
   saveProductionSettings,
+  type ProductionProfessionalVerification,
   type ProductionWorkspace,
 } from '@/lib/production-workspace';
 import {
@@ -80,20 +82,13 @@ type Profile = {
   title: string;
   qualification: string;
   registration: string;
+  registrationAuthority: string;
   pan: string;
   gstin: string;
   phone: string;
   email: string;
   address: string;
-  logo: string;
-  upiName: string;
-  upiId: string;
-  bankName: string;
-  accountNumber: string;
-  ifsc: string;
   invoicePrefix: string;
-  paymentAccountId?: string;
-  paymentAccountStatus?: 'not_connected' | 'pending' | 'connected';
 };
 
 type Settings = {
@@ -215,20 +210,13 @@ const defaultProfile: Profile = {
   title: 'Physiotherapist',
   qualification: '',
   registration: '',
+  registrationAuthority: '',
   pan: '',
   gstin: '',
   phone: '',
   email: '',
   address: '',
-  logo: '',
-  upiName: '',
-  upiId: '',
-  bankName: '',
-  accountNumber: '',
-  ifsc: '',
   invoicePrefix: 'PB',
-  paymentAccountId: undefined,
-  paymentAccountStatus: 'not_connected',
 };
 
 const defaultSettings: Settings = {
@@ -433,6 +421,7 @@ type WorkspaceState = {
   currentPhysioId: string;
   profile: Profile;
   setProfile: React.Dispatch<React.SetStateAction<Profile>>;
+  verification: ProductionProfessionalVerification;
   settings: Settings;
   setSettings: React.Dispatch<React.SetStateAction<Settings>>;
   patients: Patient[];
@@ -457,14 +446,17 @@ function WorkspaceController({
   authUser,
   currentPhysioId,
   initialProfile,
+  initialVerification,
   initialSettings,
 }: {
   authUser: AuthUser;
   currentPhysioId: string;
   initialProfile: Profile;
+  initialVerification: ProductionProfessionalVerification;
   initialSettings: Settings;
 }) {
   const [profile, setProfileState] = useState<Profile>(initialProfile);
+  const [verification, setVerification] = useState<ProductionProfessionalVerification>(initialVerification);
   const [settings, setSettingsState] = useState<Settings>(initialSettings);
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
 
@@ -473,7 +465,11 @@ function WorkspaceController({
       const next = typeof value === 'function' ? value(current) : value;
       setPersistenceError(null);
       void saveProductionProfile(currentPhysioId, next)
-        .then((saved) => setProfileState(saved))
+        .then(async (saved) => {
+          setProfileState(saved);
+          const refreshedVerification = await loadProductionProfessionalVerification(currentPhysioId);
+          setVerification(refreshedVerification);
+        })
         .catch((error: unknown) =>
           setPersistenceError(error instanceof Error ? error.message : 'Unable to save profile.'),
         );
@@ -669,6 +665,7 @@ function WorkspaceController({
     currentPhysioId,
     profile,
     setProfile,
+    verification,
     settings,
     setSettings,
     patients,
@@ -1012,9 +1009,18 @@ function VisitForm({ patients, initialVisit, onSave, onCancel }: { patients: Pat
   return <div className="rounded-2xl border bg-card p-6"><PageHeader eyebrow="Clinical record" title={initialVisit ? `Edit ${initialVisit.visitNumber}` : 'Log visit'} description={initialVisit ? 'Patient, visit number and visit date stay unchanged. Clinical content remains editable.' : 'A visit number is assigned when you save.'} /><div className="grid gap-4 md:grid-cols-2"><SelectField label="Patient" value={patientId} onChange={setPatientId} disabled={Boolean(initialVisit)} options={patients.map((p) => ({ value: p.id, label: p.name }))} /><Field label="Date" type="date" value={date} disabled={Boolean(initialVisit)} onChange={(e) => setDate(e.target.value)} /><Field label="Treatment" value={treatment} onChange={(e) => setTreatment(e.target.value)} /><Field label="Duration (minutes)" type="number" min="0" step="1" value={duration} onChange={(e) => setDuration(e.target.value)} /><Field label="Modalities" value={modalities} onChange={(e) => setModalities(e.target.value)} /><Field label="Exercises" value={exercises} onChange={(e) => setExercises(e.target.value)} /><Field label="Authorization" value={authorization} onChange={(e) => setAuthorization(e.target.value)} /><div className="md:col-span-2"><TextArea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></div></div>{error && <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}<div className="mt-6 flex justify-end gap-2"><Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button><Button disabled={busy || !patientId || !treatment.trim()} onClick={() => void save()}><Check size={16} /> {busy ? 'Saving…' : initialVisit ? 'Save changes' : 'Save visit'}</Button></div></div>;
 }
 
+const verificationLabel: Record<ProductionProfessionalVerification['status'], string> = {
+  unverified: 'Unverified',
+  pending: 'Pending review',
+  verified: 'Verified',
+  rejected: 'Verification unsuccessful',
+};
+
 function ProfilePage({ workspace }: { workspace: WorkspaceState }) {
-  const [draft, setDraft] = useState(workspace.profile); const set = <K extends keyof Profile>(field: K, value: Profile[K]) => setDraft((current) => ({ ...current, [field]: value }));
-  return <div><PageHeader eyebrow="Provider profile" title="Your professional details" description="Display and billing fields only. Never store secret payment credentials here." /><div className="rounded-2xl border bg-card p-6"><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={draft.fullName} onChange={(e) => set('fullName', e.target.value)} /><Field label="Title" value={draft.title} onChange={(e) => set('title', e.target.value)} /><Field label="Qualification" value={draft.qualification} onChange={(e) => set('qualification', e.target.value)} /><Field label="Registration" value={draft.registration} onChange={(e) => set('registration', e.target.value)} /><Field label="PAN" value={draft.pan} onChange={(e) => set('pan', e.target.value)} /><Field label="GSTIN" value={draft.gstin} onChange={(e) => set('gstin', e.target.value)} /><Field label="Phone" value={draft.phone} onChange={(e) => set('phone', e.target.value)} /><Field label="Email" value={draft.email} onChange={(e) => set('email', e.target.value)} /><Field label="Address" value={draft.address} onChange={(e) => set('address', e.target.value)} /><Field label="Logo URL" value={draft.logo} onChange={(e) => set('logo', e.target.value)} /><Field label="UPI display name" value={draft.upiName} onChange={(e) => set('upiName', e.target.value)} /><Field label="UPI ID" value={draft.upiId} onChange={(e) => set('upiId', e.target.value)} /><Field label="Bank name" value={draft.bankName} onChange={(e) => set('bankName', e.target.value)} /><Field label="Account number" value={draft.accountNumber} onChange={(e) => set('accountNumber', e.target.value)} /><Field label="IFSC" value={draft.ifsc} onChange={(e) => set('ifsc', e.target.value)} /><Field label="Invoice prefix" value={draft.invoicePrefix} onChange={(e) => set('invoicePrefix', e.target.value.toUpperCase())} /><Field label="Payment account ID (future display reference)" value={draft.paymentAccountId ?? ''} onChange={(e) => set('paymentAccountId', e.target.value || undefined)} /><SelectField label="Payment account status" value={draft.paymentAccountStatus ?? 'not_connected'} onChange={(value) => set('paymentAccountStatus', value as Profile['paymentAccountStatus'])} options={['not_connected', 'pending', 'connected'].map((value) => ({ value, label: value.replace(/_/g, ' ') }))} /></div><div className="mt-6 flex justify-end"><Button onClick={() => workspace.setProfile(draft)}><Check size={16} /> Save profile</Button></div></div></div>;
+  const [draft, setDraft] = useState(workspace.profile);
+  const set = <K extends keyof Profile>(field: K, value: Profile[K]) => setDraft((current) => ({ ...current, [field]: value }));
+  const verification = workspace.verification;
+  return <div><PageHeader eyebrow="Provider profile" title="Your professional details" description="Keep your professional and billing identity up to date. Credential claims remain separate from verification." /><div className="mb-6 rounded-2xl border bg-card p-5"><p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">Professional verification</p><p className="mt-2 text-lg font-extrabold">{verificationLabel[verification.status]}</p>{verification.status === 'verified' ? <p className="mt-2 text-sm text-muted-foreground">Professional credentials verified by PhysioBill. This does not determine insurer or mediclaim reimbursement.</p> : <p className="mt-2 text-sm text-muted-foreground">Professional verification is system-managed. There is no self-verification control on this page.</p>}</div><div className="rounded-2xl border bg-card p-6"><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={draft.fullName} onChange={(e) => set('fullName', e.target.value)} /><Field label="Title" value={draft.title} onChange={(e) => set('title', e.target.value)} /><Field label="Qualification" value={draft.qualification} onChange={(e) => set('qualification', e.target.value)} /><Field label="Registration number" value={draft.registration} onChange={(e) => set('registration', e.target.value)} /><Field label="Registration authority / council" value={draft.registrationAuthority} onChange={(e) => set('registrationAuthority', e.target.value)} /><Field label="Phone" value={draft.phone} onChange={(e) => set('phone', e.target.value)} /><Field label="Professional email" value={draft.email} onChange={(e) => set('email', e.target.value)} /><Field label="Professional / practice address" value={draft.address} onChange={(e) => set('address', e.target.value)} /><Field label="PAN" value={draft.pan} onChange={(e) => set('pan', e.target.value)} /><Field label="GSTIN" value={draft.gstin} onChange={(e) => set('gstin', e.target.value)} /><Field label="Invoice prefix" value={draft.invoicePrefix} onChange={(e) => set('invoicePrefix', e.target.value.toUpperCase())} /></div><p className="mt-5 text-sm text-muted-foreground">Logo upload and payment-destination settings will be handled separately when their secure workflows are available.</p><div className="mt-6 flex justify-end"><Button onClick={() => workspace.setProfile(draft)}><Check size={16} /> Save profile</Button></div></div></div>;
 }
 
 function SettingsPage({ workspace }: { workspace: WorkspaceState }) {
@@ -1138,6 +1144,7 @@ function ApplicationRouter() {
           authUser={workspace.authUser}
           currentPhysioId={workspace.physioId}
           initialProfile={workspace.profile}
+          initialVerification={workspace.verification}
           initialSettings={workspace.settings}
         />
       </ClinicalRecordsGateway>

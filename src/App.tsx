@@ -186,7 +186,13 @@ type Invoice = {
 const queryClient = new QueryClient();
 const DEMO_PHYSIO_ID = 'physio-demo-001';
 const DEMO_PATIENT_USER_ID = 'patient-demo-user-001';
-const today = new Date().toISOString().slice(0, 10);
+const localDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const today = localDateKey();
 const currentYear = new Date().getFullYear();
 
 const demoAuthUser: AuthUser = {
@@ -823,6 +829,12 @@ function AppShell({ workspace, children }: { workspace: WorkspaceState; children
 function Brand() { return <Link href="/app/dashboard" className="flex items-center gap-3 px-2 py-2"><span className="grid size-10 place-items-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground"><HeartPulse size={21} /></span><strong>Physio<span className="text-sidebar-primary">Bill</span></strong></Link>; }
 
 function Dashboard({ workspace }: { workspace: WorkspaceState }) {
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : 'Good night';
+  const profileName = workspace.profile.fullName.trim();
+  const authName = workspace.authUser.displayName.trim();
+  const therapistName = profileName || (!authName.includes('@') ? authName : '') || 'Physiotherapist';
   const finalizedInvoices = workspace.productionInvoices.filter((invoice) => invoice.finalized);
   const outstanding = finalizedInvoices.reduce(
     (sum, invoice) => sum + Math.max(invoice.total - invoice.paid, 0),
@@ -830,6 +842,12 @@ function Dashboard({ workspace }: { workspace: WorkspaceState }) {
   );
   const finalizedBilled = finalizedInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
   const todaysVisits = workspace.workspaceVisits.filter((visit) => visit.date === today);
+  const billingAttention = finalizedInvoices
+    .map((invoice) => ({ invoice, balance: Math.max(invoice.total - invoice.paid, 0) }))
+    .filter(({ balance }) => balance > 0)
+    .slice(0, 5);
+  const recentVisits = workspace.workspaceVisits.slice(-5).reverse();
+  const recentInvoices = workspace.productionInvoices.slice(0, 5);
   const outstandingValue = workspace.productionInvoicesLoading
     ? 'Loading…'
     : workspace.productionInvoicesError
@@ -845,8 +863,8 @@ function Dashboard({ workspace }: { workspace: WorkspaceState }) {
     <div className="space-y-7">
       <div className="relative overflow-hidden rounded-[24px] bg-primary px-6 py-8 text-primary-foreground">
         <p className="text-xs font-extrabold uppercase tracking-[.16em]">Your workspace</p>
-        <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-4xl">A clear desk for better care.</h2>
-        <p className="mt-3 max-w-xl text-sm text-primary-foreground/75">Everything you need for today’s care, records and billing is right here.</p>
+        <h2 className="mt-3 max-w-3xl text-3xl font-extrabold tracking-tight sm:text-4xl">{greeting}, {therapistName}</h2>
+        <p className="mt-3 max-w-xl text-sm text-primary-foreground/75">Here’s what needs your attention today.</p>
       </div>
       {workspace.productionInvoicesError && (
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
@@ -861,8 +879,44 @@ function Dashboard({ workspace }: { workspace: WorkspaceState }) {
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border bg-card p-5">
+          <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">Today</p><h3 className="mt-1 font-extrabold">Today’s visits</h3></div><Link href="/app/visits" className="text-sm font-bold text-primary">View visits</Link></div>
+          <div className="mt-4 space-y-3">
+            {todaysVisits.length ? todaysVisits.map((visit) => {
+              const patient = workspace.workspacePatients.find((item) => item.id === visit.patientId);
+              return <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-bold">{patient?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{visit.visitNumber} · {visit.treatment}</p></div>{visit.duration && <span className="text-xs font-semibold text-muted-foreground">{visit.duration} min</span>}</div></div>;
+            }) : <div className="rounded-xl bg-secondary/40 p-4 text-sm text-muted-foreground">No visits recorded for today.</div>}
+          </div>
+        </section>
+        <section className="rounded-2xl border bg-card p-5">
+          <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">Needs attention</p><h3 className="mt-1 font-extrabold">Billing attention</h3></div><Link href="/app/invoices" className="text-sm font-bold text-primary">View invoices</Link></div>
+          <div className="mt-4 space-y-3">
+            {workspace.productionInvoicesLoading ? (
+              <div className="rounded-xl bg-secondary/40 p-4 text-sm text-muted-foreground">Loading billing details…</div>
+            ) : workspace.productionInvoicesError ? (
+              <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">Billing details are unavailable.</div>
+            ) : billingAttention.length ? (
+              billingAttention.map(({ invoice, balance }) => {
+                const patient = workspace.workspacePatients.find((item) => item.id === invoice.patientId);
+                return <Link key={invoice.id} href="/app/invoices" className="flex items-center justify-between gap-3 rounded-xl bg-secondary/50 p-4 hover:bg-secondary"><div><p className="font-bold">{patient?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{invoice.number} · {invoice.status}</p></div><p className="font-extrabold">{money(balance)}</p></Link>;
+              })
+            ) : (
+              <div className="rounded-xl bg-secondary/40 p-4 text-sm text-muted-foreground">No outstanding finalized invoices.</div>
+            )}
+          </div>
+        </section>
+      </div>
+      <section className="rounded-2xl border bg-card p-5">
+        <div><p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">Quick access</p><h3 className="mt-1 font-extrabold">Workspace shortcuts</h3></div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {physioNav.filter((item) => ['/app/patients', '/app/visits', '/app/clinical-records', '/app/invoices', '/app/financial-ledger'].includes(item.href)).map(({ href, label, icon: Icon }) => <Link key={href} href={href} className="flex items-center gap-3 rounded-xl bg-secondary/50 px-4 py-3 text-sm font-semibold hover:bg-secondary"><Icon size={17} className="text-primary" />{label}</Link>)}
+        </div>
+      </section>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border bg-card p-5">
           <h3 className="font-extrabold">Recent visits</h3>
-          <div className="mt-4 space-y-3">{workspace.workspaceVisits.slice(-5).reverse().map((visit) => <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><p className="font-bold">{workspace.workspacePatients.find((p) => p.id === visit.patientId)?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(visit.date)} · {visit.treatment}</p></div>)}</div>
+          <div className="mt-4 space-y-3">
+            {recentVisits.length ? recentVisits.map((visit) => <div key={visit.id} className="rounded-xl bg-secondary/50 p-4"><p className="font-bold">{workspace.workspacePatients.find((p) => p.id === visit.patientId)?.name ?? 'Patient'}</p><p className="mt-1 text-xs text-muted-foreground">{dateLabel(visit.date)} · {visit.treatment}</p></div>) : <p className="text-sm text-muted-foreground">No visits recorded yet.</p>}
+          </div>
         </section>
         <section className="rounded-2xl border bg-card p-5">
           <h3 className="font-extrabold">Recent invoices</h3>
@@ -871,8 +925,8 @@ function Dashboard({ workspace }: { workspace: WorkspaceState }) {
               <p className="text-sm text-muted-foreground">Loading invoices…</p>
             ) : workspace.productionInvoicesError ? (
               <p className="text-sm text-destructive">Recent invoices are unavailable.</p>
-            ) : workspace.productionInvoices.length ? (
-              workspace.productionInvoices.slice(0, 5).map((invoice) => (
+            ) : recentInvoices.length ? (
+              recentInvoices.map((invoice) => (
                 <div key={invoice.id} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4">
                   <div><p className="font-bold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.status}</p></div>
                   <p className="font-extrabold">{money(invoice.total)}</p>

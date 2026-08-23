@@ -29,7 +29,12 @@ import { loadPhysiotherapistSettings, resolveAuthenticatedPhysiotherapist } from
 type Draft = ProductionInvoiceInput;
 
 const canonicalInvoicePath = '/app/invoices';
-const issuedDocumentPath = (invoiceId: string) => `${canonicalInvoicePath}/${encodeURIComponent(invoiceId)}/document`;
+const invoiceDetailPath = (invoiceId: string) => `${canonicalInvoicePath}/${encodeURIComponent(invoiceId)}`;
+const invoiceDetailId = (path: string) => {
+  const match = /^\/app\/invoices\/([^/]+)\/?$/.exec(path);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+const issuedDocumentPath = (invoiceId: string) => `${invoiceDetailPath(invoiceId)}/document`;
 const issuedDocumentInvoiceId = (path: string) => {
   const match = /^\/app\/invoices\/([^/]+)\/document\/?$/.exec(path);
   return match ? decodeURIComponent(match[1]) : null;
@@ -279,16 +284,17 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   useEffect(() => { const onLocation = () => setPath(window.location.pathname); const events = ['popstate', 'pushState', 'replaceState'] as const; events.forEach((eventName) => window.addEventListener(eventName, onLocation)); onLocation(); return () => events.forEach((eventName) => window.removeEventListener(eventName, onLocation)); }, []);
 
   const isInvoiceRoute = isBoundedInvoicePath(path);
+  const detailInvoiceId = invoiceDetailId(path);
   const documentInvoiceId = issuedDocumentInvoiceId(path);
   useEffect(() => {
-    if (!isInvoiceRoute || path === canonicalInvoicePath || documentInvoiceId) return;
+    if (!isInvoiceRoute || path === canonicalInvoicePath || detailInvoiceId || documentInvoiceId) return;
     window.history.replaceState(
       window.history.state,
       '',
       `${canonicalInvoicePath}${window.location.search}${window.location.hash}`,
     );
     setPath(canonicalInvoicePath);
-  }, [documentInvoiceId, isInvoiceRoute, path]);
+  }, [detailInvoiceId, documentInvoiceId, isInvoiceRoute, path]);
 
   useEffect(() => {
     if (!isInvoiceRoute) return;
@@ -298,13 +304,21 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   }, [isInvoiceRoute]);
 
   const filtered = useMemo(() => invoices.filter((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return [invoice.number, invoice.description, invoice.status, patient?.name ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()); }), [invoices, patients, search]);
+  const detailInvoice = detailInvoiceId ? invoices.find((invoice) => invoice.id === detailInvoiceId) ?? null : null;
+
+  useEffect(() => {
+    if (!isInvoiceRoute || documentInvoiceId || loading || error) return;
+    if (!detailInvoiceId) return;
+    setSelected(detailInvoice);
+  }, [detailInvoice, detailInvoiceId, documentInvoiceId, error, isInvoiceRoute, loading]);
 
   if (!isInvoiceRoute) return <>{children}</>;
   if (documentInvoiceId) return <InvoiceGatewayFrame><IssuedInvoiceDocument invoiceId={documentInvoiceId} onBack={() => { if (window.history.length > 1) window.history.back(); else navigate(canonicalInvoicePath); }} /></InvoiceGatewayFrame>;
   if (loading) return <InvoiceGatewayFrame><div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading invoices…</div></InvoiceGatewayFrame>;
   if (error) return <InvoiceGatewayFrame><div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div></InvoiceGatewayFrame>;
+  if (detailInvoiceId && !detailInvoice) return <InvoiceGatewayFrame><div className="rounded-2xl border bg-card p-6"><p className="text-sm font-semibold">Invoice details are unavailable.</p><button type="button" onClick={() => navigate(canonicalInvoicePath)} className="mt-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary"><ArrowLeft size={16} /> Back to invoices</button></div></InvoiceGatewayFrame>;
 
-  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <InvoiceGatewayFrame><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => setSelected(null)} onViewIssuedInvoice={(invoiceId) => navigate(issuedDocumentPath(invoiceId))} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></InvoiceGatewayFrame>; }
+  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <InvoiceGatewayFrame><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => { setSelected(null); if (detailInvoiceId) navigate(canonicalInvoicePath); }} onViewIssuedInvoice={(invoiceId) => navigate(issuedDocumentPath(invoiceId))} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></InvoiceGatewayFrame>; }
 
   return <InvoiceGatewayFrame>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Billing</p><h1 className="mt-1 text-3xl font-extrabold">Invoices</h1><p className="mt-2 text-sm text-muted-foreground">Create invoices, track payments and keep your billing organized.</p></div><button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button></div>

@@ -924,10 +924,10 @@ function Dashboard({ workspace }: { workspace: WorkspaceState }) {
               <p className="text-sm text-destructive">Recent invoices are unavailable.</p>
             ) : recentInvoices.length ? (
               recentInvoices.map((invoice) => (
-                <div key={invoice.id} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4">
+                <Link key={invoice.id} href={`/app/invoices/${encodeURIComponent(invoice.id)}`} className="flex items-center justify-between rounded-xl bg-secondary/50 p-4 hover:bg-secondary">
                   <div><p className="font-bold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.status}</p></div>
                   <p className="font-extrabold">{money(invoice.total)}</p>
-                </div>
+                </Link>
               ))
             ) : (
               <p className="text-sm text-muted-foreground">No invoices yet.</p>

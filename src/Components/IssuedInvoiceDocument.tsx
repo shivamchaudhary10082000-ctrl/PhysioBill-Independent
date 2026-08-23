@@ -30,6 +30,7 @@ function IssuedInvoiceSheet({ snapshot }: { snapshot: InvoiceIssuanceSnapshot })
     snapshot.practiceName,
     snapshot.therapistQualification,
     snapshot.therapistRegistration,
+    snapshot.therapistRegistrationAuthority,
     snapshot.therapistPhone,
     snapshot.therapistEmail,
     snapshot.practiceAddress,
@@ -65,6 +66,10 @@ function IssuedInvoiceSheet({ snapshot }: { snapshot: InvoiceIssuanceSnapshot })
             {snapshot.therapistTitle && <p className="text-sm">{snapshot.therapistTitle}</p>}
             <OptionalLine label="Qualification" value={snapshot.therapistQualification} />
             <OptionalLine label="Registration" value={snapshot.therapistRegistration} />
+            <OptionalLine label="Registration authority" value={snapshot.therapistRegistrationAuthority} />
+            {snapshot.professionalVerificationStatus === 'verified' && (
+              <p className="text-sm font-semibold text-teal-700">Professional credentials verified by PhysioBill</p>
+            )}
             <OptionalLine label="Address" value={snapshot.practiceAddress} />
             <OptionalLine label="Phone" value={snapshot.therapistPhone} />
             <OptionalLine label="Email" value={snapshot.therapistEmail} />

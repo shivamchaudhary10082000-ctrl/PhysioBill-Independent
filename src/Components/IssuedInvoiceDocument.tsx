@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Download, Printer } from 'lucide-react';
 import {
   loadInvoiceIssuanceSnapshot,
   type InvoiceIssuanceSnapshot,
 } from '@/lib/invoice-issuance-snapshots';
+import {
+  openPermanentInvoicePdfDownload,
+  requestPermanentInvoicePdf,
+} from '@/lib/invoice-document-artifacts';
 
 const money = (value: number) => `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const dateLabel = (value: string) => new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(value));
@@ -117,12 +121,15 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
   const [snapshot, setSnapshot] = useState<InvoiceIssuanceSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
     setSnapshot(null);
+    setPdfError(null);
     loadInvoiceIssuanceSnapshot(invoiceId)
       .then((loaded) => {
         if (!active) return;
@@ -138,12 +145,29 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
     return () => { active = false; };
   }, [invoiceId]);
 
+  const downloadPermanentPdf = async () => {
+    setPdfBusy(true);
+    setPdfError(null);
+    try {
+      const result = await requestPermanentInvoicePdf(invoiceId);
+      openPermanentInvoicePdfDownload(result);
+    } catch {
+      setPdfError('PDF generation failed. Please try again.');
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to invoice</button>
-        {snapshot && <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Printer size={16} /> Print / Save as PDF</button>}
+        {snapshot && <div className="flex flex-wrap items-center gap-2">
+          <button type="button" disabled={pdfBusy} onClick={() => void downloadPermanentPdf()} className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-50"><Download size={16} /> {pdfBusy ? 'Generating PDF…' : 'Download permanent PDF'}</button>
+          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Printer size={16} /> Print / Save as PDF</button>
+        </div>}
       </div>
+      {pdfError && <div role="alert" className="no-print rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{pdfError}</div>}
       {loading && <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading issued invoice…</div>}
       {!loading && error && <div role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div>}
       {!loading && snapshot && <IssuedInvoiceSheet snapshot={snapshot} />}

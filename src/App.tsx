@@ -448,12 +448,14 @@ function WorkspaceController({
   initialProfile,
   initialVerification,
   initialSettings,
+  onIdentityPersisted,
 }: {
   authUser: AuthUser;
   currentPhysioId: string;
   initialProfile: Profile;
   initialVerification: ProductionProfessionalVerification;
   initialSettings: Settings;
+  onIdentityPersisted: (profile: Profile, verification: ProductionProfessionalVerification) => void;
 }) {
   const [profile, setProfileState] = useState<Profile>(initialProfile);
   const [verification, setVerification] = useState<ProductionProfessionalVerification>(initialVerification);
@@ -469,6 +471,7 @@ function WorkspaceController({
           setProfileState(saved);
           const refreshedVerification = await loadProductionProfessionalVerification(currentPhysioId);
           setVerification(refreshedVerification);
+          onIdentityPersisted(saved, refreshedVerification);
         })
         .catch((error: unknown) =>
           setPersistenceError(error instanceof Error ? error.message : 'Unable to save profile.'),
@@ -1146,6 +1149,13 @@ function ApplicationRouter() {
           initialProfile={workspace.profile}
           initialVerification={workspace.verification}
           initialSettings={workspace.settings}
+          onIdentityPersisted={(savedProfile, savedVerification) => {
+            setWorkspace((current) =>
+              current
+                ? { ...current, profile: savedProfile, verification: savedVerification }
+                : current,
+            );
+          }}
         />
       </ClinicalRecordsGateway>
     </InvoiceGateway>

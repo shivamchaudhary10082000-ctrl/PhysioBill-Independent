@@ -1,0 +1,81 @@
+name: Phase 4 Slice 16C CSP Verification
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+    paths:
+      - package.json
+      - config/_headers.template
+      - scripts/generate-csp-headers.mjs
+      - public/_headers
+      - .github/workflows/phase4-slice16c-csp-verify.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase4-slice16c-csp-futureweb-production-backend
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: futureweb-production-backend
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Staging build and CSP assertions
+        env:
+          VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: slice16c-build-verification-only
+        run: |
+          npm run build
+          grep -Fq "https://nbsvrzypypmmuvlgdpln.supabase.co wss://nbsvrzypypmmuvlgdpln.supabase.co" dist/_headers
+          if grep -Fq "nragldzovtewstdngcif.supabase.co" dist/_headers; then
+            echo "Production Supabase origin leaked into staging CSP"
+            exit 1
+          fi
+          grep -Fq "default-src 'self'" dist/_headers
+          grep -Fq "frame-ancestors 'none'" dist/_headers
+          grep -Fq "upgrade-insecure-requests" dist/_headers
+
+      - name: Production-mode build and CSP assertions
+        env:
+          VITE_SUPABASE_URL: https://nragldzovtewstdngcif.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: slice16c-build-verification-only
+        run: |
+          npm run build
+          grep -Fq "https://nragldzovtewstdngcif.supabase.co wss://nragldzovtewstdngcif.supabase.co" dist/_headers
+          if grep -Fq "nbsvrzypypmmuvlgdpln.supabase.co" dist/_headers; then
+            echo "Staging Supabase origin leaked into production-mode CSP"
+            exit 1
+          fi
+          grep -Fq "default-src 'self'" dist/_headers
+          grep -Fq "frame-ancestors 'none'" dist/_headers
+          grep -Fq "upgrade-insecure-requests" dist/_headers
+
+      - name: Missing URL fails closed
+        run: |
+          if env -u VITE_SUPABASE_URL npm run generate:csp; then
+            echo "CSP generation unexpectedly succeeded without VITE_SUPABASE_URL"
+            exit 1
+          fi
+
+      - name: Invalid URL fails closed
+        run: |
+          if VITE_SUPABASE_URL=https://example.com npm run generate:csp; then
+            echo "CSP generation unexpectedly accepted a non-Supabase origin"
+            exit 1
+          fi

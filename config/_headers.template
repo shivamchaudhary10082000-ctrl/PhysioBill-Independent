@@ -1,0 +1,15 @@
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' __SUPABASE_CONNECT_SRC__; worker-src 'self' blob:; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+
+/
+  Cache-Control: private, no-store, max-age=0, must-revalidate
+
+/app/*
+  Cache-Control: private, no-store, max-age=0, must-revalidate
+
+/auth/*
+  Cache-Control: private, no-store, max-age=0, must-revalidate

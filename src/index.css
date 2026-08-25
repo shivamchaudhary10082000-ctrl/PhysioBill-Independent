@@ -157,48 +157,48 @@ textarea:disabled {
 }
 
 .physiobill-mark,
-aside.bg-sidebar .bg-sidebar-primary {
+aside .bg-sidebar-primary {
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.62rem;
+  height: 2.62rem;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid hsl(var(--primary) / .16);
-  border-radius: .9rem;
+  border: 1px solid hsl(var(--primary) / .24);
+  border-radius: .92rem;
   background: hsl(var(--primary-soft));
   color: hsl(var(--primary));
-  box-shadow: 0 8px 22px hsl(var(--foreground) / .055);
+  box-shadow: 0 9px 24px hsl(var(--foreground) / .065);
 }
 
 .physiobill-mark::before,
-aside.bg-sidebar .bg-sidebar-primary::before {
+aside .bg-sidebar-primary::before {
   content: 'PB';
   transform: translateX(-.02em);
   font-family: var(--app-font-mono);
-  font-size: .82rem;
+  font-size: .88rem;
   font-weight: 500;
   line-height: 1;
-  letter-spacing: -.16em;
+  letter-spacing: -.15em;
 }
 
 .physiobill-mark::after,
-aside.bg-sidebar .bg-sidebar-primary::after {
+aside .bg-sidebar-primary::after {
   content: '';
   position: absolute;
   right: .48rem;
-  bottom: .5rem;
-  width: .62rem;
+  bottom: .48rem;
+  width: .66rem;
   height: 2px;
   border-radius: 999px;
   background: hsl(var(--primary));
   transform: rotate(-34deg);
   transform-origin: center;
-  opacity: .72;
+  opacity: .9;
 }
 
-aside.bg-sidebar .bg-sidebar-primary > svg {
+aside .bg-sidebar-primary > svg {
   display: none;
 }
 
@@ -207,22 +207,58 @@ aside.bg-sidebar {
   box-shadow: 14px 0 36px hsl(var(--foreground) / .025);
 }
 
-aside.bg-sidebar nav a {
+aside.bg-sidebar nav a,
+.fixed.inset-0 aside nav a {
   color: hsl(var(--muted-foreground));
+  transition: background-color .16s ease, color .16s ease, box-shadow .16s ease;
 }
 
-aside.bg-sidebar nav a:hover {
+aside.bg-sidebar nav a:hover,
+.fixed.inset-0 aside nav a:hover {
   color: hsl(var(--foreground));
 }
 
-aside.bg-sidebar nav a.bg-sidebar-accent {
-  color: hsl(var(--primary));
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / .08);
+aside.bg-sidebar nav a.bg-sidebar-accent,
+nav a[data-workspace-active='true'] {
+  color: hsl(var(--primary)) !important;
+  background: hsl(var(--primary-soft)) !important;
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / .11);
+}
+
+.fixed.inset-0 aside nav a[data-workspace-active='true'] {
+  border-radius: .9rem;
+  font-weight: 700;
 }
 
 aside.bg-sidebar > div:last-child {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--secondary) / .68);
+}
+
+aside.bg-sidebar + div main h1 {
+  color: hsl(var(--foreground));
+  font-weight: 700;
+  letter-spacing: -.035em;
+}
+
+aside.bg-sidebar + div main h2,
+aside.bg-sidebar + div main h3,
+aside.bg-sidebar + div main h4 {
+  color: hsl(var(--foreground));
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+aside.bg-sidebar + div main label > span:first-child {
+  color: hsl(var(--foreground) / .72);
+  font-weight: 600;
+}
+
+aside.bg-sidebar + div main .rounded-2xl.border.bg-card,
+aside.bg-sidebar + div main .rounded-\[24px\].border.bg-card,
+aside.bg-sidebar + div main .rounded-\[26px\].border.bg-card {
+  border-color: hsl(var(--border));
+  box-shadow: 0 12px 30px hsl(var(--foreground) / .035);
 }
 
 main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary {
@@ -245,6 +281,27 @@ main .rounded-\[26px\].border.bg-card,
 main .rounded-\[28px\].border.bg-card,
 main .rounded-\[30px\].border.bg-card {
   box-shadow: 0 12px 34px hsl(var(--foreground) / .035);
+}
+
+.workspace-section-kicker {
+  color: hsl(var(--primary));
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .025em;
+}
+
+.workspace-section-title {
+  color: hsl(var(--foreground));
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.35;
+}
+
+.workspace-empty-state {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: 0 12px 30px hsl(var(--foreground) / .03);
 }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

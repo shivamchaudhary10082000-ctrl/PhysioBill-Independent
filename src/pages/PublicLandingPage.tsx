@@ -12,9 +12,9 @@ export function PublicLandingPage() {
           </a>
           <a
             href="/professional/sign-in"
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-foreground transition hover:bg-secondary sm:px-4"
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 text-xs font-semibold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.14)] transition hover:bg-[hsl(var(--primary-hover))] sm:text-sm"
           >
-            Professional sign in <ArrowRight size={16} />
+            Professional sign in <ArrowRight size={15} />
           </a>
         </div>
       </header>
@@ -29,8 +29,8 @@ export function PublicLandingPage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-[11px] font-semibold tracking-[.08em] text-primary">
                 PhysioBill Care
               </div>
-              <h1 className="mt-6 max-w-3xl text-5xl font-semibold leading-[1.04] tracking-[-.045em] sm:text-6xl lg:text-[4.35rem]">
-                Find the right physiotherapist,{' '}
+              <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[1.04] tracking-[-.045em] sm:text-6xl lg:text-[4.35rem]">
+                Find a physiotherapist,{' '}
                 <span className="display-serif font-normal italic text-primary">closer to you.</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
@@ -46,7 +46,7 @@ export function PublicLandingPage() {
             <div id="search" className="page-enter stagger-1 rounded-[30px] border border-border bg-card p-5 shadow-[0_22px_60px_hsl(var(--foreground)/.055)] sm:p-7">
               <div className="mb-6 border-b border-border/70 pb-5">
                 <p className="text-sm font-semibold text-primary">Start your search</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-[-.025em]">Care, without the directory clutter.</h2>
+                <h2 className="mt-2 text-2xl font-bold tracking-[-.025em]">Care, without the directory clutter.</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">Choose how you want care, then tell us where to look.</p>
               </div>
               <PublicTherapistSearch />
@@ -63,7 +63,7 @@ export function PublicLandingPage() {
             ].map(([number, title, copy]) => (
               <div key={number} className="rounded-2xl border border-border/80 bg-background/70 p-5">
                 <p className="mono text-xs font-medium text-primary">{number}</p>
-                <h3 className="mt-3 font-semibold tracking-[-.015em]">{title}</h3>
+                <h3 className="mt-3 font-bold tracking-[-.015em]">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p>
               </div>
             ))}

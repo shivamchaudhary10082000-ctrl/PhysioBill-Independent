@@ -7,6 +7,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Stethoscope,
+  X,
 } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
@@ -84,7 +85,7 @@ function TherapistCard({ therapist }: { therapist: VerifiedTherapistDiscoveryRes
           <span className="inline-flex items-center gap-1.5 rounded-full border border-success/15 bg-success/8 px-2.5 py-1 text-[11px] font-semibold text-success">
             <CheckCircle2 size={13} /> Verified professional
           </span>
-          <h2 className="mt-2 text-xl font-semibold tracking-[-.025em] sm:text-2xl">{therapist.display_name}</h2>
+          <h2 className="mt-2 text-xl font-bold tracking-[-.025em] sm:text-2xl">{therapist.display_name}</h2>
           {therapist.verified_qualification && (
             <p className="mt-1 text-sm font-medium text-muted-foreground">{therapist.verified_qualification}</p>
           )}
@@ -150,6 +151,7 @@ export function TherapistDiscoveryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [showSearchHelper, setShowSearchHelper] = useState(false);
 
   useEffect(() => {
     const syncFromHistory = () => setQuery(readDiscoveryQuery());
@@ -194,18 +196,30 @@ export function TherapistDiscoveryPage() {
     };
   }, [query.city, query.locality, query.mode, retryKey]);
 
+  useEffect(() => {
+    setShowSearchHelper(false);
+    if (!query.city) return;
+    const timer = window.setTimeout(() => setShowSearchHelper(true), 12000);
+    return () => window.clearTimeout(timer);
+  }, [query.city, query.locality, query.mode]);
+
   const searchSummary = useMemo(() => {
     if (!query.city) return 'Choose a city to begin.';
     const place = query.locality ? `${query.locality}, ${query.city}` : query.city;
     return `${THERAPIST_SERVICE_MODE_LABELS[query.mode]} · ${place}`;
   }, [query]);
 
+  const focusSearchField = (id: string) => {
+    setShowSearchHelper(false);
+    document.getElementById(id)?.focus();
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/80 bg-background/92 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <a href="/" aria-label="Back to PhysioBill"><PhysioBillBrand /></a>
-          <a href="/professional/sign-in" className="rounded-xl px-3 py-2 text-sm font-semibold hover:bg-secondary">Professional sign in</a>
+          <a href="/professional/sign-in" className="inline-flex min-h-10 items-center rounded-xl bg-primary px-3.5 text-xs font-semibold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.14)] transition hover:bg-[hsl(var(--primary-hover))] sm:text-sm">Professional sign in</a>
         </div>
       </header>
 
@@ -217,7 +231,7 @@ export function TherapistDiscoveryPage() {
         <div className="mt-5 rounded-[28px] border border-border bg-card p-5 shadow-[0_16px_42px_hsl(var(--foreground)/.04)] sm:p-7">
           <div className="mb-5 border-b border-border/70 pb-5">
             <p className="text-sm font-semibold text-primary">Verified therapist search</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-.035em] sm:text-4xl">Find care that fits your location.</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-[-.035em] sm:text-4xl">Find care that fits your location.</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Adjust the search anytime. Your choices stay in the URL so this page is easy to revisit.</p>
           </div>
           <PublicTherapistSearch
@@ -232,7 +246,7 @@ export function TherapistDiscoveryPage() {
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-primary">Verified physiotherapists</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-[-.025em]">{query.city ? `Care options for ${query.city}` : 'Start with your city'}</h2>
+              <h2 className="mt-1 text-2xl font-bold tracking-[-.025em]">{query.city ? `Care options for ${query.city}` : 'Start with your city'}</h2>
             </div>
             <p className="text-sm font-medium text-muted-foreground">{searchSummary}</p>
           </div>
@@ -242,7 +256,7 @@ export function TherapistDiscoveryPage() {
           ) : error ? (
             <div className="rounded-[26px] border border-destructive/20 bg-card p-7 text-center sm:p-10">
               <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-destructive/8 text-destructive"><RefreshCw size={21} /></div>
-              <h3 className="mt-4 text-xl font-semibold">Search temporarily unavailable</h3>
+              <h3 className="mt-4 text-xl font-bold">Search temporarily unavailable</h3>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{error}</p>
               <button type="button" onClick={() => setRetryKey((current) => current + 1)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
                 <RefreshCw size={16} /> Retry search
@@ -251,19 +265,19 @@ export function TherapistDiscoveryPage() {
           ) : !query.city ? (
             <div className="rounded-[26px] border bg-card p-7 text-center sm:p-10">
               <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/7 text-primary"><MapPin size={22} /></div>
-              <h3 className="mt-4 text-xl font-semibold">Enter a city to search</h3>
+              <h3 className="mt-4 text-xl font-bold">Enter a city to search</h3>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">Choose a service and city above. Area is optional.</p>
             </div>
           ) : results.length === 0 ? (
             <div className="rounded-[30px] border bg-card p-7 text-center shadow-[0_14px_38px_hsl(var(--foreground)/.035)] sm:p-12">
               <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-primary/10 bg-primary/6 text-primary"><Stethoscope size={24} /></div>
               <p className="mt-5 text-sm font-semibold text-primary">Search completed</p>
-              <h3 className="mx-auto mt-2 max-w-xl text-2xl font-semibold tracking-[-.025em]">No verified physiotherapists are listed for this search yet.</h3>
+              <h3 className="mx-auto mt-2 max-w-xl text-2xl font-bold tracking-[-.025em]">No verified physiotherapists are listed for this search yet.</h3>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Try broadening the location or changing the type of physiotherapy care.</p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                <button type="button" onClick={() => document.getElementById('discovery-locality')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Edit area</button>
-                <button type="button" onClick={() => document.getElementById('discovery-city')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Try another city</button>
-                <button type="button" onClick={() => document.getElementById('discovery-service')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Change service type</button>
+                <button type="button" onClick={() => focusSearchField('discovery-locality')} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Edit area</button>
+                <button type="button" onClick={() => focusSearchField('discovery-city')} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Try another city</button>
+                <button type="button" onClick={() => focusSearchField('discovery-service')} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Change service type</button>
               </div>
             </div>
           ) : (
@@ -272,6 +286,21 @@ export function TherapistDiscoveryPage() {
             </div>
           )}
         </section>
+
+        {showSearchHelper && query.city && !loading && !error && (
+          <aside className="page-enter mt-6 flex flex-col gap-4 rounded-2xl border border-primary/10 bg-[hsl(var(--primary-soft))] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="Search help">
+            <div>
+              <p className="text-sm font-bold text-foreground">Need help narrowing your search?</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">You can adjust the same location and service controls above.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => focusSearchField('discovery-locality')} className="rounded-full border border-primary/12 bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary">Edit area</button>
+              <button type="button" onClick={() => focusSearchField('discovery-city')} className="rounded-full border border-primary/12 bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary">Try another city</button>
+              <button type="button" onClick={() => focusSearchField('discovery-service')} className="rounded-full border border-primary/12 bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary">Change service type</button>
+              <button type="button" onClick={() => setShowSearchHelper(false)} aria-label="Dismiss search help" className="grid size-9 place-items-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"><X size={15} /></button>
+            </div>
+          </aside>
+        )}
       </main>
     </div>
   );

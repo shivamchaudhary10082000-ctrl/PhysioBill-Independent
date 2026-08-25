@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-import { HeartPulse } from 'lucide-react';
+import { ArrowLeft, HeartPulse } from 'lucide-react';
 import App from '@/App';
+import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
 import { AuthPage } from '@/pages/AuthPage';
 import { PublicLandingPage } from '@/pages/PublicLandingPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { TherapistDiscoveryPage } from '@/pages/TherapistDiscoveryPage';
+import { TherapistDiscoveryProfilePage } from '@/pages/TherapistDiscoveryProfilePage';
 import { useAuthSession } from '@/hooks/use-auth-session';
 import { PASSWORD_RECOVERY_PATH, signOutPhysiotherapist } from '@/lib/auth';
 
@@ -59,6 +61,32 @@ function PasswordRecoveryRoute() {
   );
 }
 
+function ProfessionalDiscoveryProfileRoute() {
+  const auth = useAuthSession();
+
+  if (!auth.configured || auth.error || auth.passwordRecovery) return <App />;
+  if (auth.loading) return <RouteLoading message="Restoring secure session…" />;
+  if (!auth.user) return <App />;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur-md">
+        <div className="mx-auto flex h-[70px] max-w-[1420px] items-center justify-between gap-3 px-4 sm:px-7 lg:px-10">
+          <a href="/app/dashboard" className="flex items-center gap-3">
+            <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><HeartPulse size={19} /></span>
+            <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">PhysioBill</p><p className="text-sm font-extrabold">Professional workspace</p></div>
+          </a>
+          <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-secondary" />
+        </div>
+      </header>
+      <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
+        <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to Overview</a>
+        <TherapistDiscoveryProfilePage />
+      </main>
+    </div>
+  );
+}
+
 function NotFoundPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-background px-4 py-10">
@@ -86,6 +114,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   '/app/invoice',
   '/app/financial-ledger',
   '/app/profile',
+  '/app/discovery-profile',
   '/app/settings',
 ] as const;
 
@@ -103,6 +132,7 @@ export function PublicRouteBoundary() {
   if (path === '/find-physio') return <TherapistDiscoveryPage />;
   if (path === '/professional/sign-in') return <ProfessionalSignInRoute />;
   if (path === PASSWORD_RECOVERY_PATH) return <PasswordRecoveryRoute />;
+  if (path === '/app/discovery-profile') return <ProfessionalDiscoveryProfileRoute />;
   if (isSupportedPrivateRoute(path)) return <App />;
 
   return <NotFoundPage />;

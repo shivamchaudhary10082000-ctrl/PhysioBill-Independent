@@ -5,7 +5,10 @@ on:
     branches:
       - futureweb-production-backend
     paths:
+      - src/lib/auth.ts
+      - src/lib/workspace.ts
       - supabase/migrations/202608250001_role_aware_auth_provisioning.sql
+      - supabase/migrations/202608250002_role_aware_auth_provisioning_user_metadata_correction.sql
       - .github/workflows/phase5-role-aware-provisioning-verify.yml
 
 permissions:
@@ -18,6 +21,21 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,20 +57,176 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: phase5-build-verification-only
         run: npm run build
 
-      - name: Verify provisioning migration contract
+      - name: Verify frontend account and workspace contracts
         run: |
-          migration=supabase/migrations/202608250001_role_aware_auth_provisioning.sql
-          grep -Fq "new.raw_app_meta_data" "$migration"
-          grep -Fq "requested_account_type in ('physio', 'patient')" "$migration"
-          grep -Fq "if account_type = 'patient' then" "$migration"
-          grep -Fq "Unsupported account_type for Auth provisioning." "$migration"
-          grep -Fq "on conflict (id) do nothing" "$migration"
-          grep -Fq "on conflict (user_id) do nothing" "$migration"
-          if grep -Fq "new.raw_user_meta_data" "$migration"; then
-            echo "User-editable metadata must not control account provisioning"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const auth = fs.readFileSync('src/lib/auth.ts', 'utf8');
+          const workspace = fs.readFileSync('src/lib/workspace.ts', 'utf8');
+          if (!auth.includes("account_type: 'physio'")) {
+            throw new Error('Physiotherapist signup must send explicit account_type=physio.');
+          }
+          if (!workspace.includes("if (appUser.role !== 'physio')")) {
+            throw new Error('Workspace resolver must remain fail-closed to non-physio app users.');
+          }
+          NODE
+
+      - name: Provisioning trigger behavior tests
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          create extension if not exists pgcrypto;
+          create schema auth;
+          create schema private;
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin;
+
+          create table auth.users (
+            id uuid primary key,
+            email text,
+            raw_user_meta_data jsonb,
+            raw_app_meta_data jsonb
+          );
+
+          create table public.app_users (
+            id uuid primary key references auth.users(id) on delete cascade,
+            role text not null check (role in ('physio', 'patient'))
+          );
+
+          create table public.physiotherapists (
+            id uuid primary key default gen_random_uuid(),
+            user_id uuid not null unique references public.app_users(id) on delete cascade
+          );
+
+          create table public.physiotherapist_profiles (
+            physio_id uuid primary key references public.physiotherapists(id) on delete cascade,
+            email text not null default ''
+          );
+
+          create table public.physiotherapist_settings (
+            physio_id uuid primary key references public.physiotherapists(id) on delete cascade
+          );
+
+          create or replace function public.handle_new_auth_user()
+          returns trigger
+          language plpgsql
+          security definer
+          set search_path = pg_catalog, pg_temp
+          as $$ begin return new; end; $$;
+
+          create trigger on_auth_user_created
+          after insert on auth.users
+          for each row execute procedure public.handle_new_auth_user();
+          SQL
+
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202608250002_role_aware_auth_provisioning_user_metadata_correction.sql
+
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+          values
+            ('00000000-0000-4000-8000-000000000001', 'physio@example.test', '{"account_type":"physio"}', '{}'),
+            ('00000000-0000-4000-8000-000000000002', 'patient@example.test', '{"account_type":"patient"}', '{}'),
+            ('00000000-0000-4000-8000-000000000003', 'legacy@example.test', '{}', '{}');
+
+          do $$
+          begin
+            if (select role from public.app_users where id = '00000000-0000-4000-8000-000000000001') <> 'physio' then
+              raise exception 'Explicit physio was not provisioned as physio.';
+            end if;
+            if (select count(*) from public.physiotherapists where user_id = '00000000-0000-4000-8000-000000000001') <> 1 then
+              raise exception 'Explicit physio must receive exactly one therapist identity.';
+            end if;
+            if (select count(*) from public.physiotherapist_profiles pp join public.physiotherapists p on p.id = pp.physio_id where p.user_id = '00000000-0000-4000-8000-000000000001') <> 1 then
+              raise exception 'Explicit physio must receive exactly one profile.';
+            end if;
+            if (select count(*) from public.physiotherapist_settings ps join public.physiotherapists p on p.id = ps.physio_id where p.user_id = '00000000-0000-4000-8000-000000000001') <> 1 then
+              raise exception 'Explicit physio must receive exactly one settings row.';
+            end if;
+
+            if (select role from public.app_users where id = '00000000-0000-4000-8000-000000000002') <> 'patient' then
+              raise exception 'Explicit patient was not provisioned as patient.';
+            end if;
+            if exists (select 1 from public.physiotherapists where user_id = '00000000-0000-4000-8000-000000000002') then
+              raise exception 'Patient received a therapist identity.';
+            end if;
+
+            if (select role from public.app_users where id = '00000000-0000-4000-8000-000000000003') <> 'physio' then
+              raise exception 'Missing account_type compatibility must remain physio.';
+            end if;
+          end $$;
+
+          do $$
+          begin
+            begin
+              insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+              values ('00000000-0000-4000-8000-000000000004', 'invalid@example.test', '{"account_type":"admin"}', '{}');
+              raise exception 'Unknown account_type was accepted.';
+            exception
+              when sqlstate '22023' then null;
+            end;
+
+            if exists (select 1 from auth.users where id = '00000000-0000-4000-8000-000000000004') then
+              raise exception 'Rejected unknown account_type left an Auth row behind.';
+            end if;
+
+            begin
+              insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+              values ('00000000-0000-4000-8000-000000000005', 'null@example.test', '{"account_type":null}', '{}');
+              raise exception 'Null account_type was accepted.';
+            exception
+              when sqlstate '22023' then null;
+            end;
+          end $$;
+
+          update auth.users
+             set raw_user_meta_data = '{"account_type":"physio"}',
+                 raw_app_meta_data = '{"account_type":"physio"}'
+           where id = '00000000-0000-4000-8000-000000000002';
+
+          update auth.users
+             set raw_user_meta_data = '{"account_type":"patient"}',
+                 raw_app_meta_data = '{"account_type":"patient"}'
+           where id = '00000000-0000-4000-8000-000000000001';
+
+          do $$
+          begin
+            if (select role from public.app_users where id = '00000000-0000-4000-8000-000000000002') <> 'patient' then
+              raise exception 'Patient role changed after metadata update.';
+            end if;
+            if exists (select 1 from public.physiotherapists where user_id = '00000000-0000-4000-8000-000000000002') then
+              raise exception 'Patient gained therapist identity after metadata update.';
+            end if;
+            if (select role from public.app_users where id = '00000000-0000-4000-8000-000000000001') <> 'physio' then
+              raise exception 'Physio role changed after metadata update.';
+            end if;
+            if (select count(*) from public.physiotherapists where user_id = '00000000-0000-4000-8000-000000000001') <> 1 then
+              raise exception 'Physio identity changed after metadata update.';
+            end if;
+            if (select count(*) from public.app_users where id in (
+              '00000000-0000-4000-8000-000000000001',
+              '00000000-0000-4000-8000-000000000002',
+              '00000000-0000-4000-8000-000000000003'
+            )) <> 3 then
+              raise exception 'Provisioning produced duplicate or missing app identities.';
+            end if;
+          end $$;
+          SQL
+
+      - name: Verify correction migration scope
+        run: |
+          correction=supabase/migrations/202608250002_role_aware_auth_provisioning_user_metadata_correction.sql
+          grep -Fq "new.raw_user_meta_data" "$correction"
+          if grep -Eiq "(after|before)[[:space:]]+update[[:space:]]+on[[:space:]]+auth\.users" "$correction"; then
+            echo "Auth metadata UPDATE must not convert application account roles"
             exit 1
           fi
-          if grep -Fq "public.patients" "$migration"; then
+          if grep -Fq "public.patients" "$correction"; then
             echo "Slice 5.1 must not claim or modify patient clinical records"
             exit 1
           fi
+
+      - name: Lifecycle limitation notice
+        run: |
+          echo "PostgreSQL tests exercise the auth.users INSERT trigger contract, not Supabase Auth server lifecycle."
+          echo "A real staging Auth creation test remains mandatory before Slice 5.1 acceptance."

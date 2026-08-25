@@ -28,6 +28,11 @@ export async function registerPhysiotherapist(
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
+    options: {
+      data: {
+        account_type: 'physio',
+      },
+    },
   });
 
   if (error) throw error;

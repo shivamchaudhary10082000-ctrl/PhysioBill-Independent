@@ -63,20 +63,21 @@ export function PublicTherapistSearch({
     );
   }
 
+  const fieldClass =
+    'h-14 w-full rounded-2xl border border-input bg-card px-4 text-sm font-medium text-foreground outline-none transition placeholder:text-muted-foreground/60 hover:border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/10';
+
   return (
     <form
       onSubmit={submit}
       className={`grid gap-3 ${compact ? 'lg:grid-cols-[1.05fr_1fr_1fr_auto]' : 'lg:grid-cols-[1.05fr_1fr_1fr_auto]'}`}
     >
       <label className="block">
-        <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-[.14em] text-muted-foreground">
-          Service
-        </span>
+        <span className="mb-2 block text-xs font-semibold text-muted-foreground">Service</span>
         <select
           id="discovery-service"
           value={mode}
           onChange={(event) => setMode(normalizeTherapistServiceMode(event.target.value))}
-          className="h-14 w-full rounded-2xl border bg-card px-4 text-sm font-bold outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+          className={fieldClass}
         >
           {THERAPIST_SERVICE_MODES.map((serviceMode) => (
             <option key={serviceMode} value={serviceMode}>
@@ -87,9 +88,7 @@ export function PublicTherapistSearch({
       </label>
 
       <label className="block">
-        <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-[.14em] text-muted-foreground">
-          City
-        </span>
+        <span className="mb-2 block text-xs font-semibold text-muted-foreground">City</span>
         <span className="relative block">
           <MapPin
             aria-hidden="true"
@@ -109,7 +108,7 @@ export function PublicTherapistSearch({
             aria-invalid={Boolean(cityError)}
             aria-describedby={cityError ? 'discovery-city-error' : undefined}
             placeholder="Surat"
-            className="h-14 w-full rounded-2xl border bg-card pl-11 pr-4 text-sm font-semibold outline-none transition placeholder:text-muted-foreground/65 focus:border-primary focus:ring-4 focus:ring-primary/10"
+            className={`${fieldClass} pl-11`}
           />
         </span>
         {cityError && (
@@ -120,8 +119,8 @@ export function PublicTherapistSearch({
       </label>
 
       <label className="block">
-        <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-[.14em] text-muted-foreground">
-          Area <span className="normal-case tracking-normal text-muted-foreground/70">(optional)</span>
+        <span className="mb-2 block text-xs font-semibold text-muted-foreground">
+          Area <span className="font-normal text-muted-foreground/75">(optional)</span>
         </span>
         <input
           id="discovery-locality"
@@ -130,14 +129,14 @@ export function PublicTherapistSearch({
           value={locality}
           onChange={(event) => setLocality(event.target.value)}
           placeholder="Dindoli"
-          className="h-14 w-full rounded-2xl border bg-card px-4 text-sm font-semibold outline-none transition placeholder:text-muted-foreground/65 focus:border-primary focus:ring-4 focus:ring-primary/10"
+          className={fieldClass}
         />
       </label>
 
       <div className="flex items-end">
         <button
           type="submit"
-          className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-primary/20 lg:min-w-[190px]"
+          className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_hsl(var(--primary)/.16)] transition hover:bg-[hsl(var(--primary-hover))] focus:outline-none focus:ring-4 focus:ring-primary/20 lg:min-w-[190px]"
         >
           <Search size={18} /> Find physiotherapists
         </button>

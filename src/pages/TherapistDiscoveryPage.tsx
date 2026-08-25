@@ -3,12 +3,12 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle2,
-  HeartPulse,
   MapPin,
   RefreshCw,
   ShieldCheck,
   Stethoscope,
 } from 'lucide-react';
+import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
 import {
   THERAPIST_SERVICE_MODE_LABELS,
@@ -75,25 +75,25 @@ function TherapistCard({ therapist }: { therapist: VerifiedTherapistDiscoveryRes
   ].filter(Boolean);
 
   return (
-    <article className="page-enter rounded-[26px] border bg-card p-5 shadow-sm sm:p-6">
+    <article className="page-enter rounded-[26px] border border-border bg-card p-5 shadow-[0_14px_38px_hsl(var(--foreground)/.04)] sm:p-6">
       <div className="flex items-start gap-4">
-        <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-primary text-sm font-extrabold text-primary-foreground shadow-sm">
+        <div className="grid size-14 shrink-0 place-items-center rounded-2xl border border-primary/12 bg-primary/7 text-sm font-semibold text-primary">
           {therapistInitials(therapist.display_name)}
         </div>
         <div className="min-w-0 flex-1">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[.1em] text-primary">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-success/15 bg-success/8 px-2.5 py-1 text-[11px] font-semibold text-success">
             <CheckCircle2 size={13} /> Verified professional
           </span>
-          <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">{therapist.display_name}</h2>
+          <h2 className="mt-2 text-xl font-semibold tracking-[-.025em] sm:text-2xl">{therapist.display_name}</h2>
           {therapist.verified_qualification && (
-            <p className="mt-1 text-sm font-semibold text-muted-foreground">{therapist.verified_qualification}</p>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">{therapist.verified_qualification}</p>
           )}
         </div>
       </div>
 
       {(therapist.headline || therapist.clinic_name) && (
-        <div className="mt-5 rounded-2xl bg-secondary/55 p-4">
-          {therapist.headline && <p className="font-bold leading-6">{therapist.headline}</p>}
+        <div className="mt-5 rounded-2xl border border-border/70 bg-secondary/55 p-4">
+          {therapist.headline && <p className="font-semibold leading-6">{therapist.headline}</p>}
           {therapist.clinic_name && (
             <p className="mt-1 inline-flex items-center gap-2 text-sm text-muted-foreground">
               <Building2 size={15} /> {therapist.clinic_name}
@@ -106,20 +106,20 @@ function TherapistCard({ therapist }: { therapist: VerifiedTherapistDiscoveryRes
 
       {registration.length > 0 && (
         <div className="mt-5 flex items-start gap-3 border-t pt-5">
-          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" />
+          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-success" />
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-muted-foreground">Verified registration</p>
-            <p className="mt-1 text-sm font-semibold">{registration.join(' · ')}</p>
+            <p className="text-xs font-semibold text-muted-foreground">Verified registration</p>
+            <p className="mt-1 text-sm font-medium">{registration.join(' · ')}</p>
           </div>
         </div>
       )}
 
       {therapist.service_modes.length > 0 && (
         <div className="mt-5">
-          <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-muted-foreground">Services</p>
+          <p className="text-xs font-semibold text-muted-foreground">Services</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {therapist.service_modes.map((mode) => (
-              <span key={mode} className="rounded-full border bg-background px-3 py-1.5 text-xs font-bold">
+              <span key={mode} className="rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-foreground">
                 {THERAPIST_SERVICE_MODE_LABELS[mode]}
               </span>
             ))}
@@ -129,10 +129,10 @@ function TherapistCard({ therapist }: { therapist: VerifiedTherapistDiscoveryRes
 
       {therapist.service_areas.length > 0 && (
         <div className="mt-5">
-          <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-muted-foreground">Service areas</p>
+          <p className="text-xs font-semibold text-muted-foreground">Service areas</p>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {therapist.service_areas.map((area) => (
-              <div key={`${area.locality}-${area.city}-${area.state}`} className="flex items-center gap-2 rounded-xl bg-secondary/45 px-3 py-2.5 text-sm font-semibold">
+              <div key={`${area.locality}-${area.city}-${area.state}`} className="flex items-center gap-2 rounded-xl bg-secondary/55 px-3 py-2.5 text-sm font-medium">
                 <MapPin size={15} className="shrink-0 text-primary" />
                 <span>{area.locality}, {area.city}</span>
               </div>
@@ -202,27 +202,22 @@ export function TherapistDiscoveryPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/70 bg-background/90 backdrop-blur-xl">
+      <header className="border-b border-border/80 bg-background/92 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a href="/" className="flex items-center gap-3" aria-label="Back to PhysioBill">
-            <span className="grid size-10 place-items-center rounded-2xl bg-primary text-primary-foreground">
-              <HeartPulse size={21} />
-            </span>
-            <span className="text-lg font-extrabold tracking-tight">Physio<span className="text-primary">Bill</span></span>
-          </a>
-          <a href="/professional/sign-in" className="rounded-xl px-3 py-2 text-sm font-bold hover:bg-secondary">Professional sign in</a>
+          <a href="/" aria-label="Back to PhysioBill"><PhysioBillBrand /></a>
+          <a href="/professional/sign-in" className="rounded-xl px-3 py-2 text-sm font-semibold hover:bg-secondary">Professional sign in</a>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 sm:pt-10 lg:px-8">
-        <a href="/" className="inline-flex min-h-10 items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary">
+        <a href="/" className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary">
           <ArrowLeft size={16} /> Back to PhysioBill
         </a>
 
-        <div className="mt-5 rounded-[28px] border bg-card p-5 shadow-sm sm:p-7">
-          <div className="mb-5">
-            <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Verified therapist search</p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Find care that fits your location.</h1>
+        <div className="mt-5 rounded-[28px] border border-border bg-card p-5 shadow-[0_16px_42px_hsl(var(--foreground)/.04)] sm:p-7">
+          <div className="mb-5 border-b border-border/70 pb-5">
+            <p className="text-sm font-semibold text-primary">Verified therapist search</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-.035em] sm:text-4xl">Find care that fits your location.</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Adjust the search anytime. Your choices stay in the URL so this page is easy to revisit.</p>
           </div>
           <PublicTherapistSearch
@@ -236,39 +231,39 @@ export function TherapistDiscoveryPage() {
         <section className="mt-9" aria-live="polite">
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Verified physiotherapists</p>
-              <h2 className="mt-1 text-2xl font-extrabold tracking-tight">{query.city ? `Care options for ${query.city}` : 'Start with your city'}</h2>
+              <p className="text-sm font-semibold text-primary">Verified physiotherapists</p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-[-.025em]">{query.city ? `Care options for ${query.city}` : 'Start with your city'}</h2>
             </div>
-            <p className="text-sm font-semibold text-muted-foreground">{searchSummary}</p>
+            <p className="text-sm font-medium text-muted-foreground">{searchSummary}</p>
           </div>
 
           {loading ? (
             <LoadingCards />
           ) : error ? (
             <div className="rounded-[26px] border border-destructive/20 bg-card p-7 text-center sm:p-10">
-              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-destructive/10 text-destructive"><RefreshCw size={21} /></div>
-              <h3 className="mt-4 text-xl font-extrabold">Search temporarily unavailable</h3>
+              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-destructive/8 text-destructive"><RefreshCw size={21} /></div>
+              <h3 className="mt-4 text-xl font-semibold">Search temporarily unavailable</h3>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{error}</p>
-              <button type="button" onClick={() => setRetryKey((current) => current + 1)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-primary-foreground">
+              <button type="button" onClick={() => setRetryKey((current) => current + 1)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
                 <RefreshCw size={16} /> Retry search
               </button>
             </div>
           ) : !query.city ? (
             <div className="rounded-[26px] border bg-card p-7 text-center sm:p-10">
-              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><MapPin size={22} /></div>
-              <h3 className="mt-4 text-xl font-extrabold">Enter a city to search</h3>
+              <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/7 text-primary"><MapPin size={22} /></div>
+              <h3 className="mt-4 text-xl font-semibold">Enter a city to search</h3>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">Choose a service and city above. Area is optional.</p>
             </div>
           ) : results.length === 0 ? (
-            <div className="rounded-[30px] border bg-card p-7 text-center shadow-sm sm:p-12">
-              <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary"><Stethoscope size={24} /></div>
-              <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Search completed</p>
-              <h3 className="mx-auto mt-2 max-w-xl text-2xl font-extrabold tracking-tight">No verified physiotherapists are listed for this search yet.</h3>
+            <div className="rounded-[30px] border bg-card p-7 text-center shadow-[0_14px_38px_hsl(var(--foreground)/.035)] sm:p-12">
+              <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-primary/10 bg-primary/6 text-primary"><Stethoscope size={24} /></div>
+              <p className="mt-5 text-sm font-semibold text-primary">Search completed</p>
+              <h3 className="mx-auto mt-2 max-w-xl text-2xl font-semibold tracking-[-.025em]">No verified physiotherapists are listed for this search yet.</h3>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Try broadening the location or changing the type of physiotherapy care.</p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                <button type="button" onClick={() => document.getElementById('discovery-locality')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-bold hover:bg-secondary">Edit area</button>
-                <button type="button" onClick={() => document.getElementById('discovery-city')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-bold hover:bg-secondary">Try another city</button>
-                <button type="button" onClick={() => document.getElementById('discovery-service')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-bold hover:bg-secondary">Change service type</button>
+                <button type="button" onClick={() => document.getElementById('discovery-locality')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Edit area</button>
+                <button type="button" onClick={() => document.getElementById('discovery-city')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Try another city</button>
+                <button type="button" onClick={() => document.getElementById('discovery-service')?.focus()} className="rounded-full border bg-background px-3.5 py-2 text-xs font-semibold hover:bg-secondary">Change service type</button>
               </div>
             </div>
           ) : (

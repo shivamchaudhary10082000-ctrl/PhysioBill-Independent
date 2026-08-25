@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { ArrowLeft, HeartPulse } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import App from '@/App';
+import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
 import { AuthPage } from '@/pages/AuthPage';
 import { PublicLandingPage } from '@/pages/PublicLandingPage';
@@ -14,8 +15,8 @@ function RouteLoading({ message }: { message: string }) {
   return (
     <div className="grid min-h-screen place-items-center bg-background px-4 text-center">
       <div>
-        <span className="mx-auto grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground"><HeartPulse size={21} /></span>
-        <p className="mt-4 text-sm font-semibold text-muted-foreground">{message}</p>
+        <PhysioBillBrand className="justify-center" showWordmark={false} />
+        <p className="mt-4 text-sm font-medium text-muted-foreground">{message}</p>
       </div>
     </div>
   );
@@ -70,17 +71,16 @@ function ProfessionalDiscoveryProfileRoute() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur-md">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/92 backdrop-blur-md">
         <div className="mx-auto flex h-[70px] max-w-[1420px] items-center justify-between gap-3 px-4 sm:px-7 lg:px-10">
-          <a href="/app/dashboard" className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"><HeartPulse size={19} /></span>
-            <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-muted-foreground">PhysioBill</p><p className="text-sm font-extrabold">Professional workspace</p></div>
+          <a href="/app/dashboard">
+            <PhysioBillBrand suffix={<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Professional workspace</span>} />
           </a>
-          <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-secondary" />
+          <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground" />
         </div>
       </header>
       <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
-        <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to Overview</a>
+        <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
         <TherapistDiscoveryProfilePage />
       </main>
     </div>
@@ -90,14 +90,14 @@ function ProfessionalDiscoveryProfileRoute() {
 function NotFoundPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-background px-4 py-10">
-      <section className="w-full max-w-xl rounded-[30px] border bg-card p-7 text-center shadow-sm sm:p-10">
-        <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground"><HeartPulse size={22} /></span>
-        <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">PhysioBill</p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Page not found</h1>
+      <section className="w-full max-w-xl rounded-[30px] border bg-card p-7 text-center shadow-[0_18px_50px_hsl(var(--foreground)/.05)] sm:p-10">
+        <PhysioBillBrand className="justify-center" showWordmark={false} />
+        <p className="mt-5 text-sm font-semibold text-primary">PhysioBill</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-.035em]">Page not found</h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">This route is not available. Return to the public PhysioBill entrance or use professional access.</p>
         <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
-          <a href="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-extrabold text-primary-foreground">Back to PhysioBill</a>
-          <a href="/professional/sign-in" className="inline-flex h-11 items-center justify-center rounded-xl border bg-background px-4 text-sm font-extrabold">Professional sign in</a>
+          <a href="/" className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">Back to PhysioBill</a>
+          <a href="/professional/sign-in" className="inline-flex h-11 items-center justify-center rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary">Professional sign in</a>
         </div>
       </section>
     </main>

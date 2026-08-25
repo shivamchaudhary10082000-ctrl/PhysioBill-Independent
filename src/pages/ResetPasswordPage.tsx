@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, HeartPulse, KeyRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, KeyRound, LockKeyhole } from 'lucide-react';
+import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { signOutPhysiotherapist, updatePassword } from '@/lib/auth';
 
 type ResetPasswordPageProps = {
@@ -83,52 +84,64 @@ export function ResetPasswordPage({
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-10 sm:grid sm:place-items-center">
-      <section className="mx-auto w-full max-w-md rounded-[28px] border bg-card p-6 shadow-sm sm:p-8">
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground">
-            <HeartPulse size={22} />
-          </span>
+    <main className="min-h-screen bg-background px-4 py-6 sm:grid sm:place-items-center sm:py-10">
+      <section className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-[32px] border border-border bg-card shadow-[0_24px_70px_hsl(var(--foreground)/.055)] lg:grid-cols-[.85fr_1.15fr]">
+        <div className="hidden border-r border-border bg-secondary/55 p-10 lg:flex lg:flex-col lg:justify-between">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-primary">PhysioBill</p>
-            <h1 className="text-xl font-extrabold tracking-tight">Set a new password</h1>
+            <PhysioBillBrand />
+            <div className="mt-14 max-w-xs">
+              <p className="text-sm font-semibold text-primary">Secure recovery</p>
+              <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-[-.04em]">Return safely to your professional workspace.</h1>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">The clinical workspace stays locked until password recovery is complete.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <LockKeyhole size={15} className="text-primary" /> Physiotherapist account recovery
           </div>
         </div>
 
-        {!recoveryReady ? (
-          <div className="mt-7">
-            <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-3 text-sm text-destructive">
-              {recoveryError ?? 'This password recovery link is invalid or has expired. Request a new link from the sign-in page.'}
-            </div>
-            <button type="button" onClick={onCancel} className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-primary-foreground">
-              <ArrowLeft size={16} /> Return to sign in
-            </button>
+        <div className="p-6 sm:p-8 lg:p-10">
+          <div className="lg:hidden"><PhysioBillBrand /></div>
+          <div className="mt-8 lg:mt-0">
+            <p className="text-sm font-semibold text-primary">Password recovery</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em]">Set a new password</h2>
           </div>
-        ) : (
-          <>
-            <p className="mt-6 text-sm leading-6 text-muted-foreground">Choose a new password for this physiotherapist account. The clinical workspace stays locked until recovery is complete.</p>
 
-            <form onSubmit={submit} className="mt-5 space-y-4">
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">New password</span>
-                <input type="password" autoComplete="new-password" required minLength={MINIMUM_PASSWORD_LENGTH} disabled={busy || passwordUpdated} value={password} onChange={(event) => setPassword(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Confirm new password</span>
-                <input type="password" autoComplete="new-password" required minLength={MINIMUM_PASSWORD_LENGTH} disabled={busy || passwordUpdated} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
-              </label>
-
-              {error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>}
-              {notice && <p role="status" className="rounded-xl border bg-secondary px-3 py-2 text-sm text-foreground">{notice}</p>}
-
-              <button disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-primary-foreground disabled:opacity-60">
-                <KeyRound size={17} />
-                {busy ? 'Please wait…' : passwordUpdated ? 'Finish secure sign-out' : 'Set new password'}
-                {!busy && <ArrowRight size={16} />}
+          {!recoveryReady ? (
+            <div className="mt-7">
+              <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-3 text-sm text-destructive">
+                {recoveryError ?? 'This password recovery link is invalid or has expired. Request a new link from the sign-in page.'}
+              </div>
+              <button type="button" onClick={onCancel} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))]">
+                <ArrowLeft size={16} /> Return to sign in
               </button>
-            </form>
-          </>
-        )}
+            </div>
+          ) : (
+            <>
+              <p className="mt-5 text-sm leading-6 text-muted-foreground">Choose a new password for this physiotherapist account. The clinical workspace stays locked until recovery is complete.</p>
+
+              <form onSubmit={submit} className="mt-5 space-y-4">
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold text-muted-foreground">New password</span>
+                  <input type="password" autoComplete="new-password" required minLength={MINIMUM_PASSWORD_LENGTH} disabled={busy || passwordUpdated} value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-xs font-semibold text-muted-foreground">Confirm new password</span>
+                  <input type="password" autoComplete="new-password" required minLength={MINIMUM_PASSWORD_LENGTH} disabled={busy || passwordUpdated} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="h-12 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
+                </label>
+
+                {error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">{error}</p>}
+                {notice && <p role="status" className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2.5 text-sm text-foreground">{notice}</p>}
+
+                <button disabled={busy} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
+                  <KeyRound size={17} />
+                  {busy ? 'Please wait…' : passwordUpdated ? 'Finish secure sign-out' : 'Set new password'}
+                  {!busy && <ArrowRight size={16} />}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
       </section>
     </main>
   );

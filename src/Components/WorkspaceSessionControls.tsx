@@ -35,7 +35,7 @@ export function WorkspaceSignOut({
         <button
           type="button"
           onClick={() => navigate('/app/discovery-profile')}
-          className="mb-2 inline-flex items-center gap-2 text-xs font-bold opacity-80 transition hover:opacity-100"
+          className="mb-2 inline-flex items-center gap-2 rounded-lg px-1 py-1 text-xs font-semibold text-primary transition hover:text-[hsl(var(--primary-hover))]"
         >
           <BadgeCheck size={14} /> Discovery profile
         </button>
@@ -45,7 +45,7 @@ export function WorkspaceSignOut({
         disabled={busy}
         aria-busy={busy}
         onClick={() => void signOut()}
-        className={`inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+        className={`inline-flex items-center gap-2 font-medium disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       >
         <LogOut size={14} /> {busy ? 'Signing out…' : 'Sign out'}
       </button>
@@ -70,11 +70,11 @@ export function GatewaySessionControls({
       <button
         type="button"
         onClick={() => navigate(backPath)}
-        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"
+        className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
       >
         <ArrowLeft size={16} /> {backLabel}
       </button>
-      <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground" />
+      <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground" />
     </div>
   );
 }

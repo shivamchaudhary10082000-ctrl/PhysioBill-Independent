@@ -2,11 +2,12 @@ import { useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
-  HeartPulse,
+  LockKeyhole,
   LogIn,
   Mail,
   UserPlus,
 } from 'lucide-react';
+import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import {
   registerPhysiotherapist,
   requestPasswordReset,
@@ -64,66 +65,85 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-10 sm:grid sm:place-items-center">
-      <section className="mx-auto w-full max-w-md rounded-[28px] border bg-card p-6 shadow-sm sm:p-8">
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground">
-            <HeartPulse size={22} />
-          </span>
+    <main className="min-h-screen bg-background px-4 py-6 sm:grid sm:place-items-center sm:py-10">
+      <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-border bg-card shadow-[0_24px_70px_hsl(var(--foreground)/.055)] lg:grid-cols-[.92fr_1.08fr]">
+        <div className="relative hidden border-r border-border bg-secondary/55 p-10 lg:flex lg:flex-col lg:justify-between">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-primary">PhysioBill</p>
-            <h1 className="text-xl font-extrabold tracking-tight">Private physiotherapist workspace</h1>
+            <a href="/" aria-label="Back to PhysioBill"><PhysioBillBrand /></a>
+            <div className="mt-14 max-w-sm">
+              <p className="text-sm font-semibold text-primary">Professional workspace</p>
+              <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-[-.04em]">A calm, private place for clinical work.</h1>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">Professional access remains separate from the public patient-facing discovery experience.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <LockKeyhole size={15} className="text-primary" /> Secure physiotherapist access
           </div>
         </div>
 
-        {mode === 'recovery-request' ? (
-          <div className="mt-7">
-            <button type="button" onClick={() => changeMode('signin')} className="inline-flex items-center gap-2 text-sm font-bold text-primary">
+        <div className="p-6 sm:p-8 lg:p-10">
+          <div className="flex items-center justify-between gap-4 lg:hidden">
+            <a href="/" aria-label="Back to PhysioBill"><PhysioBillBrand /></a>
+            <a href="/" className="text-xs font-semibold text-muted-foreground hover:text-primary">Public site</a>
+          </div>
+
+          <div className="mt-8 lg:mt-0">
+            <p className="text-sm font-semibold text-primary">Professional access</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em]">
+              {mode === 'recovery-request' ? 'Recover your password' : mode === 'signup' ? 'Create your physiotherapist account' : 'Sign in to PhysioBill'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {mode === 'recovery-request'
+                ? 'Enter your physiotherapist account email. The result stays intentionally generic to protect account privacy.'
+                : 'Continue to your private professional workspace.'}
+            </p>
+          </div>
+
+          {mode === 'recovery-request' ? (
+            <button type="button" onClick={() => changeMode('signin')} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary">
               <ArrowLeft size={16} /> Back to sign in
             </button>
-            <h2 className="mt-4 text-lg font-extrabold">Recover your password</h2>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">Enter your physiotherapist account email. The result is intentionally generic to protect account privacy.</p>
-          </div>
-        ) : (
-          <div className="mt-7 grid grid-cols-2 rounded-xl bg-secondary p-1">
-            <button type="button" onClick={() => changeMode('signin')} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === 'signin' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-              Sign in
-            </button>
-            <button type="button" onClick={() => changeMode('signup')} className={`rounded-lg px-3 py-2 text-sm font-bold ${mode === 'signup' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
-              Create account
-            </button>
-          </div>
-        )}
-
-        <form onSubmit={submit} className="mt-6 space-y-4">
-          <label className="block space-y-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Email</span>
-            <input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
-          </label>
-          {mode !== 'recovery-request' && (
-            <label className="block space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Password</span>
-              <input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
-            </label>
-          )}
-
-          {mode === 'signin' && (
-            <div className="flex justify-end">
-              <button type="button" onClick={() => changeMode('recovery-request')} className="text-sm font-bold text-primary hover:underline">
-                Forgot password?
+          ) : (
+            <div className="mt-7 grid grid-cols-2 rounded-xl border border-border bg-muted/60 p-1">
+              <button type="button" onClick={() => changeMode('signin')} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${mode === 'signin' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                Sign in
+              </button>
+              <button type="button" onClick={() => changeMode('signup')} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${mode === 'signup' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                Create account
               </button>
             </div>
           )}
 
-          {error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>}
-          {notice && <p role="status" className="rounded-xl border bg-secondary px-3 py-2 text-sm text-foreground">{notice}</p>}
+          <form onSubmit={submit} className="mt-6 space-y-4">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground">Email</span>
+              <input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
+            </label>
+            {mode !== 'recovery-request' && (
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold text-muted-foreground">Password</span>
+                <input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
+              </label>
+            )}
 
-          <button disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-extrabold text-primary-foreground disabled:opacity-60">
-            {mode === 'signin' ? <LogIn size={17} /> : mode === 'signup' ? <UserPlus size={17} /> : <Mail size={17} />}
-            {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? 'Create physiotherapist account' : 'Send recovery link'}
-            {!busy && <ArrowRight size={16} />}
-          </button>
-        </form>
+            {mode === 'signin' && (
+              <div className="flex justify-end">
+                <button type="button" onClick={() => changeMode('recovery-request')} className="text-sm font-semibold text-primary hover:underline">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">{error}</p>}
+            {notice && <p role="status" className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2.5 text-sm text-foreground">{notice}</p>}
+
+            <button disabled={busy} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
+              {mode === 'signin' ? <LogIn size={17} /> : mode === 'signup' ? <UserPlus size={17} /> : <Mail size={17} />}
+              {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? 'Create physiotherapist account' : 'Send recovery link'}
+              {!busy && <ArrowRight size={16} />}
+            </button>
+          </form>
+        </div>
       </section>
     </main>
   );

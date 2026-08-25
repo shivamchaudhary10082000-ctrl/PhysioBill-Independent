@@ -1,0 +1,58 @@
+name: Phase 5 Role-Aware Provisioning Verification
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+    paths:
+      - supabase/migrations/202608250001_role_aware_auth_provisioning.sql
+      - .github/workflows/phase5-role-aware-provisioning-verify.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase5-role-aware-provisioning-futureweb-production-backend
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build with staging public configuration
+        env:
+          VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase5-build-verification-only
+        run: npm run build
+
+      - name: Verify provisioning migration contract
+        run: |
+          migration=supabase/migrations/202608250001_role_aware_auth_provisioning.sql
+          grep -Fq "new.raw_app_meta_data" "$migration"
+          grep -Fq "requested_account_type in ('physio', 'patient')" "$migration"
+          grep -Fq "if account_type = 'patient' then" "$migration"
+          grep -Fq "Unsupported account_type for Auth provisioning." "$migration"
+          grep -Fq "on conflict (id) do nothing" "$migration"
+          grep -Fq "on conflict (user_id) do nothing" "$migration"
+          if grep -Fq "new.raw_user_meta_data" "$migration"; then
+            echo "User-editable metadata must not control account provisioning"
+            exit 1
+          fi
+          if grep -Fq "public.patients" "$migration"; then
+            echo "Slice 5.1 must not claim or modify patient clinical records"
+            exit 1
+          fi

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, LogOut } from 'lucide-react';
 import { signOutPhysiotherapist } from '@/lib/auth';
 
 function navigate(path: string) {
@@ -14,6 +14,8 @@ export function WorkspaceSignOut({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inWorkspace = window.location.pathname.startsWith('/app/');
+  const onDiscoveryProfile = window.location.pathname === '/app/discovery-profile';
 
   const signOut = async () => {
     setBusy(true);
@@ -29,6 +31,15 @@ export function WorkspaceSignOut({
 
   return (
     <div>
+      {inWorkspace && !onDiscoveryProfile && (
+        <button
+          type="button"
+          onClick={() => navigate('/app/discovery-profile')}
+          className="mb-2 inline-flex items-center gap-2 text-xs font-bold opacity-80 transition hover:opacity-100"
+        >
+          <BadgeCheck size={14} /> Discovery profile
+        </button>
+      )}
       <button
         type="button"
         disabled={busy}

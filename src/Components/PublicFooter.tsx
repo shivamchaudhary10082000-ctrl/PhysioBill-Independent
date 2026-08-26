@@ -8,12 +8,18 @@ export function PublicFooter({ className = '' }: PublicFooterProps) {
   return (
     <footer className={`public-footer ${className}`.trim()}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-10 border-b border-white/10 py-12 sm:py-14 lg:grid-cols-[1.3fr_.8fr_.85fr_1fr] lg:gap-12 lg:py-16">
-          <div className="max-w-sm">
+        <div className="grid gap-9 border-b border-white/10 py-11 sm:gap-10 sm:py-14 lg:grid-cols-[1.42fr_.78fr_.85fr_1fr] lg:gap-12 lg:py-16">
+          <div className="max-w-md lg:pr-8">
             <a href="/" aria-label="PhysioBill home" className="inline-flex rounded-xl focus-visible:outline-none">
               <PhysioBillBrand inverse />
             </a>
-            <p className="mt-5 max-w-xs text-sm leading-6 text-[hsl(219_18%_72%)]">
+            <p className="mt-5 text-[11px] font-bold uppercase tracking-[.13em] text-[hsl(232_76%_82%)]">
+              PhysioBill Care
+            </p>
+            <p className="display-serif mt-2 max-w-sm text-[1.75rem] leading-[1.08] tracking-[-.025em] text-[hsl(225_40%_98%)] sm:text-[2rem]">
+              Physiotherapy care, closer to people.
+            </p>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-[hsl(219_18%_72%)]">
               Thoughtful physiotherapy discovery and professional tools, built around care.
             </p>
           </div>

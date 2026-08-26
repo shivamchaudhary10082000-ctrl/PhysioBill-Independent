@@ -152,6 +152,9 @@ export function TherapistDiscoveryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [searchCompleted, setSearchCompleted] = useState(false);
+  const [hasMeaningfulSearchInteraction, setHasMeaningfulSearchInteraction] = useState(false);
+  const [showIdleHeading, setShowIdleHeading] = useState(false);
   const [showSearchHelper, setShowSearchHelper] = useState(false);
 
   useEffect(() => {
@@ -161,12 +164,18 @@ export function TherapistDiscoveryPage() {
   }, []);
 
   useEffect(() => {
+    setHasMeaningfulSearchInteraction(false);
+    setShowIdleHeading(false);
+  }, [query.city, query.locality, query.mode]);
+
+  useEffect(() => {
     let active = true;
 
     if (!query.city) {
       setResults([]);
       setLoading(false);
       setError(null);
+      setSearchCompleted(false);
       return () => {
         active = false;
       };
@@ -174,6 +183,7 @@ export function TherapistDiscoveryPage() {
 
     setLoading(true);
     setError(null);
+    setSearchCompleted(false);
 
     searchVerifiedTherapists({
       city: query.city,
@@ -181,11 +191,14 @@ export function TherapistDiscoveryPage() {
       serviceMode: query.mode,
     })
       .then((found) => {
-        if (active) setResults(found);
+        if (!active) return;
+        setResults(found);
+        setSearchCompleted(true);
       })
       .catch(() => {
         if (!active) return;
         setResults([]);
+        setSearchCompleted(false);
         setError('We could not complete this search right now. Please retry.');
       })
       .finally(() => {
@@ -198,11 +211,21 @@ export function TherapistDiscoveryPage() {
   }, [query.city, query.locality, query.mode, retryKey]);
 
   useEffect(() => {
-    setShowSearchHelper(false);
-    if (!query.city) return;
-    const timer = window.setTimeout(() => setShowSearchHelper(true), 12000);
+    setShowIdleHeading(false);
+    if (hasMeaningfulSearchInteraction || searchCompleted || loading || error) return;
+
+    const timer = window.setTimeout(() => setShowIdleHeading(true), 10500);
     return () => window.clearTimeout(timer);
-  }, [query.city, query.locality, query.mode]);
+  }, [hasMeaningfulSearchInteraction, searchCompleted, loading, error, query.city, query.locality, query.mode]);
+
+  useEffect(() => {
+    setShowSearchHelper(false);
+    if (!query.city || error) return;
+
+    const delay = hasMeaningfulSearchInteraction ? 12000 : 18000;
+    const timer = window.setTimeout(() => setShowSearchHelper(true), delay);
+    return () => window.clearTimeout(timer);
+  }, [query.city, query.locality, query.mode, hasMeaningfulSearchInteraction, error]);
 
   const searchSummary = useMemo(() => {
     if (!query.city) return 'Choose a city to begin.';
@@ -210,8 +233,40 @@ export function TherapistDiscoveryPage() {
     return `${THERAPIST_SERVICE_MODE_LABELS[query.mode]} · ${place}`;
   }, [query]);
 
-  const focusSearchField = (id: string) => {
+  const searchHeading = useMemo(() => {
+    if (!error && searchCompleted && query.city) {
+      return results.length > 0
+        ? `Verified care options for ${query.city}.`
+        : 'Let’s broaden your search.';
+    }
+
+    if (!loading && !error && showIdleHeading && !hasMeaningfulSearchInteraction) {
+      return 'Still deciding? Refine what matters to you.';
+    }
+
+    return 'Find care that fits your location.';
+  }, [error, searchCompleted, query.city, results.length, loading, showIdleHeading, hasMeaningfulSearchInteraction]);
+
+  const searchSupportingCopy = useMemo(() => {
+    if (!error && searchCompleted && query.city && results.length === 0) {
+      return 'Try another area, city, or care type to broaden your search.';
+    }
+
+    if (!loading && !error && showIdleHeading && !hasMeaningfulSearchInteraction) {
+      return 'Try another area, city, or care type to broaden your search.';
+    }
+
+    return 'Adjust the search anytime. Your choices stay in the URL so this page is easy to revisit.';
+  }, [error, searchCompleted, query.city, results.length, loading, showIdleHeading, hasMeaningfulSearchInteraction]);
+
+  const markSearchInteraction = () => {
+    setHasMeaningfulSearchInteraction(true);
+    setShowIdleHeading(false);
     setShowSearchHelper(false);
+  };
+
+  const focusSearchField = (id: string) => {
+    markSearchInteraction();
     document.getElementById(id)?.focus();
   };
 
@@ -232,15 +287,19 @@ export function TherapistDiscoveryPage() {
         <div className="mt-5 rounded-[28px] border border-border bg-card p-5 shadow-[0_16px_42px_hsl(var(--foreground)/.04)] sm:p-7">
           <div className="mb-5 border-b border-border/70 pb-5">
             <p className="text-sm font-semibold text-primary">Verified therapist search</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-[-.035em] sm:text-4xl">Find care that fits your location.</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Adjust the search anytime. Your choices stay in the URL so this page is easy to revisit.</p>
+            <div key={searchHeading} className="page-enter">
+              <h1 className="mt-2 text-3xl font-bold tracking-[-.035em] sm:text-4xl">{searchHeading}</h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{searchSupportingCopy}</p>
+            </div>
           </div>
-          <PublicTherapistSearch
-            compact
-            initialCity={query.city}
-            initialLocality={query.locality}
-            initialMode={query.mode}
-          />
+          <div onChangeCapture={markSearchInteraction}>
+            <PublicTherapistSearch
+              compact
+              initialCity={query.city}
+              initialLocality={query.locality}
+              initialMode={query.mode}
+            />
+          </div>
         </div>
 
         <section className="mt-9" aria-live="polite">

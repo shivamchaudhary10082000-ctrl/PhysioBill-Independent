@@ -26,6 +26,8 @@ type DiscoveryQuery = {
   mode: TherapistServiceMode;
 };
 
+type ZeroResultStage = 1 | 2 | 3;
+
 function readDiscoveryQuery(): DiscoveryQuery {
   const params = new URLSearchParams(window.location.search);
   return {
@@ -154,7 +156,7 @@ export function TherapistDiscoveryPage() {
   const [retryKey, setRetryKey] = useState(0);
   const [searchCompleted, setSearchCompleted] = useState(false);
   const [hasMeaningfulSearchInteraction, setHasMeaningfulSearchInteraction] = useState(false);
-  const [showIdleHeading, setShowIdleHeading] = useState(false);
+  const [zeroResultStage, setZeroResultStage] = useState<ZeroResultStage>(1);
   const [showSearchHelper, setShowSearchHelper] = useState(false);
 
   useEffect(() => {
@@ -165,7 +167,8 @@ export function TherapistDiscoveryPage() {
 
   useEffect(() => {
     setHasMeaningfulSearchInteraction(false);
-    setShowIdleHeading(false);
+    setZeroResultStage(1);
+    setShowSearchHelper(false);
   }, [query.city, query.locality, query.mode]);
 
   useEffect(() => {
@@ -176,6 +179,8 @@ export function TherapistDiscoveryPage() {
       setLoading(false);
       setError(null);
       setSearchCompleted(false);
+      setZeroResultStage(1);
+      setShowSearchHelper(false);
       return () => {
         active = false;
       };
@@ -184,6 +189,8 @@ export function TherapistDiscoveryPage() {
     setLoading(true);
     setError(null);
     setSearchCompleted(false);
+    setZeroResultStage(1);
+    setShowSearchHelper(false);
 
     searchVerifiedTherapists({
       city: query.city,
@@ -211,7 +218,6 @@ export function TherapistDiscoveryPage() {
   }, [query.city, query.locality, query.mode, retryKey]);
 
   useEffect(() => {
-    setShowIdleHeading(false);
     if (
       hasMeaningfulSearchInteraction
       || !query.city
@@ -221,8 +227,13 @@ export function TherapistDiscoveryPage() {
       || error
     ) return;
 
-    const timer = window.setTimeout(() => setShowIdleHeading(true), 10500);
-    return () => window.clearTimeout(timer);
+    const stageTwoTimer = window.setTimeout(() => setZeroResultStage(2), 10500);
+    const stageThreeTimer = window.setTimeout(() => setZeroResultStage(3), 21000);
+
+    return () => {
+      window.clearTimeout(stageTwoTimer);
+      window.clearTimeout(stageThreeTimer);
+    };
   }, [hasMeaningfulSearchInteraction, query.city, searchCompleted, results.length, loading, error]);
 
   useEffect(() => {
@@ -236,7 +247,7 @@ export function TherapistDiscoveryPage() {
       || error
     ) return;
 
-    const timer = window.setTimeout(() => setShowSearchHelper(true), 19500);
+    const timer = window.setTimeout(() => setShowSearchHelper(true), 25000);
     return () => window.clearTimeout(timer);
   }, [hasMeaningfulSearchInteraction, query.city, searchCompleted, results.length, loading, error]);
 
@@ -249,27 +260,35 @@ export function TherapistDiscoveryPage() {
   const searchHeading = useMemo(() => {
     if (!error && searchCompleted && query.city) {
       if (results.length > 0) return `Verified care options for ${query.city}.`;
-      return showIdleHeading && !hasMeaningfulSearchInteraction
-        ? 'Still looking? Let’s try another approach.'
-        : 'Let’s broaden your search.';
+      if (!hasMeaningfulSearchInteraction && zeroResultStage === 3) {
+        return 'Not finding the right match yet?';
+      }
+      if (!hasMeaningfulSearchInteraction && zeroResultStage === 2) {
+        return 'Still looking? Let’s try another approach.';
+      }
+      return 'Let’s broaden your search.';
     }
 
     return 'Find care that fits your location.';
-  }, [error, searchCompleted, query.city, results.length, showIdleHeading, hasMeaningfulSearchInteraction]);
+  }, [error, searchCompleted, query.city, results.length, hasMeaningfulSearchInteraction, zeroResultStage]);
 
   const searchSupportingCopy = useMemo(() => {
     if (!error && searchCompleted && query.city && results.length === 0) {
-      return showIdleHeading && !hasMeaningfulSearchInteraction
-        ? 'Try another area, city, or care type to widen your search.'
-        : 'Try another area, city, or care type to broaden your search.';
+      if (!hasMeaningfulSearchInteraction && zeroResultStage === 3) {
+        return 'Widen the area or switch the type of care — we’ll keep the search simple.';
+      }
+      if (!hasMeaningfulSearchInteraction && zeroResultStage === 2) {
+        return 'Try another area, city, or care type to widen your search.';
+      }
+      return 'Try another area, city, or care type to broaden your search.';
     }
 
     return 'Adjust the search anytime. Your choices stay in the URL so this page is easy to revisit.';
-  }, [error, searchCompleted, query.city, results.length, showIdleHeading, hasMeaningfulSearchInteraction]);
+  }, [error, searchCompleted, query.city, results.length, hasMeaningfulSearchInteraction, zeroResultStage]);
 
   const markSearchInteraction = () => {
     setHasMeaningfulSearchInteraction(true);
-    setShowIdleHeading(false);
+    setZeroResultStage(1);
     setShowSearchHelper(false);
   };
 
@@ -355,10 +374,10 @@ export function TherapistDiscoveryPage() {
           )}
         </section>
 
-        {showSearchHelper && query.city && !loading && !error && (
+        {showSearchHelper && query.city && searchCompleted && results.length === 0 && !loading && !error && (
           <aside className="page-enter mt-6 flex flex-col gap-4 rounded-2xl border border-primary/10 bg-[hsl(var(--primary-soft))] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5" aria-label="Search help">
             <div>
-              <p className="text-sm font-bold text-foreground">Need help narrowing your search?</p>
+              <p className="text-sm font-bold text-foreground">Want to broaden your search?</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">You can adjust the same location and service controls above.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

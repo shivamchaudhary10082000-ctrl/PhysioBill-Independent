@@ -60,7 +60,7 @@ export function WorkspaceSignOut({
       {inWorkspace && !onDiscoveryProfile && (
         <button
           type="button"
-          onClick={() => navigate('/app/discovery-profile')}
+          onClick={() => window.location.assign('/app/discovery-profile')}
           className="mb-2 inline-flex items-center gap-2 rounded-xl border border-primary/10 bg-primary/5 px-2.5 py-2 text-xs font-semibold text-primary transition hover:bg-primary/8 hover:text-[hsl(var(--primary-hover))]"
         >
           <BadgeCheck size={14} /> Discovery profile

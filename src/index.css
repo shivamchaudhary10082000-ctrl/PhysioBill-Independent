@@ -156,6 +156,32 @@ textarea:disabled {
   color: hsl(var(--muted-foreground));
 }
 
+button.bg-primary,
+a.bg-primary {
+  font-weight: 700;
+  box-shadow: 0 12px 26px hsl(var(--primary) / .2), inset 0 1px 0 hsl(0 0% 100% / .16);
+  transition: transform .16s ease, background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+button.bg-primary:hover:not(:disabled),
+a.bg-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 30px hsl(var(--primary) / .24), inset 0 1px 0 hsl(0 0% 100% / .18);
+}
+
+button.bg-primary:active:not(:disabled),
+a.bg-primary:active {
+  transform: translateY(0) scale(.985);
+  box-shadow: 0 7px 16px hsl(var(--primary) / .18), inset 0 1px 0 hsl(0 0% 100% / .12);
+}
+
+button.bg-primary:focus-visible,
+a.bg-primary:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px hsl(var(--background)), 0 12px 26px hsl(var(--primary) / .22);
+}
+
 .physiobill-mark,
 aside .bg-sidebar-primary {
   position: relative;
@@ -196,6 +222,25 @@ aside .bg-sidebar-primary::after {
   transform: rotate(-34deg);
   transform-origin: center;
   opacity: .9;
+}
+
+.physiobill-mark-inverse {
+  border-color: hsl(232 70% 78% / .3);
+  background: hsl(231 34% 24%);
+  color: hsl(232 76% 80%);
+  box-shadow: 0 10px 26px hsl(225 55% 6% / .24);
+}
+
+.physiobill-mark-inverse::after {
+  background: hsl(232 76% 80%);
+}
+
+.physiobill-wordmark-inverse {
+  color: hsl(225 40% 98%);
+}
+
+.physiobill-wordmark-accent-inverse {
+  color: hsl(232 76% 80%);
 }
 
 aside .bg-sidebar-primary > svg {
@@ -302,6 +347,46 @@ main .rounded-\[30px\].border.bg-card {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
   box-shadow: 0 12px 30px hsl(var(--foreground) / .03);
+}
+
+.public-footer {
+  border-top: 1px solid hsl(228 30% 28%);
+  background: hsl(222 39% 15%);
+  color: hsl(225 40% 98%);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / .025);
+}
+
+.public-footer-heading {
+  color: hsl(232 76% 82%);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.public-footer-link {
+  display: block;
+  width: fit-content;
+  border-radius: .45rem;
+  color: hsl(225 32% 93%);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color .16s ease, transform .16s ease;
+}
+
+.public-footer-link:hover {
+  color: hsl(232 76% 82%);
+  transform: translateX(2px);
+}
+
+.public-footer-link:focus-visible {
+  outline-color: hsl(232 76% 82%);
+  outline-offset: 4px;
+}
+
+.public-footer-note {
+  color: hsl(219 18% 72%);
+  line-height: 1.55;
 }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

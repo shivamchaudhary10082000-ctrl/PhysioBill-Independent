@@ -1,5 +1,6 @@
 import { ArrowRight, MapPin, ShieldCheck } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
+import { PublicFooter } from '@/Components/PublicFooter';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
 
 export function PublicLandingPage() {
@@ -29,7 +30,7 @@ export function PublicLandingPage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-[11px] font-semibold tracking-[.08em] text-primary">
                 PhysioBill Care
               </div>
-              <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[1.04] tracking-[-.045em] sm:text-6xl lg:text-[4.35rem]">
+              <h1 className="mt-6 max-w-3xl text-[2.8rem] font-bold leading-[1.05] tracking-[-.045em] sm:text-6xl sm:leading-[1.04] lg:text-[4.35rem]">
                 Find a physiotherapist,{' '}
                 <span className="display-serif font-normal italic text-primary">closer to you.</span>
               </h1>
@@ -71,10 +72,7 @@ export function PublicLandingPage() {
         </section>
       </main>
 
-      <footer className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-border/70 px-4 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-        <p>PhysioBill Care · Verified physiotherapist discovery</p>
-        <a href="/professional/sign-in" className="font-semibold text-foreground hover:text-primary">Professional access</a>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

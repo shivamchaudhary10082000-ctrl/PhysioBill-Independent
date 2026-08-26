@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
+import { PublicFooter } from '@/Components/PublicFooter';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
 import {
   THERAPIST_SERVICE_MODE_LABELS,
@@ -302,6 +303,8 @@ export function TherapistDiscoveryPage() {
           </aside>
         )}
       </main>
+
+      <PublicFooter />
     </div>
   );
 }

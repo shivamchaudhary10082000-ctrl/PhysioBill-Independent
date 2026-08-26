@@ -212,20 +212,33 @@ export function TherapistDiscoveryPage() {
 
   useEffect(() => {
     setShowIdleHeading(false);
-    if (hasMeaningfulSearchInteraction || searchCompleted || loading || error) return;
+    if (
+      hasMeaningfulSearchInteraction
+      || !query.city
+      || !searchCompleted
+      || results.length > 0
+      || loading
+      || error
+    ) return;
 
     const timer = window.setTimeout(() => setShowIdleHeading(true), 10500);
     return () => window.clearTimeout(timer);
-  }, [hasMeaningfulSearchInteraction, searchCompleted, loading, error, query.city, query.locality, query.mode]);
+  }, [hasMeaningfulSearchInteraction, query.city, searchCompleted, results.length, loading, error]);
 
   useEffect(() => {
     setShowSearchHelper(false);
-    if (!query.city || error) return;
+    if (
+      hasMeaningfulSearchInteraction
+      || !query.city
+      || !searchCompleted
+      || results.length > 0
+      || loading
+      || error
+    ) return;
 
-    const delay = hasMeaningfulSearchInteraction ? 12000 : 18000;
-    const timer = window.setTimeout(() => setShowSearchHelper(true), delay);
+    const timer = window.setTimeout(() => setShowSearchHelper(true), 19500);
     return () => window.clearTimeout(timer);
-  }, [query.city, query.locality, query.mode, hasMeaningfulSearchInteraction, error]);
+  }, [hasMeaningfulSearchInteraction, query.city, searchCompleted, results.length, loading, error]);
 
   const searchSummary = useMemo(() => {
     if (!query.city) return 'Choose a city to begin.';
@@ -235,29 +248,24 @@ export function TherapistDiscoveryPage() {
 
   const searchHeading = useMemo(() => {
     if (!error && searchCompleted && query.city) {
-      return results.length > 0
-        ? `Verified care options for ${query.city}.`
+      if (results.length > 0) return `Verified care options for ${query.city}.`;
+      return showIdleHeading && !hasMeaningfulSearchInteraction
+        ? 'Still looking? Let’s try another approach.'
         : 'Let’s broaden your search.';
     }
 
-    if (!loading && !error && showIdleHeading && !hasMeaningfulSearchInteraction) {
-      return 'Still deciding? Refine what matters to you.';
-    }
-
     return 'Find care that fits your location.';
-  }, [error, searchCompleted, query.city, results.length, loading, showIdleHeading, hasMeaningfulSearchInteraction]);
+  }, [error, searchCompleted, query.city, results.length, showIdleHeading, hasMeaningfulSearchInteraction]);
 
   const searchSupportingCopy = useMemo(() => {
     if (!error && searchCompleted && query.city && results.length === 0) {
-      return 'Try another area, city, or care type to broaden your search.';
-    }
-
-    if (!loading && !error && showIdleHeading && !hasMeaningfulSearchInteraction) {
-      return 'Try another area, city, or care type to broaden your search.';
+      return showIdleHeading && !hasMeaningfulSearchInteraction
+        ? 'Try another area, city, or care type to widen your search.'
+        : 'Try another area, city, or care type to broaden your search.';
     }
 
     return 'Adjust the search anytime. Your choices stay in the URL so this page is easy to revisit.';
-  }, [error, searchCompleted, query.city, results.length, loading, showIdleHeading, hasMeaningfulSearchInteraction]);
+  }, [error, searchCompleted, query.city, results.length, showIdleHeading, hasMeaningfulSearchInteraction]);
 
   const markSearchInteraction = () => {
     setHasMeaningfulSearchInteraction(true);

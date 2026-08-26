@@ -16,6 +16,8 @@ export type ProductionProfile = {
   qualification: string;
   registration: string;
   registrationAuthority: string;
+  registrationJurisdiction: string;
+  registrationRegionCode: string;
   pan: string;
   gstin: string;
   phone: string;
@@ -63,6 +65,8 @@ const mapProfile = (row: Awaited<ReturnType<typeof loadPhysiotherapistProfile>>)
   qualification: row.qualification,
   registration: row.registration,
   registrationAuthority: row.registration_authority,
+  registrationJurisdiction: row.registration_jurisdiction,
+  registrationRegionCode: row.registration_region_code,
   pan: row.pan,
   gstin: row.gstin,
   phone: row.phone,
@@ -127,6 +131,8 @@ export async function saveProductionProfile(
     qualification: profile.qualification,
     registration: profile.registration,
     registration_authority: profile.registrationAuthority,
+    registration_jurisdiction: profile.registrationJurisdiction,
+    registration_region_code: profile.registrationRegionCode,
     pan: profile.pan,
     gstin: profile.gstin,
     phone: profile.phone,

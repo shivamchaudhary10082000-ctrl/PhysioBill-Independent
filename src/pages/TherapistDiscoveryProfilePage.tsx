@@ -47,9 +47,11 @@ const normalizeAreaKey = (area: TherapistDiscoveryServiceArea) =>
 
 function credentialsComplete(state: TherapistDiscoveryManagementState) {
   return Boolean(
-    state.credentials.qualification.trim() &&
+    state.credentials.fullName.trim() &&
+      state.credentials.qualification.trim() &&
       state.credentials.registrationNumber.trim() &&
-      state.credentials.registrationAuthority.trim(),
+      state.credentials.registrationAuthority.trim() &&
+      state.credentials.registrationJurisdiction.trim(),
   );
 }
 
@@ -280,7 +282,7 @@ export function TherapistDiscoveryProfilePage() {
 
         <div className="mt-5 border-t pt-5">
           {(status === 'unverified' || status === 'rejected') && !credentialsComplete(state) && (
-            <div className="rounded-xl bg-secondary/55 p-4 text-sm leading-6 text-muted-foreground">Complete your qualification, registration number and registration authority on the Professional Profile page before submitting for verification.</div>
+            <div className="rounded-xl bg-secondary/55 p-4 text-sm leading-6 text-muted-foreground">Complete your professional name, qualification, registration number, authority and jurisdiction on the Professional Profile page before submitting for verification.</div>
           )}
           {status === 'pending' && <div className="rounded-xl border border-warning/10 bg-warning/5 p-4 text-sm leading-6 text-muted-foreground">Your credentials are pending review. Repeated submissions are intentionally disabled while this request is pending.</div>}
           {status === 'verified' && <div className="rounded-xl border border-success/10 bg-success/5 p-4 text-sm leading-6 text-muted-foreground">Your professional credentials are verified. Editing the protected credential fields on your Professional Profile will invalidate this verification automatically.</div>}

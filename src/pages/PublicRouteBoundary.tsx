@@ -8,6 +8,9 @@ import { PublicLandingPage } from '@/pages/PublicLandingPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { TherapistDiscoveryPage } from '@/pages/TherapistDiscoveryPage';
 import { TherapistDiscoveryProfilePage } from '@/pages/TherapistDiscoveryProfilePage';
+import { AdminSignInPage } from '@/pages/AdminSignInPage';
+import { AdminVerificationsPage } from '@/pages/AdminVerificationsPage';
+import { AdminVerificationReviewPage } from '@/pages/AdminVerificationReviewPage';
 import { useAuthSession } from '@/hooks/use-auth-session';
 import { PASSWORD_RECOVERY_PATH, signOutPhysiotherapist } from '@/lib/auth';
 
@@ -87,6 +90,48 @@ function ProfessionalDiscoveryProfileRoute() {
   );
 }
 
+function AdminSignInRoute() {
+  const auth = useAuthSession();
+
+  useEffect(() => {
+    if (auth.user && !auth.passwordRecovery) {
+      window.location.replace('/admin/verifications');
+    }
+  }, [auth.passwordRecovery, auth.user?.id]);
+
+  if (!auth.configured || auth.error) return <NotFoundPage />;
+  if (auth.loading) return <RouteLoading message="Restoring secure Admin session…" />;
+  if (auth.user) return <RouteLoading message="Opening restricted verification review…" />;
+  return <AdminSignInPage />;
+}
+
+function AdminVerificationRoute({ requestId }: { requestId?: string }) {
+  const auth = useAuthSession();
+
+  useEffect(() => {
+    if (!auth.loading && !auth.user) {
+      window.location.replace('/admin/sign-in');
+    }
+  }, [auth.loading, auth.user?.id]);
+
+  if (!auth.configured || auth.error || auth.passwordRecovery) return <NotFoundPage />;
+  if (auth.loading || !auth.user) return <RouteLoading message="Checking reviewer authority…" />;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/92 backdrop-blur-md">
+        <div className="mx-auto flex h-[70px] max-w-[1180px] items-center justify-between gap-3 px-4 sm:px-7">
+          <a href="/admin/verifications"><PhysioBillBrand suffix={<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Verification administration</span>} /></a>
+          <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground" />
+        </div>
+      </header>
+      <main className="mx-auto max-w-[1180px] px-4 pb-20 pt-7 sm:px-7">
+        {requestId ? <AdminVerificationReviewPage requestId={requestId} /> : <AdminVerificationsPage />}
+      </main>
+    </div>
+  );
+}
+
 function NotFoundPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-background px-4 py-10">
@@ -131,6 +176,12 @@ export function PublicRouteBoundary() {
   if (path === '/') return <PublicLandingPage />;
   if (path === '/find-physio') return <TherapistDiscoveryPage />;
   if (path === '/professional/sign-in') return <ProfessionalSignInRoute />;
+  if (path === '/admin/sign-in') return <AdminSignInRoute />;
+  if (path === '/admin/verifications') return <AdminVerificationRoute />;
+  if (path.startsWith('/admin/verifications/')) {
+    const requestId = path.slice('/admin/verifications/'.length);
+    return requestId ? <AdminVerificationRoute requestId={requestId} /> : <NotFoundPage />;
+  }
   if (path === PASSWORD_RECOVERY_PATH) return <PasswordRecoveryRoute />;
   if (path === '/app/discovery-profile') return <ProfessionalDiscoveryProfileRoute />;
   if (isSupportedPrivateRoute(path)) return <App />;

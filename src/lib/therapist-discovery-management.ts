@@ -17,9 +17,12 @@ export type TherapistDiscoveryManagementVerification = {
 };
 
 export type TherapistDiscoveryCredentials = {
+  fullName: string;
   qualification: string;
   registrationNumber: string;
   registrationAuthority: string;
+  registrationJurisdiction: string;
+  registrationRegionCode: string;
 };
 
 export type TherapistDiscoveryDraft = {
@@ -81,7 +84,7 @@ export async function loadMyTherapistDiscoveryManagement(): Promise<TherapistDis
         .order('locality', { ascending: true }),
       supabase
         .from('physiotherapist_profiles')
-        .select('qualification,registration,registration_authority')
+        .select('full_name,qualification,registration,registration_authority,registration_jurisdiction,registration_region_code')
         .eq('physio_id', physioId)
         .single(),
       supabase
@@ -129,9 +132,12 @@ export async function loadMyTherapistDiscoveryManagement(): Promise<TherapistDis
         serviceAreas,
       },
       credentials: {
+        fullName: safeText(credentials?.full_name, 200),
         qualification: safeText(credentials?.qualification, 200),
         registrationNumber: safeText(credentials?.registration, 200),
         registrationAuthority: safeText(credentials?.registration_authority, 200),
+        registrationJurisdiction: safeText(credentials?.registration_jurisdiction, 200),
+        registrationRegionCode: safeText(credentials?.registration_region_code, 16),
       },
       verification: {
         status: verificationStatus,

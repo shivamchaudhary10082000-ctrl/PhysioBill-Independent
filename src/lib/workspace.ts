@@ -13,6 +13,8 @@ export type PhysiotherapistProfileRecord = {
   qualification: string;
   registration: string;
   registration_authority: string;
+  registration_jurisdiction: string;
+  registration_region_code: string;
   pan: string;
   gstin: string;
   phone: string;
@@ -41,7 +43,7 @@ export type PhysiotherapistSettingsRecord = {
   date_format: string;
 };
 
-const profileColumns = 'physio_id,full_name,title,qualification,registration,registration_authority,pan,gstin,phone,email,address,invoice_prefix' as const;
+const profileColumns = 'physio_id,full_name,title,qualification,registration,registration_authority,registration_jurisdiction,registration_region_code,pan,gstin,phone,email,address,invoice_prefix' as const;
 const verificationColumns = 'physio_id,verification_status,verified_at,verified_qualification,verified_registration_number,verified_registration_authority' as const;
 
 export async function resolveAuthenticatedPhysiotherapist(): Promise<PhysiotherapistWorkspaceBootstrap> {
@@ -104,6 +106,8 @@ export async function updatePhysiotherapistProfile(
       qualification: input.qualification,
       registration: input.registration,
       registration_authority: input.registration_authority,
+      registration_jurisdiction: input.registration_jurisdiction,
+      registration_region_code: input.registration_region_code,
       pan: input.pan,
       gstin: input.gstin,
       phone: input.phone,

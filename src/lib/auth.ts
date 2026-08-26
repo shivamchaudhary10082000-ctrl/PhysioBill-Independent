@@ -53,6 +53,17 @@ export async function signInPhysiotherapist(
   return data;
 }
 
+export async function signInAdmin(email: string, password: string) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function signOutPhysiotherapist() {
   const supabase = getSupabaseClient();
   const { error } = await supabase.auth.signOut();

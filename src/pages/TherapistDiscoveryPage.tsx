@@ -333,7 +333,13 @@ export function TherapistDiscoveryPage() {
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-primary">Verified physiotherapists</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-[-.025em]">{query.city ? `Care options for ${query.city}` : 'Start with your city'}</h2>
+              <h2 className="mt-1 text-2xl font-bold tracking-[-.025em]">
+                {!query.city
+                  ? 'Start with your city'
+                  : searchCompleted && results.length === 0
+                    ? `No verified matches in ${query.city} yet`
+                    : `Care options for ${query.city}`}
+              </h2>
             </div>
             <p className="text-sm font-medium text-muted-foreground">{searchSummary}</p>
           </div>

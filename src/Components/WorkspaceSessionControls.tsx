@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, BadgeCheck, LogOut } from 'lucide-react';
-import { signOutPhysiotherapist } from '@/lib/auth';
+import { signOutCurrentSession } from '@/lib/auth';
 
 function navigate(path: string) {
   window.history.pushState({}, '', path);
@@ -47,7 +47,7 @@ export function WorkspaceSignOut({
     setBusy(true);
     setError(null);
     try {
-      await signOutPhysiotherapist();
+      await signOutCurrentSession();
       window.location.replace('/');
     } catch {
       setError('Unable to sign out. Please try again.');

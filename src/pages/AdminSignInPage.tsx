@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LockKeyhole, LogIn, Mail } from 'lucide-react';
+import { AuthTurnstile, isAuthTurnstileConfigured } from '@/Components/AuthTurnstile';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { signInAdmin } from '@/lib/auth';
 
@@ -8,18 +9,29 @@ export function AdminSignInPage() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [challengeResetKey, setChallengeResetKey] = useState(0);
+  const challengeRequired = isAuthTurnstileConfigured();
+
+  function resetChallenge() {
+    setCaptchaToken(null);
+    setChallengeResetKey((current) => current + 1);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (challengeRequired && !captchaToken) return;
+
     setBusy(true);
     setError(null);
     try {
-      await signInAdmin(email, password);
+      await signInAdmin(email, password, captchaToken);
       window.location.replace('/admin/verifications');
     } catch {
       setError('Admin sign-in could not be completed. Check the credentials and try again.');
     } finally {
       setBusy(false);
+      resetChallenge();
     }
   }
 
@@ -34,7 +46,12 @@ export function AdminSignInPage() {
         <form onSubmit={submit} className="mt-6 space-y-4">
           <label className="block space-y-2"><span className="text-xs font-semibold">Email</span><span className="relative block"><Mail className="absolute left-3 top-3.5 text-muted-foreground" size={17} /><input type="email" required autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 w-full rounded-xl border bg-background pl-10 pr-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></span></label>
           <label className="block space-y-2"><span className="text-xs font-semibold">Password</span><span className="relative block"><LockKeyhole className="absolute left-3 top-3.5 text-muted-foreground" size={17} /><input type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 w-full rounded-xl border bg-background pl-10 pr-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></span></label>
-          <button disabled={busy} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60"><LogIn size={17} />{busy ? 'Signing in…' : 'Sign in to review'}</button>
+          <AuthTurnstile
+            action="admin-sign-in"
+            resetKey={challengeResetKey}
+            onTokenChange={setCaptchaToken}
+          />
+          <button disabled={busy || (challengeRequired && !captchaToken)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60"><LogIn size={17} />{busy ? 'Signing in…' : 'Sign in to review'}</button>
         </form>
       </section>
     </main>

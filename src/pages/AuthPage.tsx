@@ -9,12 +9,22 @@ import {
 } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import {
+  AuthTurnstile,
+  isAuthTurnstileConfigured,
+} from '@/Components/AuthTurnstile';
+import {
   registerPhysiotherapist,
   requestPasswordReset,
   signInPhysiotherapist,
 } from '@/lib/auth';
 
 type AuthMode = 'signin' | 'signup' | 'recovery-request';
+
+const challengeAction: Record<AuthMode, string> = {
+  signin: 'professional-sign-in',
+  signup: 'professional-sign-up',
+  'recovery-request': 'professional-password-reset',
+};
 
 export function AuthPage({ notice: initialNotice = null }: { notice?: string | null }) {
   const [mode, setMode] = useState<AuthMode>('signin');
@@ -23,33 +33,44 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(initialNotice);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [challengeResetKey, setChallengeResetKey] = useState(0);
+  const challengeRequired = isAuthTurnstileConfigured();
+
+  function resetChallenge() {
+    setCaptchaToken(null);
+    setChallengeResetKey((current) => current + 1);
+  }
 
   function changeMode(nextMode: AuthMode) {
     setMode(nextMode);
     setPassword('');
     setError(null);
     setNotice(null);
+    resetChallenge();
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (challengeRequired && !captchaToken) return;
+
     setBusy(true);
     setError(null);
     setNotice(null);
 
     try {
       if (mode === 'recovery-request') {
-        await requestPasswordReset(email);
+        await requestPasswordReset(email, captchaToken);
         setNotice(
           'If a physiotherapist account exists for that email, a recovery link has been sent. Check your inbox and spam folder.',
         );
       } else if (mode === 'signup') {
-        const result = await registerPhysiotherapist(email, password);
+        const result = await registerPhysiotherapist(email, password, captchaToken);
         if (!result.session) {
           setNotice('Account created. Check your email to confirm the address, then sign in.');
         }
       } else {
-        await signInPhysiotherapist(email, password);
+        await signInPhysiotherapist(email, password, captchaToken);
       }
     } catch {
       if (mode === 'recovery-request') {
@@ -61,6 +82,7 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
       }
     } finally {
       setBusy(false);
+      resetChallenge();
     }
   }
 
@@ -134,10 +156,16 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
               </div>
             )}
 
+            <AuthTurnstile
+              action={challengeAction[mode]}
+              resetKey={challengeResetKey}
+              onTokenChange={setCaptchaToken}
+            />
+
             {error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">{error}</p>}
             {notice && <p role="status" className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2.5 text-sm text-foreground">{notice}</p>}
 
-            <button disabled={busy} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
+            <button disabled={busy || (challengeRequired && !captchaToken)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
               {mode === 'signin' ? <LogIn size={17} /> : mode === 'signup' ? <UserPlus size={17} /> : <Mail size={17} />}
               {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? 'Create physiotherapist account' : 'Send recovery link'}
               {!busy && <ArrowRight size={16} />}

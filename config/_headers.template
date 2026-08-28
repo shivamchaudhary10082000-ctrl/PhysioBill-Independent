@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' __SUPABASE_CONNECT_SRC__; worker-src 'self' blob:; frame-src 'none'; manifest-src 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'__TURNSTILE_SCRIPT_SRC__; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' __SUPABASE_CONNECT_SRC__; worker-src 'self' blob:; frame-src __TURNSTILE_FRAME_SRC__; manifest-src 'self'; upgrade-insecure-requests
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
@@ -12,4 +12,7 @@
   Cache-Control: private, no-store, max-age=0, must-revalidate
 
 /auth/*
+  Cache-Control: private, no-store, max-age=0, must-revalidate
+
+/patient/*
   Cache-Control: private, no-store, max-age=0, must-revalidate

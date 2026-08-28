@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Building2,
+  CalendarClock,
   CheckCircle2,
   MapPin,
   RefreshCw,
@@ -12,6 +13,11 @@ import {
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicFooter } from '@/Components/PublicFooter';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
+import {
+  getVerifiedTherapistAvailabilityBatch,
+  type TherapistAvailabilityByPhysio,
+  type TherapistAvailabilityWindow,
+} from '@/lib/therapist-availability';
 import {
   THERAPIST_SERVICE_MODE_LABELS,
   normalizeTherapistServiceMode,
@@ -49,6 +55,27 @@ function therapistInitials(name: string) {
   );
 }
 
+function formatAvailability(window: TherapistAvailabilityWindow) {
+  const start = new Date(window.startsAt);
+  const end = new Date(window.endsAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '';
+
+  try {
+    const date = new Intl.DateTimeFormat('en-IN', {
+      dateStyle: 'medium',
+      timeZone: window.timezoneName,
+    }).format(start);
+    const time = new Intl.DateTimeFormat('en-IN', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: window.timezoneName,
+    });
+    return `${date} · ${time.format(start)}–${time.format(end)}`;
+  } catch {
+    return '';
+  }
+}
+
 function LoadingCards() {
   return (
     <div className="grid gap-4 lg:grid-cols-2" aria-label="Loading verified physiotherapists">
@@ -72,7 +99,17 @@ function LoadingCards() {
   );
 }
 
-function TherapistCard({ therapist }: { therapist: VerifiedTherapistDiscoveryResult }) {
+function TherapistCard({
+  therapist,
+  availability,
+  availabilityLoading,
+  availabilityUnavailable,
+}: {
+  therapist: VerifiedTherapistDiscoveryResult;
+  availability: TherapistAvailabilityWindow[];
+  availabilityLoading: boolean;
+  availabilityUnavailable: boolean;
+}) {
   const registration = [
     therapist.verified_registration_authority,
     therapist.verified_registration_number,
@@ -144,6 +181,33 @@ function TherapistCard({ therapist }: { therapist: VerifiedTherapistDiscoveryRes
           </div>
         </div>
       )}
+
+      <div className="mt-5 border-t pt-5">
+        <div className="flex items-center gap-2">
+          <CalendarClock size={17} className="text-primary" />
+          <p className="text-xs font-semibold text-muted-foreground">Upcoming availability</p>
+        </div>
+        {availabilityLoading ? (
+          <div className="mt-3 space-y-2" aria-label="Checking upcoming availability">
+            <div className="skeleton h-9 w-full rounded-xl" />
+            <div className="skeleton h-9 w-4/5 rounded-xl" />
+          </div>
+        ) : availabilityUnavailable ? (
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">Upcoming times could not be loaded right now. No availability is being assumed.</p>
+        ) : availability.length > 0 ? (
+          <div className="mt-3 space-y-2">
+            {availability.map((window) => (
+              <div key={window.id} className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2.5">
+                <p className="text-sm font-semibold">{formatAvailability(window) || 'Upcoming time'}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{THERAPIST_SERVICE_MODE_LABELS[window.serviceMode]} · {window.timezoneName}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">No upcoming times are currently published for this care type.</p>
+        )}
+        <p className="mt-3 text-[11px] leading-5 text-muted-foreground">Availability is informational only. Booking and reservation are not enabled yet.</p>
+      </div>
     </article>
   );
 }
@@ -151,6 +215,9 @@ function TherapistCard({ therapist }: { therapist: VerifiedTherapistDiscoveryRes
 export function TherapistDiscoveryPage() {
   const [query, setQuery] = useState<DiscoveryQuery>(() => readDiscoveryQuery());
   const [results, setResults] = useState<VerifiedTherapistDiscoveryResult[]>([]);
+  const [availabilityByPhysio, setAvailabilityByPhysio] = useState<TherapistAvailabilityByPhysio>({});
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityUnavailable, setAvailabilityUnavailable] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -173,6 +240,10 @@ export function TherapistDiscoveryPage() {
 
   useEffect(() => {
     let active = true;
+
+    setAvailabilityByPhysio({});
+    setAvailabilityLoading(false);
+    setAvailabilityUnavailable(false);
 
     if (!query.city) {
       setResults([]);
@@ -201,10 +272,33 @@ export function TherapistDiscoveryPage() {
         if (!active) return;
         setResults(found);
         setSearchCompleted(true);
+
+        if (!found.length) return;
+        setAvailabilityLoading(true);
+        void getVerifiedTherapistAvailabilityBatch(
+          found.map((therapist) => therapist.physio_id),
+          query.mode,
+          3,
+        )
+          .then((availability) => {
+            if (!active) return;
+            setAvailabilityByPhysio(availability);
+          })
+          .catch(() => {
+            if (!active) return;
+            setAvailabilityByPhysio({});
+            setAvailabilityUnavailable(true);
+          })
+          .finally(() => {
+            if (active) setAvailabilityLoading(false);
+          });
       })
       .catch(() => {
         if (!active) return;
         setResults([]);
+        setAvailabilityByPhysio({});
+        setAvailabilityLoading(false);
+        setAvailabilityUnavailable(false);
         setSearchCompleted(false);
         setError('We could not complete this search right now. Please retry.');
       })
@@ -375,7 +469,15 @@ export function TherapistDiscoveryPage() {
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
-              {results.map((therapist) => <TherapistCard key={therapist.physio_id} therapist={therapist} />)}
+              {results.map((therapist) => (
+                <TherapistCard
+                  key={therapist.physio_id}
+                  therapist={therapist}
+                  availability={availabilityByPhysio[therapist.physio_id] ?? []}
+                  availabilityLoading={availabilityLoading}
+                  availabilityUnavailable={availabilityUnavailable}
+                />
+              ))}
             </div>
           )}
         </section>

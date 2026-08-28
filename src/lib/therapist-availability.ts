@@ -25,6 +25,8 @@ export type TherapistAvailabilityWindowInput = {
   timezoneName: string;
 };
 
+export type TherapistAvailabilityByPhysio = Record<string, TherapistAvailabilityWindow[]>;
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -146,4 +148,43 @@ export async function getVerifiedTherapistAvailability(
       });
     })
     .filter((window): window is TherapistAvailabilityWindow => window !== null);
+}
+
+export async function getVerifiedTherapistAvailabilityBatch(
+  physioIds: string[],
+  serviceMode?: TherapistServiceMode,
+  limitPerTherapist = 3,
+): Promise<TherapistAvailabilityByPhysio> {
+  const uniqueIds = Array.from(new Set(physioIds.filter((id) => UUID_PATTERN.test(id)))).slice(0, 50);
+  if (!uniqueIds.length) return {};
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('get_verified_therapist_availability_batch', {
+    p_physio_ids: uniqueIds,
+    p_service_mode: serviceMode ?? null,
+    p_limit_per_therapist: Math.min(6, Math.max(1, Math.trunc(limitPerTherapist))),
+  });
+
+  if (error || !Array.isArray(data)) {
+    throw new Error('Unable to load therapist availability right now.');
+  }
+
+  const grouped: TherapistAvailabilityByPhysio = {};
+  for (const row of data) {
+    if (typeof row !== 'object' || row === null || Array.isArray(row)) continue;
+    const record = row as Record<string, unknown>;
+    const physioId = safeText(record.physio_id, 36);
+    if (!UUID_PATTERN.test(physioId) || !uniqueIds.includes(physioId)) continue;
+    const window = normalizeWindow({
+      id: record.availability_window_id,
+      service_mode: record.service_mode,
+      starts_at: record.starts_at,
+      ends_at: record.ends_at,
+      timezone_name: record.timezone_name,
+    });
+    if (!window) continue;
+    (grouped[physioId] ??= []).push(window);
+  }
+
+  return grouped;
 }

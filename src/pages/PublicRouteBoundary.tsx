@@ -10,6 +10,7 @@ import {
   PasswordRecoveryRoute,
   PatientGatewayRoute,
   PatientSignInRoute,
+  ProfessionalAvailabilityRoute,
   ProfessionalDiscoveryProfileRoute,
   ProfessionalSignInRoute,
   ProfessionalWorkspaceRoute,
@@ -26,6 +27,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   '/app/financial-ledger',
   '/app/profile',
   '/app/discovery-profile',
+  '/app/availability',
   '/app/settings',
 ] as const;
 
@@ -52,6 +54,7 @@ export function PublicRouteBoundary() {
   }
   if (path === PASSWORD_RECOVERY_PATH) return <PasswordRecoveryRoute />;
   if (path === '/app/discovery-profile') return <ProfessionalDiscoveryProfileRoute />;
+  if (path === '/app/availability') return <ProfessionalAvailabilityRoute />;
   if (isSupportedPrivateRoute(path)) return <ProfessionalWorkspaceRoute />;
 
   return <NotFoundPage />;

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import App from '@/App';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
@@ -7,6 +7,7 @@ import { AuthPage } from '@/pages/AuthPage';
 import { PatientGatewayPage } from '@/pages/PatientGatewayPage';
 import { PatientSignInPage } from '@/pages/PatientSignInPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
+import { TherapistAvailabilityPage } from '@/pages/TherapistAvailabilityPage';
 import { TherapistDiscoveryProfilePage } from '@/pages/TherapistDiscoveryProfilePage';
 import { useAuthSession } from '@/hooks/use-auth-session';
 import {
@@ -158,7 +159,23 @@ export function ProfessionalWorkspaceRoute() {
   return <App />;
 }
 
-export function ProfessionalDiscoveryProfileRoute() {
+function ProfessionalSurfaceHeader({ secondaryHref, secondaryLabel }: { secondaryHref: string; secondaryLabel: string }) {
+  return (
+    <header className="sticky top-0 z-20 border-b border-border bg-background/92 backdrop-blur-md">
+      <div className="mx-auto flex h-[70px] max-w-[1420px] items-center justify-between gap-3 px-4 sm:px-7 lg:px-10">
+        <a href="/app/dashboard">
+          <PhysioBillBrand suffix={<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Professional workspace</span>} />
+        </a>
+        <div className="flex items-center gap-2">
+          <a href={secondaryHref} className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground">{secondaryLabel}</a>
+          <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground" />
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function ProfessionalPersonaGate({ children, deniedTitle }: { children: ReactNode; deniedTitle: string }) {
   const auth = useAuthSession();
 
   useEffect(() => {
@@ -173,28 +190,41 @@ export function ProfessionalDiscoveryProfileRoute() {
   if (auth.role !== 'physio') {
     return (
       <PersonaDeniedPage
-        title="Professional discovery profile access denied."
-        message="Patient sessions cannot enter professional profile management."
+        title={deniedTitle}
+        message="Patient sessions cannot enter professional profile or availability management."
         primaryHref="/patient"
         primaryLabel="Open patient gateway"
       />
     );
   }
 
+  return <>{children}</>;
+}
+
+export function ProfessionalDiscoveryProfileRoute() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/92 backdrop-blur-md">
-        <div className="mx-auto flex h-[70px] max-w-[1420px] items-center justify-between gap-3 px-4 sm:px-7 lg:px-10">
-          <a href="/app/dashboard">
-            <PhysioBillBrand suffix={<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Professional workspace</span>} />
-          </a>
-          <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground" />
-        </div>
-      </header>
-      <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
-        <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
-        <TherapistDiscoveryProfilePage />
-      </main>
-    </div>
+    <ProfessionalPersonaGate deniedTitle="Professional discovery profile access denied.">
+      <div className="min-h-screen bg-background">
+        <ProfessionalSurfaceHeader secondaryHref="/app/availability" secondaryLabel="Availability" />
+        <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
+          <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
+          <TherapistDiscoveryProfilePage />
+        </main>
+      </div>
+    </ProfessionalPersonaGate>
+  );
+}
+
+export function ProfessionalAvailabilityRoute() {
+  return (
+    <ProfessionalPersonaGate deniedTitle="Professional availability access denied.">
+      <div className="min-h-screen bg-background">
+        <ProfessionalSurfaceHeader secondaryHref="/app/discovery-profile" secondaryLabel="Discovery profile" />
+        <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
+          <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
+          <TherapistAvailabilityPage />
+        </main>
+      </div>
+    </ProfessionalPersonaGate>
   );
 }

@@ -192,12 +192,12 @@ begin
   )
   select
     v_physio_id,
-    lower(btrim(window.value ->> 'service_mode')),
-    (window.value ->> 'starts_at')::timestamptz,
-    (window.value ->> 'ends_at')::timestamptz,
-    btrim(window.value ->> 'timezone_name'),
+    lower(btrim(availability_item.value ->> 'service_mode')),
+    (availability_item.value ->> 'starts_at')::timestamptz,
+    (availability_item.value ->> 'ends_at')::timestamptz,
+    btrim(availability_item.value ->> 'timezone_name'),
     true
-  from jsonb_array_elements(v_windows) as window(value);
+  from jsonb_array_elements(v_windows) as availability_item(value);
 end;
 $$;
 

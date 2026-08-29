@@ -100,6 +100,13 @@ export async function cancelMyAppointmentRequest(requestId: string) {
   if (error) throw error;
 }
 
+export async function cancelMyProfessionalAppointment(requestId: string) {
+  if (!UUID_PATTERN.test(requestId)) throw new Error('This appointment request is invalid.');
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.rpc('cancel_my_professional_appointment', { p_request_id: requestId });
+  if (error) throw error;
+}
+
 export async function respondToAppointmentRequest(requestId: string, decision: 'accepted' | 'rejected') {
   if (!UUID_PATTERN.test(requestId)) throw new Error('This appointment request is invalid.');
   const supabase = getSupabaseClient();

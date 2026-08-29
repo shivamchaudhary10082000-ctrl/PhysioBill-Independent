@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CalendarClock, Check, RefreshCw, X } from 'lucide-react';
 import {
+  cancelMyProfessionalAppointment,
   loadMyProfessionalAppointmentRequests,
   respondToAppointmentRequest,
   type ProfessionalAppointmentRequest,
@@ -11,7 +12,7 @@ const STATUS_LABELS = {
   requested: 'Awaiting your response',
   accepted: 'Accepted',
   rejected: 'Rejected',
-  cancelled: 'Cancelled by patient',
+  cancelled: 'Cancelled',
 } as const;
 
 function formatWindow(request: ProfessionalAppointmentRequest) {
@@ -24,6 +25,10 @@ function formatWindow(request: ProfessionalAppointmentRequest) {
   } catch {
     return `${start.toLocaleString()}–${end.toLocaleTimeString()}`;
   }
+}
+
+function isFuture(request: ProfessionalAppointmentRequest) {
+  return new Date(request.startsAt).getTime() > Date.now();
 }
 
 export function ProfessionalAppointmentRequestsPage() {
@@ -61,12 +66,28 @@ export function ProfessionalAppointmentRequestsPage() {
     }
   };
 
+  const cancelAccepted = async (request: ProfessionalAppointmentRequest) => {
+    const confirmed = window.confirm('Cancel this accepted appointment? The original appointment will remain in scheduling history, and the slot will not be reopened automatically.');
+    if (!confirmed) return;
+
+    setBusyId(request.id);
+    setError(null);
+    try {
+      await cancelMyProfessionalAppointment(request.id);
+      await reload();
+    } catch {
+      setError('This accepted appointment could not be cancelled. It may already be cancelled or past its scheduled start time.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="rounded-[26px] border border-primary/14 bg-[hsl(var(--primary-soft))] px-5 py-7 sm:px-7 sm:py-8">
         <p className="workspace-section-kicker">Scheduling requests</p>
         <h1 className="mt-2 text-3xl font-bold tracking-[-.04em] sm:text-4xl">Patient appointment requests</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Accept or reject patient requests against the availability you published. Acceptance reserves scheduling state only and does not create a clinical chart, treatment episode, invoice or payment.</p>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Accept or reject pending requests, or cancel a future accepted appointment. Cancellation preserves scheduling history and never creates or changes a clinical chart, treatment episode, invoice or payment.</p>
       </section>
 
       {error && <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
@@ -98,6 +119,12 @@ export function ProfessionalAppointmentRequestsPage() {
                   <button type="button" disabled={busyId === request.id} onClick={() => void respond(request.id, 'accepted')} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"><Check size={15} /> Accept</button>
                   <button type="button" disabled={busyId === request.id} onClick={() => void respond(request.id, 'rejected')} className="inline-flex h-10 items-center gap-2 rounded-xl border border-destructive/15 px-4 text-sm font-semibold text-destructive disabled:opacity-60"><X size={15} /> Reject</button>
                 </div>
+              )}
+              {request.status === 'accepted' && isFuture(request) && (
+                <button type="button" disabled={busyId === request.id} onClick={() => void cancelAccepted(request)} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl border border-destructive/15 px-4 text-sm font-semibold text-destructive disabled:opacity-60"><X size={15} /> {busyId === request.id ? 'Cancelling…' : 'Cancel appointment'}</button>
+              )}
+              {request.status === 'cancelled' && isFuture(request) && (
+                <p className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3 text-sm leading-6 text-muted-foreground">This time remains cancelled. Publish availability deliberately if you want patients to request a replacement time.</p>
               )}
             </article>
           ))}

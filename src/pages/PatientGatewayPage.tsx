@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BadgeCheck, CalendarClock, LogOut } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, CalendarClock, HeartPulse, LogOut } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import {
   resolveAuthenticatedPatient,
@@ -81,7 +81,7 @@ export function PatientGatewayPage() {
           </div>
           <h1 className="mt-5 text-3xl font-semibold tracking-[-.035em]">Your PhysioBill patient identity is ready.</h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-            You can search verified physiotherapists and manage scheduling requests. Clinical records, visits, invoices and payments remain separate protected workflows and are not exposed by scheduling.
+            You can search verified physiotherapists, manage scheduling, and—only after an active patient-requested clinical connection—view the limited care summary your linked physiotherapist has documented for you. Billing and therapist-private clinical notes remain separately protected.
           </p>
 
           {identity && (
@@ -103,6 +103,9 @@ export function PatientGatewayPage() {
             </a>
             <a href="/patient/appointments" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary">
               <CalendarClock size={16} /> My appointment requests
+            </a>
+            <a href="/patient/clinical-care" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:col-span-2">
+              <HeartPulse size={16} /> My linked clinical care
             </a>
             <a href="/" className="inline-flex h-11 items-center justify-center rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:col-span-2">
               Public PhysioBill home

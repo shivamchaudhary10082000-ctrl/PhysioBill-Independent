@@ -58,11 +58,16 @@ export async function recordPatientCreditLedgerEntry(input: {
   reason?: string;
   occurredAt?: string;
 }): Promise<PatientCreditLedger> {
+  const normalizedAmount = input.entryType === 'refund'
+    ? -Math.abs(input.amount)
+    : input.entryType === 'advance_received'
+      ? Math.abs(input.amount)
+      : input.amount;
   const supabase = getSupabaseClient();
   const { error } = await supabase.rpc('record_patient_credit_ledger_entry', {
     p_patient_id: input.patientId,
     p_entry_type: input.entryType,
-    p_amount: input.amount,
+    p_amount: normalizedAmount,
     p_reason: input.reason ?? '',
     p_occurred_at: input.occurredAt ?? new Date().toISOString(),
   });

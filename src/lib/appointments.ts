@@ -43,6 +43,19 @@ export type AppointmentClinicalLinkageStatus = {
   linkStatus: 'linked' | null;
 };
 
+export type ProfessionalClinicalOnboardingRequest = {
+  requestId: string;
+  appointmentRequestId: string;
+  publicPatientId: string;
+  serviceMode: TherapistServiceMode;
+  startsAt: string;
+  endsAt: string;
+  timezoneName: string;
+  requestStatus: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired';
+  requestedAt: string;
+  expiresAt: string;
+};
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAT_PATTERN = /^PAT-\d{12}$/;
 const SERVICE_MODES = new Set<TherapistServiceMode>(['home_visit', 'clinic_visit', 'telephysiotherapy']);
@@ -160,6 +173,66 @@ export async function loadMyAppointmentClinicalLinkageStatus(): Promise<Appointm
       linkStatus: (linkStatusText || null) as AppointmentClinicalLinkageStatus['linkStatus'],
     }];
   });
+}
+
+export async function loadMyProfessionalClinicalOnboardingRequests(): Promise<ProfessionalClinicalOnboardingRequest[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('get_my_professional_clinical_onboarding_requests');
+  if (error || !Array.isArray(data)) throw error ?? new Error('Unable to load clinical connection requests.');
+
+  return data.flatMap((row: unknown) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return [];
+    const record = row as Record<string, unknown>;
+    const requestId = safeText(record.request_id, 36);
+    const appointmentRequestId = safeText(record.appointment_request_id, 36);
+    const publicPatientId = safeText(record.public_patient_id, 32);
+    const serviceMode = safeText(record.service_mode, 32) as TherapistServiceMode;
+    const startsAt = iso(record.starts_at);
+    const endsAt = iso(record.ends_at);
+    const timezoneName = safeText(record.timezone_name, 64);
+    const requestStatus = safeText(record.request_status, 20);
+    const requestedAt = iso(record.requested_at);
+    const expiresAt = iso(record.expires_at);
+
+    if (!UUID_PATTERN.test(requestId) || !UUID_PATTERN.test(appointmentRequestId) || !PAT_PATTERN.test(publicPatientId)) return [];
+    if (!SERVICE_MODES.has(serviceMode) || !LINK_REQUEST_STATUSES.has(requestStatus)) return [];
+    if (!startsAt || !endsAt || !timezoneName || !requestedAt || !expiresAt) return [];
+
+    return [{
+      requestId,
+      appointmentRequestId,
+      publicPatientId,
+      serviceMode,
+      startsAt,
+      endsAt,
+      timezoneName,
+      requestStatus: requestStatus as ProfessionalClinicalOnboardingRequest['requestStatus'],
+      requestedAt,
+      expiresAt,
+    }];
+  });
+}
+
+export async function acceptClinicalChartLinkRequest(requestId: string, patientId: string) {
+  if (!UUID_PATTERN.test(requestId) || !UUID_PATTERN.test(patientId)) throw new Error('Clinical chart selection is invalid.');
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('accept_clinical_chart_link_request', {
+    p_request_id: requestId,
+    p_patient_id: patientId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function rejectClinicalChartLinkRequest(requestId: string, reason = '') {
+  if (!UUID_PATTERN.test(requestId)) throw new Error('Clinical connection request is invalid.');
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('reject_clinical_chart_link_request', {
+    p_request_id: requestId,
+    p_reason: reason.trim().slice(0, 500),
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function cancelMyAppointmentRequest(requestId: string) {

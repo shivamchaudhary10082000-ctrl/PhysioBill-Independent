@@ -78,7 +78,9 @@ function CreditLedgerPanel({ patient, credit, onChanged }: { patient: Production
 
   const submit = async () => {
     const parsed = Number(amount);
-    if (!Number.isFinite(parsed) || parsed <= 0) { setError('Enter an amount greater than zero.'); return; }
+    const invalid = !Number.isFinite(parsed)
+      || (entryType === 'adjustment' ? parsed === 0 : parsed <= 0);
+    if (invalid) { setError(entryType === 'adjustment' ? 'Enter a non-zero signed adjustment amount.' : 'Enter an amount greater than zero.'); return; }
     if ((entryType === 'refund' || entryType === 'adjustment') && !reason.trim()) { setError('A reason is required for refunds and adjustments.'); return; }
     setSaving(true);
     setError(null);
@@ -100,7 +102,7 @@ function CreditLedgerPanel({ patient, credit, onChanged }: { patient: Production
     <div className="border-b p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-primary/6 text-primary"><WalletCards size={17} /></span><h3 className="text-lg font-bold">Advance / credit ledger</h3></div><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Append-only patient credit authority. Recording credit here does not mark an invoice paid and does not create a payment-provider transaction.</p></div><div className="text-right"><p className="text-xs text-muted-foreground">Current balance</p><p className="text-2xl font-bold">{money(credit.balance)}</p></div></div></div>
     <div className="grid gap-4 border-b p-5 md:grid-cols-[180px_180px_1fr_auto] md:items-end">
       <label className="text-sm font-medium">Entry type<select value={entryType} onChange={(event) => setEntryType(event.target.value as PatientCreditEntryType)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="advance_received">Advance received</option><option value="refund">Refund</option><option value="adjustment">Adjustment</option></select></label>
-      <label className="text-sm font-medium">Amount<input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm" placeholder="0" /></label>
+      <label className="text-sm font-medium">Amount<input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm" placeholder={entryType === 'adjustment' ? 'e.g. -250 or 250' : '0'} /></label>
       <label className="text-sm font-medium">Reason<input value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm" placeholder={entryType === 'advance_received' ? 'Optional note' : 'Required reason'} /></label>
       <button type="button" disabled={saving} onClick={submit} className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Recording…' : 'Record entry'}</button>
       {error && <p className="md:col-span-4 text-sm text-destructive">{error}</p>}{notice && <p className="md:col-span-4 text-sm text-primary">{notice}</p>}

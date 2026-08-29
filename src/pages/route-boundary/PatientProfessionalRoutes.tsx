@@ -4,8 +4,10 @@ import App from '@/App';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
 import { AuthPage } from '@/pages/AuthPage';
+import { PatientAppointmentsPage } from '@/pages/PatientAppointmentsPage';
 import { PatientGatewayPage } from '@/pages/PatientGatewayPage';
 import { PatientSignInPage } from '@/pages/PatientSignInPage';
+import { ProfessionalAppointmentRequestsPage } from '@/pages/ProfessionalAppointmentRequestsPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
 import { TherapistAvailabilityPage } from '@/pages/TherapistAvailabilityPage';
 import { TherapistDiscoveryProfilePage } from '@/pages/TherapistDiscoveryProfilePage';
@@ -89,6 +91,45 @@ export function PatientGatewayRoute() {
   }
 
   return <PatientGatewayPage />;
+}
+
+export function PatientAppointmentsRoute() {
+  const auth = useAuthSession();
+
+  useEffect(() => {
+    if (!auth.loading && !auth.user) {
+      window.location.replace('/patient/sign-in?returnTo=%2Fpatient%2Fappointments');
+    }
+  }, [auth.loading, auth.user?.id]);
+
+  if (!auth.configured) return <NotFoundPage />;
+  if (auth.loading || !auth.user) return <RouteLoading message="Checking patient scheduling authority…" />;
+  if (auth.error) return <SessionResolutionError />;
+  if (auth.role !== 'patient') {
+    return (
+      <PersonaDeniedPage
+        title="Patient appointment requests are not available to this account."
+        message="A physiotherapist session cannot use the patient scheduling surface."
+        primaryHref="/app/dashboard"
+        primaryLabel="Open professional workspace"
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/92 backdrop-blur-md">
+        <div className="mx-auto flex h-[70px] max-w-6xl items-center justify-between gap-3 px-4 sm:px-7">
+          <a href="/patient"><PhysioBillBrand suffix={<span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Patient access</span>} /></a>
+          <WorkspaceSignOut className="rounded-xl border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground" />
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-7">
+        <a href="/patient" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to patient gateway</a>
+        <PatientAppointmentsPage />
+      </main>
+    </div>
+  );
 }
 
 export function PasswordRecoveryRoute() {
@@ -191,7 +232,7 @@ function ProfessionalPersonaGate({ children, deniedTitle }: { children: ReactNod
     return (
       <PersonaDeniedPage
         title={deniedTitle}
-        message="Patient sessions cannot enter professional profile or availability management."
+        message="Patient sessions cannot enter professional management or scheduling surfaces."
         primaryHref="/patient"
         primaryLabel="Open patient gateway"
       />
@@ -219,10 +260,24 @@ export function ProfessionalAvailabilityRoute() {
   return (
     <ProfessionalPersonaGate deniedTitle="Professional availability access denied.">
       <div className="min-h-screen bg-background">
-        <ProfessionalSurfaceHeader secondaryHref="/app/discovery-profile" secondaryLabel="Discovery profile" />
+        <ProfessionalSurfaceHeader secondaryHref="/app/appointment-requests" secondaryLabel="Requests" />
         <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
           <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
           <TherapistAvailabilityPage />
+        </main>
+      </div>
+    </ProfessionalPersonaGate>
+  );
+}
+
+export function ProfessionalAppointmentRequestsRoute() {
+  return (
+    <ProfessionalPersonaGate deniedTitle="Professional appointment request access denied.">
+      <div className="min-h-screen bg-background">
+        <ProfessionalSurfaceHeader secondaryHref="/app/availability" secondaryLabel="Availability" />
+        <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
+          <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
+          <ProfessionalAppointmentRequestsPage />
         </main>
       </div>
     </ProfessionalPersonaGate>

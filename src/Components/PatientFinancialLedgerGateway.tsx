@@ -107,7 +107,7 @@ function CreditLedgerPanel({ patient, credit, onChanged }: { patient: Production
       <button type="button" disabled={saving} onClick={submit} className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Recording…' : 'Record entry'}</button>
       {error && <p className="md:col-span-4 text-sm text-destructive">{error}</p>}{notice && <p className="md:col-span-4 text-sm text-primary">{notice}</p>}
     </div>
-    <div className="divide-y">{credit.entries.map((entry) => <div key={entry.entryId} className="flex flex-wrap items-start justify-between gap-3 p-4"><div><p className="font-semibold capitalize">{entry.entryType.replaceAll('_', ' ')}</p><p className="mt-1 text-xs text-muted-foreground">{dateTime(entry.occurredAt)}{entry.reason ? ` · ${entry.reason}` : ''}</p></div><p className="font-bold">{entry.amount >= 0 ? '+' : ''}{money(entry.amount)}</p></div>)}{!credit.entries.length && <div className="p-6 text-center text-sm text-muted-foreground">No advance or credit entries recorded for this patient.</div>}</div>
+    <div className="divide-y">{credit.entries.map((entry) => <div key={entry.entryId} className="flex flex-wrap items-start justify-between gap-3 p-4"><div><p className="font-semibold capitalize">{entry.entryType.replace(/_/g, ' ')}</p><p className="mt-1 text-xs text-muted-foreground">{dateTime(entry.occurredAt)}{entry.reason ? ` · ${entry.reason}` : ''}</p></div><p className="font-bold">{entry.amount >= 0 ? '+' : ''}{money(entry.amount)}</p></div>)}{!credit.entries.length && <div className="p-6 text-center text-sm text-muted-foreground">No advance or credit entries recorded for this patient.</div>}</div>
   </section>;
 }
 

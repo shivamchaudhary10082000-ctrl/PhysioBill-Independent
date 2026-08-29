@@ -1,6 +1,7 @@
 import { PublicLandingPage } from '@/pages/PublicLandingPage';
 import { TherapistDiscoveryPage } from '@/pages/TherapistDiscoveryPage';
 import { PatientClinicalCareRoute } from '@/pages/PatientClinicalCareRoute';
+import { PatientFinancialSummaryRoute } from '@/pages/PatientFinancialSummaryRoute';
 import { PASSWORD_RECOVERY_PATH } from '@/lib/auth';
 import { NotFoundPage } from '@/pages/route-boundary/SessionBoundaryPages';
 import {
@@ -50,6 +51,7 @@ export function PublicRouteBoundary() {
   if (path === '/patient/sign-in') return <PatientSignInRoute />;
   if (path === '/patient/appointments') return <PatientAppointmentsRoute />;
   if (path === '/patient/clinical-care') return <PatientClinicalCareRoute />;
+  if (path === '/patient/financial-summary') return <PatientFinancialSummaryRoute />;
   if (path === '/patient') return <PatientGatewayRoute />;
   if (path === '/professional/sign-in') return <ProfessionalSignInRoute />;
   if (path === '/admin/sign-in') return <AdminSignInRoute />;

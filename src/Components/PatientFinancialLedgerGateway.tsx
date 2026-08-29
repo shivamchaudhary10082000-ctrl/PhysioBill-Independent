@@ -8,6 +8,12 @@ import {
   type FinancialLedgerEvent,
   type PatientFinancialLedger,
 } from '@/lib/financial-ledger';
+import {
+  loadPatientCreditLedger,
+  recordPatientCreditLedgerEntry,
+  type PatientCreditEntryType,
+  type PatientCreditLedger,
+} from '@/lib/patient-credit-ledger';
 
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
 const dateTime = (value: string) => new Intl.DateTimeFormat('en-IN', {
@@ -62,18 +68,61 @@ function EventCard({ event, navigate }: { event: FinancialLedgerEvent; navigate:
   </div>;
 }
 
-function LedgerView({ patient, ledger, therapyStart, navigate }: { patient: ProductionPatient; ledger: PatientFinancialLedger; therapyStart?: string; navigate: (path: string) => void }) {
+function CreditLedgerPanel({ patient, credit, onChanged }: { patient: ProductionPatient; credit: PatientCreditLedger; onChanged: (next: PatientCreditLedger) => void }) {
+  const [entryType, setEntryType] = useState<PatientCreditEntryType>('advance_received');
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const submit = async () => {
+    const parsed = Number(amount);
+    if (!Number.isFinite(parsed) || parsed <= 0) { setError('Enter an amount greater than zero.'); return; }
+    if ((entryType === 'refund' || entryType === 'adjustment') && !reason.trim()) { setError('A reason is required for refunds and adjustments.'); return; }
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const next = await recordPatientCreditLedgerEntry({ patientId: patient.id, entryType, amount: parsed, reason: reason.trim() });
+      onChanged(next);
+      setAmount('');
+      setReason('');
+      setNotice('Ledger entry recorded. The append-only history has been preserved.');
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Unable to record this ledger entry safely.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <section className="overflow-hidden rounded-2xl border bg-card">
+    <div className="border-b p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-primary/6 text-primary"><WalletCards size={17} /></span><h3 className="text-lg font-bold">Advance / credit ledger</h3></div><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Append-only patient credit authority. Recording credit here does not mark an invoice paid and does not create a payment-provider transaction.</p></div><div className="text-right"><p className="text-xs text-muted-foreground">Current balance</p><p className="text-2xl font-bold">{money(credit.balance)}</p></div></div></div>
+    <div className="grid gap-4 border-b p-5 md:grid-cols-[180px_180px_1fr_auto] md:items-end">
+      <label className="text-sm font-medium">Entry type<select value={entryType} onChange={(event) => setEntryType(event.target.value as PatientCreditEntryType)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm"><option value="advance_received">Advance received</option><option value="refund">Refund</option><option value="adjustment">Adjustment</option></select></label>
+      <label className="text-sm font-medium">Amount<input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm" placeholder="0" /></label>
+      <label className="text-sm font-medium">Reason<input value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 h-11 w-full rounded-xl border bg-background px-3 text-sm" placeholder={entryType === 'advance_received' ? 'Optional note' : 'Required reason'} /></label>
+      <button type="button" disabled={saving} onClick={submit} className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{saving ? 'Recording…' : 'Record entry'}</button>
+      {error && <p className="md:col-span-4 text-sm text-destructive">{error}</p>}{notice && <p className="md:col-span-4 text-sm text-primary">{notice}</p>}
+    </div>
+    <div className="divide-y">{credit.entries.map((entry) => <div key={entry.entryId} className="flex flex-wrap items-start justify-between gap-3 p-4"><div><p className="font-semibold capitalize">{entry.entryType.replaceAll('_', ' ')}</p><p className="mt-1 text-xs text-muted-foreground">{dateTime(entry.occurredAt)}{entry.reason ? ` · ${entry.reason}` : ''}</p></div><p className="font-bold">{entry.amount >= 0 ? '+' : ''}{money(entry.amount)}</p></div>)}{!credit.entries.length && <div className="p-6 text-center text-sm text-muted-foreground">No advance or credit entries recorded for this patient.</div>}</div>
+  </section>;
+}
+
+function LedgerView({ patient, ledger, credit, therapyStart, navigate, onCreditChanged }: { patient: ProductionPatient; ledger: PatientFinancialLedger; credit: PatientCreditLedger; therapyStart?: string; navigate: (path: string) => void; onCreditChanged: (next: PatientCreditLedger) => void }) {
   return <div className="space-y-5">
     <button type="button" onClick={() => navigate('/app/financial-ledger')} className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><ArrowLeft size={16} /> Back to Financial Ledger</button>
     <div className="rounded-2xl border bg-card p-5 sm:p-6">
       <p className="workspace-section-kicker">Patient financial ledger</p><h2 className="mt-1 text-xl font-bold">{patient.name}</h2><PatientContext patient={patient} therapyStart={therapyStart} />
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-border/70 bg-secondary/45 p-4"><p className="text-xs text-muted-foreground">Total Finalized Invoiced</p><p className="mt-1 text-xl font-bold">{money(ledger.totalFinalizedInvoiced)}</p></div>
         <div className="rounded-xl border border-border/70 bg-secondary/45 p-4"><p className="text-xs text-muted-foreground">Effective Paid</p><p className="mt-1 text-xl font-bold">{money(ledger.effectivePaid)}</p></div>
         <div className="rounded-xl border border-border/70 bg-secondary/45 p-4"><p className="text-xs text-muted-foreground">Outstanding</p><p className="mt-1 text-xl font-bold">{money(ledger.outstanding)}</p></div>
+        <div className="rounded-xl border border-border/70 bg-secondary/45 p-4"><p className="text-xs text-muted-foreground">Advance / Credit</p><p className="mt-1 text-xl font-bold">{money(credit.balance)}</p></div>
       </div>
     </div>
-    <section className="overflow-hidden rounded-2xl border bg-card"><div className="border-b p-5"><div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-primary/6 text-primary"><WalletCards size={17} /></span><h3 className="text-lg font-bold">Financial chronology</h3></div><p className="mt-2 text-sm text-muted-foreground">A complete history of invoices, payments and adjustments.</p></div><div className="divide-y">{ledger.events.map((event) => <EventCard key={event.id} event={event} navigate={navigate} />)}{!ledger.events.length && <div className="workspace-empty-state m-4 rounded-2xl p-6 text-center"><span className="mx-auto grid size-11 place-items-center rounded-xl bg-primary/6 text-primary"><WalletCards size={20} /></span><h4 className="mt-4 text-base font-bold">No finalized financial history yet</h4><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Finalized invoices, effective payments and future adjustments for this patient will appear here when they exist.</p></div>}</div></section>
+    <CreditLedgerPanel patient={patient} credit={credit} onChanged={onCreditChanged} />
+    <section className="overflow-hidden rounded-2xl border bg-card"><div className="border-b p-5"><div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-primary/6 text-primary"><WalletCards size={17} /></span><h3 className="text-lg font-bold">Financial chronology</h3></div><p className="mt-2 text-sm text-muted-foreground">A complete history of invoices, payments and adjustments. Advance/credit remains a separate ledger until an explicit credit-application authority is introduced.</p></div><div className="divide-y">{ledger.events.map((event) => <EventCard key={event.id} event={event} navigate={navigate} />)}{!ledger.events.length && <div className="workspace-empty-state m-4 rounded-2xl p-6 text-center"><span className="mx-auto grid size-11 place-items-center rounded-xl bg-primary/6 text-primary"><WalletCards size={20} /></span><h4 className="mt-4 text-base font-bold">No finalized financial history yet</h4><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Finalized invoices, effective payments and future adjustments for this patient will appear here when they exist.</p></div>}</div></section>
   </div>;
 }
 
@@ -84,6 +133,7 @@ export function PatientFinancialLedgerPage() {
   const [visits, setVisits] = useState<ProductionVisit[]>([]);
   const [search, setSearch] = useState('');
   const [ledger, setLedger] = useState<PatientFinancialLedger | null>(null);
+  const [credit, setCredit] = useState<PatientCreditLedger | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,12 +149,13 @@ export function PatientFinancialLedgerPage() {
   }, []);
 
   useEffect(() => {
-    if (!patientId) { setLedger(null); return; }
+    if (!patientId) { setLedger(null); setCredit(null); return; }
     let active = true;
     setLedger(null);
+    setCredit(null);
     setError(null);
-    loadPatientFinancialLedger(patientId)
-      .then((result) => { if (active) setLedger(result); })
+    Promise.all([loadPatientFinancialLedger(patientId), loadPatientCreditLedger(patientId)])
+      .then(([financialResult, creditResult]) => { if (active) { setLedger(financialResult); setCredit(creditResult); } })
       .catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : 'Unable to load financial ledger.'); });
     return () => { active = false; };
   }, [patientId]);
@@ -121,13 +172,13 @@ export function PatientFinancialLedgerPage() {
     return <div className="space-y-5">
       {error && <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
       {!patient && !loading && !error && <div className="rounded-2xl border bg-card p-6"><button type="button" onClick={() => setLocation('/app/financial-ledger')} className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><ArrowLeft size={16} /> Back to Financial Ledger</button><p className="mt-4 text-sm text-muted-foreground">Patient not found in this workspace.</p></div>}
-      {patient && !ledger && !error && <div className="rounded-2xl border bg-card p-6 text-sm font-medium text-muted-foreground">Loading financial history…</div>}
-      {patient && ledger && <LedgerView patient={patient} ledger={ledger} therapyStart={starts.get(patient.id)} navigate={setLocation} />}
+      {patient && (!ledger || !credit) && !error && <div className="rounded-2xl border bg-card p-6 text-sm font-medium text-muted-foreground">Loading financial history…</div>}
+      {patient && ledger && credit && <LedgerView patient={patient} ledger={ledger} credit={credit} therapyStart={starts.get(patient.id)} navigate={setLocation} onCreditChanged={setCredit} />}
     </div>;
   }
 
   return <div>
-    <div className="mb-6"><p className="workspace-section-kicker">Patient billing</p><h1 className="mt-1 text-3xl font-bold tracking-[-.035em]">Financial Ledger</h1><p className="mt-2 text-sm text-muted-foreground">Choose a patient to review invoices, payments and adjustments in one place.</p></div>
+    <div className="mb-6"><p className="workspace-section-kicker">Patient billing</p><h1 className="mt-1 text-3xl font-bold tracking-[-.035em]">Financial Ledger</h1><p className="mt-2 text-sm text-muted-foreground">Choose a patient to review invoices, payments, adjustments and the separate advance/credit ledger in one place.</p></div>
     <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="h-11 w-full rounded-xl border bg-card pl-10 pr-10 text-sm" placeholder="Search by Patient name or record number…" />{search && <button type="button" aria-label="Clear search" onClick={() => setSearch('')} className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"><X size={16} /></button>}</div>
     {error && <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
     {loading ? <div className="rounded-2xl border bg-card p-6 text-sm font-medium text-muted-foreground">Loading Patients…</div> : filteredPatients.length ? <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filteredPatients.map((item) => <button key={item.id} type="button" onClick={() => setLocation(`/app/financial-ledger/${encodeURIComponent(item.id)}`)} className="w-full p-4 text-left transition hover:bg-secondary/50"><p className="font-bold">{item.name}</p><PatientContext patient={item} therapyStart={starts.get(item.id)} /></button>)}</div> : <div className="workspace-empty-state rounded-2xl p-7 text-center sm:p-9"><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/6 text-primary"><WalletCards size={22} /></span><h2 className="mt-4 text-lg font-bold">{search.trim() ? 'No matching patients found' : 'No patients available for financial review yet'}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{search.trim() ? 'Try another patient name or record number.' : 'Patient financial histories will become available here when patient records and finalized financial activity exist.'}</p></div>}

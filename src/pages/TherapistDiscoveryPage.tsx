@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Building2,
   CalendarClock,
+  CalendarPlus,
   CheckCircle2,
   MapPin,
   RefreshCw,
@@ -13,6 +14,8 @@ import {
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicFooter } from '@/Components/PublicFooter';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
+import { requestPatientAppointment } from '@/lib/appointments';
+import { getAuthSession, resolveAuthenticatedSessionPersona } from '@/lib/auth';
 import {
   getVerifiedTherapistAvailabilityBatch,
   type TherapistAvailabilityByPhysio,
@@ -110,10 +113,46 @@ function TherapistCard({
   availabilityLoading: boolean;
   availabilityUnavailable: boolean;
 }) {
+  const [requestingWindowId, setRequestingWindowId] = useState<string | null>(null);
+  const [requestedWindowIds, setRequestedWindowIds] = useState<Set<string>>(() => new Set());
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestNotice, setRequestNotice] = useState<string | null>(null);
   const registration = [
     therapist.verified_registration_authority,
     therapist.verified_registration_number,
   ].filter(Boolean);
+
+  const requestWindow = async (availabilityWindowId: string) => {
+    setRequestingWindowId(availabilityWindowId);
+    setRequestError(null);
+    setRequestNotice(null);
+    try {
+      const auth = await getAuthSession();
+      if (!auth.user) {
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(`/patient/sign-in?returnTo=${encodeURIComponent(returnTo)}`);
+        return;
+      }
+
+      const role = await resolveAuthenticatedSessionPersona();
+      if (role !== 'patient') {
+        setRequestError('A professional session cannot create a patient appointment request. Sign out before continuing as a patient.');
+        return;
+      }
+
+      await requestPatientAppointment(availabilityWindowId);
+      setRequestedWindowIds((current) => {
+        const next = new Set(current);
+        next.add(availabilityWindowId);
+        return next;
+      });
+      setRequestNotice('Request sent. The physiotherapist must accept it before the time is scheduled.');
+    } catch {
+      setRequestError('This time could not be requested. It may already be requested or no longer be available.');
+    } finally {
+      setRequestingWindowId(null);
+    }
+  };
 
   return (
     <article className="page-enter rounded-[26px] border border-border bg-card p-5 shadow-[0_14px_38px_hsl(var(--foreground)/.04)] sm:p-6">
@@ -196,17 +235,38 @@ function TherapistCard({
           <p className="mt-3 text-sm leading-6 text-muted-foreground">Upcoming times could not be loaded right now. No availability is being assumed.</p>
         ) : availability.length > 0 ? (
           <div className="mt-3 space-y-2">
-            {availability.map((window) => (
-              <div key={window.id} className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2.5">
-                <p className="text-sm font-semibold">{formatAvailability(window) || 'Upcoming time'}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{THERAPIST_SERVICE_MODE_LABELS[window.serviceMode]} · {window.timezoneName}</p>
-              </div>
-            ))}
+            {availability.map((window) => {
+              const alreadyRequested = requestedWindowIds.has(window.id);
+              return (
+                <div key={window.id} className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold">{formatAvailability(window) || 'Upcoming time'}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{THERAPIST_SERVICE_MODE_LABELS[window.serviceMode]} · {window.timezoneName}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={alreadyRequested || requestingWindowId === window.id}
+                      onClick={() => void requestWindow(window.id)}
+                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                    >
+                      <CalendarPlus size={15} />
+                      {alreadyRequested ? 'Requested' : requestingWindowId === window.id ? 'Requesting…' : 'Request this time'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="mt-3 text-sm leading-6 text-muted-foreground">No upcoming times are currently published for this care type.</p>
         )}
-        <p className="mt-3 text-[11px] leading-5 text-muted-foreground">Availability is informational only. Booking and reservation are not enabled yet.</p>
+        {requestNotice && <p role="status" className="mt-3 rounded-xl border border-success/15 bg-success/7 px-3 py-2 text-xs font-medium text-success">{requestNotice}</p>}
+        {requestError && <p role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{requestError}</p>}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] leading-5 text-muted-foreground">A request is not confirmed until the physiotherapist accepts it. It creates no clinical or payment access.</p>
+          <a href="/patient/appointments" className="text-xs font-semibold text-primary">My requests</a>
+        </div>
       </div>
     </article>
   );
@@ -396,7 +456,10 @@ export function TherapistDiscoveryPage() {
       <header className="border-b border-border/80 bg-background/92 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <a href="/" aria-label="Back to PhysioBill"><PhysioBillBrand /></a>
-          <a href="/professional/sign-in" className="inline-flex min-h-10 items-center rounded-xl bg-primary px-3.5 text-xs font-semibold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.14)] transition hover:bg-[hsl(var(--primary-hover))] sm:text-sm">Professional sign in</a>
+          <div className="flex items-center gap-2">
+            <a href="/patient/appointments" className="hidden min-h-10 items-center rounded-xl border px-3 text-xs font-semibold sm:inline-flex">My requests</a>
+            <a href="/professional/sign-in" className="inline-flex min-h-10 items-center rounded-xl bg-primary px-3.5 text-xs font-semibold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.14)] transition hover:bg-[hsl(var(--primary-hover))] sm:text-sm">Professional sign in</a>
+          </div>
         </div>
       </header>
 

@@ -33,10 +33,21 @@ export type ProfessionalAppointmentRequest = {
   cancelledAt: string | null;
 };
 
+export type AppointmentClinicalLinkageStatus = {
+  appointmentRequestId: string;
+  physioId: string;
+  requestId: string | null;
+  requestStatus: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired' | null;
+  requestExpiresAt: string | null;
+  linkId: string | null;
+  linkStatus: 'linked' | null;
+};
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAT_PATTERN = /^PAT-\d{12}$/;
 const SERVICE_MODES = new Set<TherapistServiceMode>(['home_visit', 'clinic_visit', 'telephysiotherapy']);
 const STATUSES = new Set<AppointmentRequestStatus>(['requested', 'accepted', 'rejected', 'cancelled']);
+const LINK_REQUEST_STATUSES = new Set(['pending', 'accepted', 'rejected', 'cancelled', 'expired']);
 
 function safeText(value: unknown, maxLength: number) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
@@ -105,6 +116,50 @@ export async function requestPatientAppointmentReschedule(requestId: string, ava
   if (error) throw error;
   if (typeof data !== 'string' || !UUID_PATTERN.test(data)) throw new Error('Reschedule request could not be confirmed.');
   return data;
+}
+
+export async function requestClinicalLinkFromAcceptedAppointment(appointmentRequestId: string) {
+  if (!UUID_PATTERN.test(appointmentRequestId)) throw new Error('This accepted appointment is invalid.');
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('request_clinical_link_from_accepted_appointment', {
+    p_appointment_request_id: appointmentRequestId,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Clinical connection request could not be confirmed.');
+  return data as Record<string, unknown>;
+}
+
+export async function loadMyAppointmentClinicalLinkageStatus(): Promise<AppointmentClinicalLinkageStatus[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('get_my_appointment_clinical_linkage_status');
+  if (error || !Array.isArray(data)) throw error ?? new Error('Unable to load clinical connection status.');
+
+  return data.flatMap((row: unknown) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return [];
+    const record = row as Record<string, unknown>;
+    const appointmentRequestId = safeText(record.appointment_request_id, 36);
+    const physioId = safeText(record.physio_id, 36);
+    const requestIdText = safeText(record.request_id, 36);
+    const linkIdText = safeText(record.link_id, 36);
+    const requestStatusText = safeText(record.request_status, 20);
+    const linkStatusText = safeText(record.link_status, 20);
+
+    if (!UUID_PATTERN.test(appointmentRequestId) || !UUID_PATTERN.test(physioId)) return [];
+    if (requestIdText && !UUID_PATTERN.test(requestIdText)) return [];
+    if (linkIdText && !UUID_PATTERN.test(linkIdText)) return [];
+    if (requestStatusText && !LINK_REQUEST_STATUSES.has(requestStatusText)) return [];
+    if (linkStatusText && linkStatusText !== 'linked') return [];
+
+    return [{
+      appointmentRequestId,
+      physioId,
+      requestId: requestIdText || null,
+      requestStatus: (requestStatusText || null) as AppointmentClinicalLinkageStatus['requestStatus'],
+      requestExpiresAt: nullableIso(record.request_expires_at),
+      linkId: linkIdText || null,
+      linkStatus: (linkStatusText || null) as AppointmentClinicalLinkageStatus['linkStatus'],
+    }];
+  });
 }
 
 export async function cancelMyAppointmentRequest(requestId: string) {

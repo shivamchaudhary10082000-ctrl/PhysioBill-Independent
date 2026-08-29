@@ -8,8 +8,10 @@ import {
 } from '@/pages/route-boundary/AdminRoutes';
 import {
   PasswordRecoveryRoute,
+  PatientAppointmentsRoute,
   PatientGatewayRoute,
   PatientSignInRoute,
+  ProfessionalAppointmentRequestsRoute,
   ProfessionalAvailabilityRoute,
   ProfessionalDiscoveryProfileRoute,
   ProfessionalSignInRoute,
@@ -28,6 +30,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   '/app/profile',
   '/app/discovery-profile',
   '/app/availability',
+  '/app/appointment-requests',
   '/app/settings',
 ] as const;
 
@@ -44,6 +47,7 @@ export function PublicRouteBoundary() {
   if (path === '/') return <PublicLandingPage />;
   if (path === '/find-physio') return <TherapistDiscoveryPage />;
   if (path === '/patient/sign-in') return <PatientSignInRoute />;
+  if (path === '/patient/appointments') return <PatientAppointmentsRoute />;
   if (path === '/patient') return <PatientGatewayRoute />;
   if (path === '/professional/sign-in') return <ProfessionalSignInRoute />;
   if (path === '/admin/sign-in') return <AdminSignInRoute />;
@@ -55,6 +59,7 @@ export function PublicRouteBoundary() {
   if (path === PASSWORD_RECOVERY_PATH) return <PasswordRecoveryRoute />;
   if (path === '/app/discovery-profile') return <ProfessionalDiscoveryProfileRoute />;
   if (path === '/app/availability') return <ProfessionalAvailabilityRoute />;
+  if (path === '/app/appointment-requests') return <ProfessionalAppointmentRequestsRoute />;
   if (isSupportedPrivateRoute(path)) return <ProfessionalWorkspaceRoute />;
 
   return <NotFoundPage />;

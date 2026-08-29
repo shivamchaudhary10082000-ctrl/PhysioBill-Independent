@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, CalendarPlus, CircleAlert, RefreshCw, X } from 'lucide-react';
+import { CalendarClock, CalendarPlus, CircleAlert, Link2, RefreshCw, X } from 'lucide-react';
 import {
   cancelMyAppointmentRequest,
+  loadMyAppointmentClinicalLinkageStatus,
   loadMyPatientAppointmentRequests,
+  requestClinicalLinkFromAcceptedAppointment,
   requestPatientAppointmentReschedule,
+  type AppointmentClinicalLinkageStatus,
   type PatientAppointmentRequest,
 } from '@/lib/appointments';
 import {
@@ -47,8 +50,13 @@ function isFuture(request: PatientAppointmentRequest) {
   return new Date(request.startsAt).getTime() > Date.now();
 }
 
+function indexLinkage(items: AppointmentClinicalLinkageStatus[]) {
+  return Object.fromEntries(items.map((item) => [item.appointmentRequestId, item]));
+}
+
 export function PatientAppointmentsPage() {
   const [requests, setRequests] = useState<PatientAppointmentRequest[]>([]);
+  const [linkageByAppointment, setLinkageByAppointment] = useState<Record<string, AppointmentClinicalLinkageStatus>>({});
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,15 +67,23 @@ export function PatientAppointmentsPage() {
 
   const reload = async () => {
     setError(null);
-    const loaded = await loadMyPatientAppointmentRequests();
+    const [loaded, linkage] = await Promise.all([
+      loadMyPatientAppointmentRequests(),
+      loadMyAppointmentClinicalLinkageStatus(),
+    ]);
     setRequests(loaded);
+    setLinkageByAppointment(indexLinkage(linkage));
   };
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    loadMyPatientAppointmentRequests()
-      .then((loaded) => { if (active) setRequests(loaded); })
+    Promise.all([loadMyPatientAppointmentRequests(), loadMyAppointmentClinicalLinkageStatus()])
+      .then(([loaded, linkage]) => {
+        if (!active) return;
+        setRequests(loaded);
+        setLinkageByAppointment(indexLinkage(linkage));
+      })
       .catch(() => { if (active) setError('Unable to load your appointment requests right now.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -88,6 +104,24 @@ export function PatientAppointmentsPage() {
       setNotice(request.status === 'accepted' ? 'Appointment cancelled. Its original scheduling record remains in your history.' : 'Appointment request cancelled.');
     } catch {
       setError('This appointment could not be cancelled. It may already be resolved, cancelled, or past its scheduled start time.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const requestClinicalConnection = async (request: PatientAppointmentRequest) => {
+    const confirmed = window.confirm('Request a clinical connection with this physiotherapist? This only asks the therapist to link your platform identity to a therapist-owned clinical chart. It does not itself create a chart, expose clinical records, or grant invoice/payment access.');
+    if (!confirmed) return;
+
+    setBusyId(request.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await requestClinicalLinkFromAcceptedAppointment(request.id);
+      await reload();
+      setNotice('Clinical connection requested. No clinical chart or record is shared unless the physiotherapist deliberately accepts the separate linkage request.');
+    } catch {
+      setError('The clinical connection request could not be created. The appointment and all clinical/financial access remain unchanged.');
     } finally {
       setBusyId(null);
     }
@@ -163,6 +197,8 @@ export function PatientAppointmentsPage() {
             const canCancel = request.status === 'requested' || (request.status === 'accepted' && future);
             const canReschedule = future && (request.status === 'accepted' || (request.status === 'cancelled' && request.respondedAt !== null));
             const options = rescheduleOptions[request.id] ?? [];
+            const linkage = linkageByAppointment[request.id];
+            const canRequestClinicalConnection = request.status === 'accepted' && linkage?.linkStatus !== 'linked' && linkage?.requestStatus !== 'pending';
 
             return (
               <article key={request.id} className="rounded-2xl border bg-card p-5 shadow-[0_10px_28px_hsl(var(--foreground)/.03)]">
@@ -175,6 +211,22 @@ export function PatientAppointmentsPage() {
                   <span className="rounded-full border bg-secondary/55 px-3 py-1 text-xs font-semibold">{THERAPIST_SERVICE_MODE_LABELS[request.serviceMode]}</span>
                 </div>
                 <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/45 px-3 py-3 text-sm font-medium"><CalendarClock size={16} className="mt-0.5 shrink-0 text-primary" /><span>{formatWindow(request)}</span></div>
+
+                {request.status === 'accepted' && (
+                  <div className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3">
+                    <p className="text-sm font-semibold">Clinical connection</p>
+                    {linkage?.linkStatus === 'linked' ? (
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">Connected to a therapist-owned clinical chart through the separate consent/linkage workflow.</p>
+                    ) : linkage?.requestStatus === 'pending' ? (
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">Request sent. The therapist still has to deliberately accept linkage to one of their own clinical charts.</p>
+                    ) : (
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">An accepted appointment does not create a clinical chart. You may separately request a clinical connection with this therapist.</p>
+                    )}
+                    {canRequestClinicalConnection && (
+                      <button type="button" disabled={busyId === request.id} onClick={() => void requestClinicalConnection(request)} className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl border border-primary/15 px-3 text-sm font-semibold text-primary disabled:opacity-60"><Link2 size={15} /> {busyId === request.id ? 'Working…' : 'Request clinical connection'}</button>
+                    )}
+                  </div>
+                )}
 
                 {(canCancel || canReschedule) && (
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -220,7 +272,7 @@ export function PatientAppointmentsPage() {
         </div>
       )}
 
-      <div className="flex items-start gap-3 rounded-2xl border border-warning/15 bg-warning/5 p-4 text-sm leading-6 text-muted-foreground"><CircleAlert size={18} className="mt-0.5 shrink-0 text-warning" /><p>Scheduling cancellation or rescheduling grants no therapist chart, clinical, invoice, payment or account-linkage access. Those remain separate database-controlled workflows.</p></div>
+      <div className="flex items-start gap-3 rounded-2xl border border-warning/15 bg-warning/5 p-4 text-sm leading-6 text-muted-foreground"><CircleAlert size={18} className="mt-0.5 shrink-0 text-warning" /><p>Scheduling cancellation or rescheduling grants no therapist chart, clinical, invoice, payment or account-linkage access. A patient-triggered clinical connection remains a separate database-controlled consent workflow.</p></div>
     </div>
   );
 }

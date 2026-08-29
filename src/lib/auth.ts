@@ -264,7 +264,7 @@ export async function resolveAuthenticatedPatient(): Promise<PatientPlatformIden
   };
 }
 
-const PATIENT_RETURN_PATHS = new Set(['/', '/find-physio', '/patient']);
+const PATIENT_RETURN_PATHS = new Set(['/', '/find-physio', '/patient', '/patient/appointments']);
 
 function isUnsafeRedirectText(value: string) {
   if (

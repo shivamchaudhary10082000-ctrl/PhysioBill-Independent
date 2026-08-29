@@ -93,6 +93,20 @@ export async function requestPatientAppointment(availabilityWindowId: string) {
   return data;
 }
 
+export async function requestPatientAppointmentReschedule(requestId: string, availabilityWindowId: string) {
+  if (!UUID_PATTERN.test(requestId) || !UUID_PATTERN.test(availabilityWindowId)) {
+    throw new Error('This reschedule request is invalid.');
+  }
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('request_patient_appointment_reschedule', {
+    p_request_id: requestId,
+    p_availability_window_id: availabilityWindowId,
+  });
+  if (error) throw error;
+  if (typeof data !== 'string' || !UUID_PATTERN.test(data)) throw new Error('Reschedule request could not be confirmed.');
+  return data;
+}
+
 export async function cancelMyAppointmentRequest(requestId: string) {
   if (!UUID_PATTERN.test(requestId)) throw new Error('This appointment request is invalid.');
   const supabase = getSupabaseClient();

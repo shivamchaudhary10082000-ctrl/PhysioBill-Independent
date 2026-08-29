@@ -11,8 +11,6 @@ create table public.invoice_credit_application_reversals (
   reason text not null check (length(btrim(reason)) > 0),
   reversed_by_user_id uuid not null references public.app_users(id) on delete restrict,
   created_at timestamptz not null default now(),
-  constraint invoice_credit_application_reversals_application_physio_fkey
-    foreign key (application_id, physio_id) references public.invoice_credit_applications(id, physio_id) on delete restrict,
   constraint invoice_credit_application_reversals_invoice_physio_fkey
     foreign key (invoice_id, physio_id) references public.invoices(id, physio_id) on delete restrict
 );

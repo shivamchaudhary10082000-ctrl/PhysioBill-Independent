@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BadgeCheck, LogOut } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, CalendarClock, LogOut } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import {
   resolveAuthenticatedPatient,
@@ -81,7 +81,7 @@ export function PatientGatewayPage() {
           </div>
           <h1 className="mt-5 text-3xl font-semibold tracking-[-.035em]">Your PhysioBill patient identity is ready.</h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-            This gateway proves your patient session boundary only. Clinical records, visits, invoices, payments and booking are not exposed here.
+            You can search verified physiotherapists and manage scheduling requests. Clinical records, visits, invoices and payments remain separate protected workflows and are not exposed by scheduling.
           </p>
 
           {identity && (
@@ -97,11 +97,14 @@ export function PatientGatewayPage() {
             </p>
           )}
 
-          <div className="mt-7 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-7 grid gap-2 sm:grid-cols-2">
             <a href="/find-physio" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">
-              <ArrowLeft size={16} /> Return to therapist discovery
+              <ArrowLeft size={16} /> Find a physiotherapist
             </a>
-            <a href="/" className="inline-flex h-11 items-center justify-center rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary">
+            <a href="/patient/appointments" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary">
+              <CalendarClock size={16} /> My appointment requests
+            </a>
+            <a href="/" className="inline-flex h-11 items-center justify-center rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:col-span-2">
               Public PhysioBill home
             </a>
           </div>

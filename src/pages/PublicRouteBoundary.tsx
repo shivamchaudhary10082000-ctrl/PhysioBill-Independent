@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { ProfessionalQuickNavigationFrame } from '@/Components/ProfessionalQuickNavigationFrame';
 import { PublicLandingPage } from '@/pages/PublicLandingPage';
 import { TherapistDiscoveryPage } from '@/pages/TherapistDiscoveryPage';
 import { PatientClinicalCareRoute } from '@/pages/PatientClinicalCareRoute';
@@ -53,6 +55,10 @@ function isSupportedPrivateRoute(path: string) {
   );
 }
 
+function professionalRoute(child: ReactNode) {
+  return <ProfessionalQuickNavigationFrame>{child}</ProfessionalQuickNavigationFrame>;
+}
+
 export function PublicRouteBoundary() {
   const path = window.location.pathname;
 
@@ -77,14 +83,14 @@ export function PublicRouteBoundary() {
     return requestId ? <AdminVerificationRoute requestId={requestId} /> : <NotFoundPage />;
   }
   if (path === PASSWORD_RECOVERY_PATH) return <PasswordRecoveryRoute />;
-  if (path === '/app/discovery-profile') return <ProfessionalDiscoveryProfileRoute />;
-  if (path === '/app/availability') return <ProfessionalAvailabilityRoute />;
-  if (path === '/app/appointment-requests') return <ProfessionalAppointmentRequestsRoute />;
-  if (path === '/app/payment-destinations') return <ProfessionalPaymentDestinationsRoute />;
-  if (path === '/app/analytics') return <ProfessionalAnalyticsRoute />;
-  if (path === '/app/communications') return <ProfessionalCommunicationsRoute />;
-  if (path === '/app/telephysiotherapy') return <TelephysiotherapyRoute persona="physio" />;
-  if (isSupportedPrivateRoute(path)) return <ProfessionalWorkspaceRoute />;
+  if (path === '/app/discovery-profile') return professionalRoute(<ProfessionalDiscoveryProfileRoute />);
+  if (path === '/app/availability') return professionalRoute(<ProfessionalAvailabilityRoute />);
+  if (path === '/app/appointment-requests') return professionalRoute(<ProfessionalAppointmentRequestsRoute />);
+  if (path === '/app/payment-destinations') return professionalRoute(<ProfessionalPaymentDestinationsRoute />);
+  if (path === '/app/analytics') return professionalRoute(<ProfessionalAnalyticsRoute />);
+  if (path === '/app/communications') return professionalRoute(<ProfessionalCommunicationsRoute />);
+  if (path === '/app/telephysiotherapy') return professionalRoute(<TelephysiotherapyRoute persona="physio" />);
+  if (isSupportedPrivateRoute(path)) return professionalRoute(<ProfessionalWorkspaceRoute />);
 
   return <NotFoundPage />;
 }

@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { BellRing, CalendarClock, RefreshCw } from 'lucide-react';
 import { CommunicationPreferencesSettings } from '@/Components/CommunicationPreferencesSettings';
 import { getMyCommunicationEvents, type CommunicationEvent, type CommunicationPersona } from '@/lib/communication-events';
-import { communicationEventLabel, loadPreferredLocale, type SupportedLocale } from '@/lib/locale';
+import {
+  communicationEventLabel,
+  communicationUiMessageKeys,
+  loadPreferredLocale,
+  message,
+  normalizeLocale,
+  type SupportedLocale,
+} from '@/lib/locale';
 
 function formatDateTime(value: string, locale: SupportedLocale) {
   const date = new Date(value);
@@ -14,9 +21,9 @@ function formatDateTime(value: string, locale: SupportedLocale) {
   }).format(date);
 }
 
-function serviceModeLabel(value: string) {
-  if (value === 'telephysiotherapy') return 'Telephysiotherapy';
-  if (value === 'home_visit') return 'Home visit';
+function serviceModeLabel(value: string, locale: SupportedLocale) {
+  if (value === 'telephysiotherapy') return message(locale, communicationUiMessageKeys.telephysiotherapy);
+  if (value === 'home_visit') return message(locale, communicationUiMessageKeys.homeVisit);
   return value.replaceAll('_', ' ');
 }
 
@@ -37,7 +44,7 @@ export function CommunicationsCenterPage({ persona }: { persona: CommunicationPe
       setLocale(nextLocale);
       setEvents(nextEvents);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to load communications.');
+      setError(cause instanceof Error ? cause.message : message(locale, communicationUiMessageKeys.unableToLoad));
     } finally {
       setLoading(false);
     }
@@ -46,6 +53,14 @@ export function CommunicationsCenterPage({ persona }: { persona: CommunicationPe
   useEffect(() => {
     void load();
   }, [persona]);
+
+  useEffect(() => {
+    const handleLocaleChanged = (event: Event) => {
+      setLocale(normalizeLocale((event as CustomEvent<SupportedLocale>).detail));
+    };
+    window.addEventListener('physiobill:locale-changed', handleLocaleChanged);
+    return () => window.removeEventListener('physiobill:locale-changed', handleLocaleChanged);
+  }, []);
 
   const upcoming = useMemo(() => {
     const now = Date.now();
@@ -56,48 +71,59 @@ export function CommunicationsCenterPage({ persona }: { persona: CommunicationPe
     <section className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Communications</p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Reminders & appointment updates</h1>
+          <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">
+            {message(locale, communicationUiMessageKeys.eyebrow)}
+          </p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
+            {message(locale, communicationUiMessageKeys.title)}
+          </h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            In-app appointment events from PhysioBill's database authority. SMS and WhatsApp delivery are not active here and remain provider-dependent.
+            {message(locale, communicationUiMessageKeys.description)}
           </p>
         </div>
         <button
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
         >
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
+          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          {message(locale, communicationUiMessageKeys.refresh)}
         </button>
       </div>
 
-      <CommunicationPreferencesSettings />
+      <CommunicationPreferencesSettings locale={locale} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold"><BellRing size={16} /> Event history</div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <BellRing size={16} /> {message(locale, communicationUiMessageKeys.eventHistory)}
+          </div>
           <div className="mt-2 text-3xl font-extrabold">{events.length}</div>
-          <p className="mt-1 text-xs text-muted-foreground">Most recent persona-authorized events returned by the database.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{message(locale, communicationUiMessageKeys.eventHistoryDescription)}</p>
         </div>
         <div className="rounded-2xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold"><CalendarClock size={16} /> Upcoming</div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <CalendarClock size={16} /> {message(locale, communicationUiMessageKeys.upcoming)}
+          </div>
           <div className="mt-2 text-3xl font-extrabold">{upcoming}</div>
-          <p className="mt-1 text-xs text-muted-foreground">Events scheduled for now or later. This is not proof that an external message was delivered.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{message(locale, communicationUiMessageKeys.upcomingDescription)}</p>
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">{error}</div>
       ) : null}
 
       {loading ? (
-        <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">Loading secure communications…</div>
+        <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
+          {message(locale, communicationUiMessageKeys.loading)}
+        </div>
       ) : events.length === 0 ? (
         <div className="rounded-2xl border bg-card p-8 text-center">
           <BellRing className="mx-auto text-muted-foreground" size={28} />
-          <h2 className="mt-3 font-bold">No appointment communications yet</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Events will appear here when appointment state changes or reminder events are scheduled.</p>
+          <h2 className="mt-3 font-bold">{message(locale, communicationUiMessageKeys.emptyTitle)}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{message(locale, communicationUiMessageKeys.emptyDescription)}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -106,14 +132,14 @@ export function CommunicationsCenterPage({ persona }: { persona: CommunicationPe
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h2 className="font-bold">{communicationEventLabel(locale, event.eventType)}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{serviceModeLabel(event.serviceMode)}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{serviceModeLabel(event.serviceMode, locale)}</p>
                 </div>
                 <time className="text-xs font-medium text-muted-foreground" dateTime={event.scheduledFor}>
                   {formatDateTime(event.scheduledFor, locale)}
                 </time>
               </div>
               <div className="mt-3 rounded-xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
-                Appointment: {formatDateTime(event.startsAt, locale)} – {formatDateTime(event.endsAt, locale)} · {event.timezoneName}
+                {message(locale, communicationUiMessageKeys.appointmentPrefix)}: {formatDateTime(event.startsAt, locale)} – {formatDateTime(event.endsAt, locale)} · {event.timezoneName}
               </div>
             </article>
           ))}

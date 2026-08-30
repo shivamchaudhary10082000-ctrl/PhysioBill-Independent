@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BellRing, CalendarClock, RefreshCw } from 'lucide-react';
+import { CommunicationPreferencesSettings } from '@/Components/CommunicationPreferencesSettings';
 import { getMyCommunicationEvents, type CommunicationEvent, type CommunicationPersona } from '@/lib/communication-events';
 import { communicationEventLabel, loadPreferredLocale, type SupportedLocale } from '@/lib/locale';
 
@@ -70,6 +71,8 @@ export function CommunicationsCenterPage({ persona }: { persona: CommunicationPe
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
+
+      <CommunicationPreferencesSettings />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border bg-card p-4">

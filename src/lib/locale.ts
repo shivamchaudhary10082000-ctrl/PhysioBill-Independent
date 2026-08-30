@@ -22,8 +22,23 @@ export const communicationEventMessageKeys = {
   appointment_reminder_2h: 'communications.appointment.reminder2h',
 } as const;
 
+export const professionalNavigationMessageKeys = {
+  ariaLabel: 'navigation.professional.ariaLabel',
+  overview: 'navigation.professional.overview',
+  requests: 'navigation.professional.requests',
+  availability: 'navigation.professional.availability',
+  discoveryProfile: 'navigation.professional.discoveryProfile',
+  analytics: 'navigation.professional.analytics',
+  communications: 'navigation.professional.communications',
+  telephysiotherapy: 'navigation.professional.telephysiotherapy',
+  paymentDestinations: 'navigation.professional.paymentDestinations',
+} as const;
+
 export type CommunicationEventType = keyof typeof communicationEventMessageKeys;
-export type MessageKey = (typeof communicationEventMessageKeys)[CommunicationEventType];
+export type CommunicationMessageKey = (typeof communicationEventMessageKeys)[CommunicationEventType];
+export type ProfessionalNavigationMessageKey =
+  (typeof professionalNavigationMessageKeys)[keyof typeof professionalNavigationMessageKeys];
+export type MessageKey = CommunicationMessageKey | ProfessionalNavigationMessageKey;
 
 const messages: Record<SupportedLocale, Record<MessageKey, string>> = {
   'en-IN': {
@@ -34,6 +49,15 @@ const messages: Record<SupportedLocale, Record<MessageKey, string>> = {
     'communications.appointment.cancelled': 'Appointment cancelled',
     'communications.appointment.reminder24h': 'Appointment reminder: 24 hours',
     'communications.appointment.reminder2h': 'Appointment reminder: 2 hours',
+    'navigation.professional.ariaLabel': 'Professional workspace quick navigation',
+    'navigation.professional.overview': 'Overview',
+    'navigation.professional.requests': 'Requests',
+    'navigation.professional.availability': 'Availability',
+    'navigation.professional.discoveryProfile': 'Discovery profile',
+    'navigation.professional.analytics': 'Analytics',
+    'navigation.professional.communications': 'Communications',
+    'navigation.professional.telephysiotherapy': 'Telephysiotherapy',
+    'navigation.professional.paymentDestinations': 'Payment destinations',
   },
   'hi-IN': {
     'communications.appointment.requested': 'अपॉइंटमेंट का अनुरोध भेजा गया',
@@ -43,6 +67,15 @@ const messages: Record<SupportedLocale, Record<MessageKey, string>> = {
     'communications.appointment.cancelled': 'अपॉइंटमेंट रद्द किया गया',
     'communications.appointment.reminder24h': 'अपॉइंटमेंट रिमाइंडर: 24 घंटे',
     'communications.appointment.reminder2h': 'अपॉइंटमेंट रिमाइंडर: 2 घंटे',
+    'navigation.professional.ariaLabel': 'प्रोफेशनल वर्कस्पेस त्वरित नेविगेशन',
+    'navigation.professional.overview': 'ओवरव्यू',
+    'navigation.professional.requests': 'अनुरोध',
+    'navigation.professional.availability': 'उपलब्धता',
+    'navigation.professional.discoveryProfile': 'डिस्कवरी प्रोफ़ाइल',
+    'navigation.professional.analytics': 'एनालिटिक्स',
+    'navigation.professional.communications': 'संचार',
+    'navigation.professional.telephysiotherapy': 'टेलीफिजियोथेरेपी',
+    'navigation.professional.paymentDestinations': 'भुगतान गंतव्य',
   },
   'gu-IN': {
     'communications.appointment.requested': 'અપોઇન્ટમેન્ટ માટે વિનંતી મોકલાઈ',
@@ -52,6 +85,15 @@ const messages: Record<SupportedLocale, Record<MessageKey, string>> = {
     'communications.appointment.cancelled': 'અપોઇન્ટમેન્ટ રદ કરાઈ',
     'communications.appointment.reminder24h': 'અપોઇન્ટમેન્ટ રિમાઇન્ડર: 24 કલાક',
     'communications.appointment.reminder2h': 'અપોઇન્ટમેન્ટ રિમાઇન્ડર: 2 કલાક',
+    'navigation.professional.ariaLabel': 'પ્રોફેશનલ વર્કસ્પેસ ઝડપી નેવિગેશન',
+    'navigation.professional.overview': 'ઓવરવ્યૂ',
+    'navigation.professional.requests': 'વિનંતીઓ',
+    'navigation.professional.availability': 'ઉપલબ્ધતા',
+    'navigation.professional.discoveryProfile': 'ડિસ્કવરી પ્રોફાઇલ',
+    'navigation.professional.analytics': 'એનલિટિક્સ',
+    'navigation.professional.communications': 'સંદેશાવ્યવહાર',
+    'navigation.professional.telephysiotherapy': 'ટેલીફિઝિયોથેરાપી',
+    'navigation.professional.paymentDestinations': 'ચુકવણી ગંતવ્ય',
   },
 };
 

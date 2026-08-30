@@ -10,6 +10,7 @@ import { PatientGatewayPage } from '@/pages/PatientGatewayPage';
 import { PatientSignInPage } from '@/pages/PatientSignInPage';
 import { ProfessionalAppointmentRequestsPage } from '@/pages/ProfessionalAppointmentRequestsPage';
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
+import { TherapistAnalyticsPage } from '@/pages/TherapistAnalyticsPage';
 import { TherapistAvailabilityPage } from '@/pages/TherapistAvailabilityPage';
 import { TherapistDiscoveryProfilePage } from '@/pages/TherapistDiscoveryProfilePage';
 import { useAuthSession } from '@/hooks/use-auth-session';
@@ -298,6 +299,20 @@ export function ProfessionalPaymentDestinationsRoute() {
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Manage only destinations owned by your professional account. Recording a destination does not prove that a payment settled and does not activate an external payment provider.</p>
           </div>
           <PaymentDestinationSettings />
+        </main>
+      </div>
+    </ProfessionalPersonaGate>
+  );
+}
+
+export function ProfessionalAnalyticsRoute() {
+  return (
+    <ProfessionalPersonaGate deniedTitle="Professional analytics access denied.">
+      <div className="min-h-screen bg-background">
+        <ProfessionalSurfaceHeader secondaryHref="/app/dashboard" secondaryLabel="Overview" />
+        <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
+          <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
+          <TherapistAnalyticsPage />
         </main>
       </div>
     </ProfessionalPersonaGate>

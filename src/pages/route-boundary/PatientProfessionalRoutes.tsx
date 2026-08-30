@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import App from '@/App';
+import { PaymentDestinationSettings } from '@/Components/PaymentDestinationSettings';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
 import { AuthPage } from '@/pages/AuthPage';
@@ -278,6 +279,25 @@ export function ProfessionalAppointmentRequestsRoute() {
         <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
           <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
           <ProfessionalAppointmentRequestsPage />
+        </main>
+      </div>
+    </ProfessionalPersonaGate>
+  );
+}
+
+export function ProfessionalPaymentDestinationsRoute() {
+  return (
+    <ProfessionalPersonaGate deniedTitle="Professional payment destination access denied.">
+      <div className="min-h-screen bg-background">
+        <ProfessionalSurfaceHeader secondaryHref="/app/financial-ledger" secondaryLabel="Financial ledger" />
+        <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
+          <a href="/app/settings" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Settings</a>
+          <div className="mb-6">
+            <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Financial routing</p>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Payment destinations</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Manage only destinations owned by your professional account. Recording a destination does not prove that a payment settled and does not activate an external payment provider.</p>
+          </div>
+          <PaymentDestinationSettings />
         </main>
       </div>
     </ProfessionalPersonaGate>

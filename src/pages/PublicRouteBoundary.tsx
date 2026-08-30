@@ -16,6 +16,7 @@ import {
   ProfessionalAppointmentRequestsRoute,
   ProfessionalAvailabilityRoute,
   ProfessionalDiscoveryProfileRoute,
+  ProfessionalPaymentDestinationsRoute,
   ProfessionalSignInRoute,
   ProfessionalWorkspaceRoute,
 } from '@/pages/route-boundary/PatientProfessionalRoutes';
@@ -33,6 +34,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   '/app/discovery-profile',
   '/app/availability',
   '/app/appointment-requests',
+  '/app/payment-destinations',
   '/app/settings',
 ] as const;
 
@@ -64,6 +66,7 @@ export function PublicRouteBoundary() {
   if (path === '/app/discovery-profile') return <ProfessionalDiscoveryProfileRoute />;
   if (path === '/app/availability') return <ProfessionalAvailabilityRoute />;
   if (path === '/app/appointment-requests') return <ProfessionalAppointmentRequestsRoute />;
+  if (path === '/app/payment-destinations') return <ProfessionalPaymentDestinationsRoute />;
   if (isSupportedPrivateRoute(path)) return <ProfessionalWorkspaceRoute />;
 
   return <NotFoundPage />;

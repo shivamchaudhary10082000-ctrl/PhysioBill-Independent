@@ -59,6 +59,23 @@ function PatientDirectorySearchClear() {
   return null;
 }
 
+function registerOfflineSafeServiceWorker() {
+  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker
+      .register('/sw.js', {
+        scope: '/',
+        updateViaCache: 'none',
+      })
+      .catch((error) => {
+        console.error('PhysioBill service worker registration failed', error);
+      });
+  });
+}
+
+registerOfflineSafeServiceWorker();
+
 createRoot(document.getElementById('root')!, {
   // Keeps caught errors off reportError(), which would raise the dev overlay.
   onCaughtError: (error, errorInfo) => {

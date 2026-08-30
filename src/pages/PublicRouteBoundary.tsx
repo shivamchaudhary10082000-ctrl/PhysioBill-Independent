@@ -13,11 +13,13 @@ import {
 import {
   PasswordRecoveryRoute,
   PatientAppointmentsRoute,
+  PatientCommunicationsRoute,
   PatientGatewayRoute,
   PatientSignInRoute,
   ProfessionalAnalyticsRoute,
   ProfessionalAppointmentRequestsRoute,
   ProfessionalAvailabilityRoute,
+  ProfessionalCommunicationsRoute,
   ProfessionalDiscoveryProfileRoute,
   ProfessionalPaymentDestinationsRoute,
   ProfessionalSignInRoute,
@@ -39,6 +41,7 @@ const PRIVATE_ROUTE_PREFIXES = [
   '/app/appointment-requests',
   '/app/payment-destinations',
   '/app/analytics',
+  '/app/communications',
   '/app/telephysiotherapy',
   '/app/settings',
 ] as const;
@@ -61,6 +64,7 @@ export function PublicRouteBoundary() {
   }
   if (path === '/patient/sign-in') return <PatientSignInRoute />;
   if (path === '/patient/appointments') return <PatientAppointmentsRoute />;
+  if (path === '/patient/communications') return <PatientCommunicationsRoute />;
   if (path === '/patient/clinical-care') return <PatientClinicalCareRoute />;
   if (path === '/patient/financial-summary') return <PatientFinancialSummaryRoute />;
   if (path === '/patient/telephysiotherapy') return <TelephysiotherapyRoute persona="patient" />;
@@ -78,6 +82,7 @@ export function PublicRouteBoundary() {
   if (path === '/app/appointment-requests') return <ProfessionalAppointmentRequestsRoute />;
   if (path === '/app/payment-destinations') return <ProfessionalPaymentDestinationsRoute />;
   if (path === '/app/analytics') return <ProfessionalAnalyticsRoute />;
+  if (path === '/app/communications') return <ProfessionalCommunicationsRoute />;
   if (path === '/app/telephysiotherapy') return <TelephysiotherapyRoute persona="physio" />;
   if (isSupportedPrivateRoute(path)) return <ProfessionalWorkspaceRoute />;
 

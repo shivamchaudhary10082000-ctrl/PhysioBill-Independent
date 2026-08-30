@@ -17,15 +17,51 @@ export type ReimbursementVerification = {
   documentIssuedAt: string;
 };
 
+export type IssuedReimbursementDocument = {
+  documentId: string;
+  verificationToken: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  issuedAt: string;
+};
+
 function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Unexpected verification response.');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Unexpected reimbursement document response.');
   return value as Record<string, unknown>;
 }
 
 function requiredText(record: Record<string, unknown>, key: string) {
   const value = record[key];
-  if (typeof value !== 'string' || !value) throw new Error(`Missing ${key} in verification response.`);
+  if (typeof value !== 'string' || !value) throw new Error(`Missing ${key} in reimbursement document response.`);
   return value;
+}
+
+function parseIssuedDocument(row: unknown): IssuedReimbursementDocument {
+  const record = asRecord(row);
+  return {
+    documentId: requiredText(record, 'document_id'),
+    verificationToken: requiredText(record, 'verification_token'),
+    invoiceId: requiredText(record, 'invoice_id'),
+    invoiceNumber: requiredText(record, 'invoice_number'),
+    issuedAt: requiredText(record, 'issued_at'),
+  };
+}
+
+export function reimbursementVerificationPath(token: string) {
+  return `/verify/reimbursement/${encodeURIComponent(token)}`;
+}
+
+export function reimbursementVerificationUrl(token: string) {
+  return new URL(reimbursementVerificationPath(token), window.location.origin).toString();
+}
+
+export async function issueReimbursementDocument(invoiceId: string): Promise<IssuedReimbursementDocument> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('issue_my_reimbursement_document', { p_invoice_id: invoiceId });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row) throw new Error('Reimbursement document issuance returned no document.');
+  return parseIssuedDocument(row);
 }
 
 export async function verifyReimbursementDocument(token: string): Promise<ReimbursementVerification | null> {

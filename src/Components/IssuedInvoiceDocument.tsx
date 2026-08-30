@@ -8,6 +8,7 @@ import {
   openPermanentInvoicePdfDownload,
   requestPermanentInvoicePdf,
 } from '@/lib/invoice-document-artifacts';
+import { ReimbursementDocumentPanel } from '@/Components/ReimbursementDocumentPanel';
 
 const money = (value: number) => `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const dateLabel = (value: string) => new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(value));
@@ -170,7 +171,10 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
       {pdfError && <div role="alert" className="no-print rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{pdfError}</div>}
       {loading && <div className="rounded-2xl border bg-card p-6 text-sm font-semibold text-muted-foreground">Loading issued invoice…</div>}
       {!loading && error && <div role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div>}
-      {!loading && snapshot && <IssuedInvoiceSheet snapshot={snapshot} />}
+      {!loading && snapshot && <>
+        <IssuedInvoiceSheet snapshot={snapshot} />
+        <ReimbursementDocumentPanel invoiceId={invoiceId} />
+      </>}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { PublicLandingPage } from '@/pages/PublicLandingPage';
 import { TherapistDiscoveryPage } from '@/pages/TherapistDiscoveryPage';
 import { PatientClinicalCareRoute } from '@/pages/PatientClinicalCareRoute';
 import { PatientFinancialSummaryRoute } from '@/pages/PatientFinancialSummaryRoute';
+import { ReimbursementVerificationPage } from '@/pages/ReimbursementVerificationPage';
 import { PASSWORD_RECOVERY_PATH } from '@/lib/auth';
 import { NotFoundPage } from '@/pages/route-boundary/SessionBoundaryPages';
 import {
@@ -50,6 +51,10 @@ export function PublicRouteBoundary() {
 
   if (path === '/') return <PublicLandingPage />;
   if (path === '/find-physio') return <TherapistDiscoveryPage />;
+  if (path.startsWith('/verify/reimbursement/')) {
+    const token = path.slice('/verify/reimbursement/'.length);
+    return token ? <ReimbursementVerificationPage token={token} /> : <NotFoundPage />;
+  }
   if (path === '/patient/sign-in') return <PatientSignInRoute />;
   if (path === '/patient/appointments') return <PatientAppointmentsRoute />;
   if (path === '/patient/clinical-care') return <PatientClinicalCareRoute />;

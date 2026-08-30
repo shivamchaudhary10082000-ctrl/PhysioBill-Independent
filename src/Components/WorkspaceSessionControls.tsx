@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, BadgeCheck, LogOut } from 'lucide-react';
 import { signOutCurrentSession } from '@/lib/auth';
+import { LocalePreferenceControl } from '@/Components/LocalePreferenceControl';
 
 function navigate(path: string) {
   window.history.pushState({}, '', path);
@@ -57,6 +58,7 @@ export function WorkspaceSignOut({
 
   return (
     <div>
+      <LocalePreferenceControl className="mb-2" />
       {inWorkspace && !onDiscoveryProfile && (
         <button
           type="button"

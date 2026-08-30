@@ -5,6 +5,7 @@ import { PaymentDestinationSettings } from '@/Components/PaymentDestinationSetti
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
 import { AuthPage } from '@/pages/AuthPage';
+import { CommunicationsCenterPage } from '@/pages/CommunicationsCenterPage';
 import { PatientAppointmentsPage } from '@/pages/PatientAppointmentsPage';
 import { PatientGatewayPage } from '@/pages/PatientGatewayPage';
 import { PatientSignInPage } from '@/pages/PatientSignInPage';
@@ -95,29 +96,7 @@ export function PatientGatewayRoute() {
   return <PatientGatewayPage />;
 }
 
-export function PatientAppointmentsRoute() {
-  const auth = useAuthSession();
-
-  useEffect(() => {
-    if (!auth.loading && !auth.user) {
-      window.location.replace('/patient/sign-in?returnTo=%2Fpatient%2Fappointments');
-    }
-  }, [auth.loading, auth.user?.id]);
-
-  if (!auth.configured) return <NotFoundPage />;
-  if (auth.loading || !auth.user) return <RouteLoading message="Checking patient scheduling authority…" />;
-  if (auth.error) return <SessionResolutionError />;
-  if (auth.role !== 'patient') {
-    return (
-      <PersonaDeniedPage
-        title="Patient appointment requests are not available to this account."
-        message="A physiotherapist session cannot use the patient scheduling surface."
-        primaryHref="/app/dashboard"
-        primaryLabel="Open professional workspace"
-      />
-    );
-  }
-
+function PatientSurface({ children, returnTo }: { children: ReactNode; returnTo: string }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/92 backdrop-blur-md">
@@ -127,10 +106,64 @@ export function PatientAppointmentsRoute() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-7">
-        <a href="/patient" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to patient gateway</a>
-        <PatientAppointmentsPage />
+        <a href={returnTo} className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to patient gateway</a>
+        {children}
       </main>
     </div>
+  );
+}
+
+function PatientPersonaGate({ children, returnToPath, loadingMessage, deniedTitle }: { children: ReactNode; returnToPath: string; loadingMessage: string; deniedTitle: string }) {
+  const auth = useAuthSession();
+
+  useEffect(() => {
+    if (!auth.loading && !auth.user) {
+      window.location.replace(`/patient/sign-in?returnTo=${encodeURIComponent(returnToPath)}`);
+    }
+  }, [auth.loading, auth.user?.id, returnToPath]);
+
+  if (!auth.configured) return <NotFoundPage />;
+  if (auth.loading || !auth.user) return <RouteLoading message={loadingMessage} />;
+  if (auth.error) return <SessionResolutionError />;
+  if (auth.role !== 'patient') {
+    return (
+      <PersonaDeniedPage
+        title={deniedTitle}
+        message="A physiotherapist session cannot use this patient-only surface."
+        primaryHref="/app/dashboard"
+        primaryLabel="Open professional workspace"
+      />
+    );
+  }
+
+  return <>{children}</>;
+}
+
+export function PatientAppointmentsRoute() {
+  return (
+    <PatientPersonaGate
+      returnToPath="/patient/appointments"
+      loadingMessage="Checking patient scheduling authority…"
+      deniedTitle="Patient appointment requests are not available to this account."
+    >
+      <PatientSurface returnTo="/patient">
+        <PatientAppointmentsPage />
+      </PatientSurface>
+    </PatientPersonaGate>
+  );
+}
+
+export function PatientCommunicationsRoute() {
+  return (
+    <PatientPersonaGate
+      returnToPath="/patient/communications"
+      loadingMessage="Checking patient communication authority…"
+      deniedTitle="Patient communications are not available to this account."
+    >
+      <PatientSurface returnTo="/patient">
+        <CommunicationsCenterPage persona="patient" />
+      </PatientSurface>
+    </PatientPersonaGate>
   );
 }
 
@@ -313,6 +346,20 @@ export function ProfessionalAnalyticsRoute() {
         <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
           <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
           <TherapistAnalyticsPage />
+        </main>
+      </div>
+    </ProfessionalPersonaGate>
+  );
+}
+
+export function ProfessionalCommunicationsRoute() {
+  return (
+    <ProfessionalPersonaGate deniedTitle="Professional communications access denied.">
+      <div className="min-h-screen bg-background">
+        <ProfessionalSurfaceHeader secondaryHref="/app/appointment-requests" secondaryLabel="Requests" />
+        <main className="mx-auto max-w-[1420px] px-4 pb-24 pt-6 sm:px-7 lg:px-10 lg:pb-10">
+          <a href="/app/dashboard" className="mb-5 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"><ArrowLeft size={16} /> Back to Overview</a>
+          <CommunicationsCenterPage persona="physio" />
         </main>
       </div>
     </ProfessionalPersonaGate>

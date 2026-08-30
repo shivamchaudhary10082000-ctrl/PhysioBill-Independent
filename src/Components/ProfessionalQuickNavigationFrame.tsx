@@ -1,20 +1,52 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAuthSession } from '@/hooks/use-auth-session';
+import {
+  DEFAULT_LOCALE,
+  loadPreferredLocale,
+  message,
+  normalizeLocale,
+  professionalNavigationMessageKeys,
+  type SupportedLocale,
+} from '@/lib/locale';
 
 const professionalLinks = [
-  { href: '/app/dashboard', label: 'Overview' },
-  { href: '/app/appointment-requests', label: 'Requests' },
-  { href: '/app/availability', label: 'Availability' },
-  { href: '/app/discovery-profile', label: 'Discovery profile' },
-  { href: '/app/analytics', label: 'Analytics' },
-  { href: '/app/communications', label: 'Communications' },
-  { href: '/app/telephysiotherapy', label: 'Telephysiotherapy' },
-  { href: '/app/payment-destinations', label: 'Payment destinations' },
+  { href: '/app/dashboard', key: professionalNavigationMessageKeys.overview },
+  { href: '/app/appointment-requests', key: professionalNavigationMessageKeys.requests },
+  { href: '/app/availability', key: professionalNavigationMessageKeys.availability },
+  { href: '/app/discovery-profile', key: professionalNavigationMessageKeys.discoveryProfile },
+  { href: '/app/analytics', key: professionalNavigationMessageKeys.analytics },
+  { href: '/app/communications', key: professionalNavigationMessageKeys.communications },
+  { href: '/app/telephysiotherapy', key: professionalNavigationMessageKeys.telephysiotherapy },
+  { href: '/app/payment-destinations', key: professionalNavigationMessageKeys.paymentDestinations },
 ] as const;
 
 export function ProfessionalQuickNavigationFrame({ children }: { children: ReactNode }) {
   const auth = useAuthSession();
   const path = window.location.pathname;
+  const [locale, setLocale] = useState<SupportedLocale>(DEFAULT_LOCALE);
+
+  useEffect(() => {
+    let active = true;
+
+    void loadPreferredLocale()
+      .then((value) => {
+        if (active) setLocale(normalizeLocale(value));
+      })
+      .catch(() => {
+        if (active) setLocale(DEFAULT_LOCALE);
+      });
+
+    const handleLocaleChanged = (event: Event) => {
+      const detail = (event as CustomEvent<SupportedLocale>).detail;
+      setLocale(normalizeLocale(detail));
+    };
+
+    window.addEventListener('physiobill:locale-changed', handleLocaleChanged);
+    return () => {
+      active = false;
+      window.removeEventListener('physiobill:locale-changed', handleLocaleChanged);
+    };
+  }, []);
 
   if (
     auth.loading ||
@@ -30,10 +62,10 @@ export function ProfessionalQuickNavigationFrame({ children }: { children: React
     <>
       <div className="border-b border-border bg-background">
         <nav
-          aria-label="Professional workspace quick navigation"
+          aria-label={message(locale, professionalNavigationMessageKeys.ariaLabel)}
           className="mx-auto flex max-w-[1420px] gap-2 overflow-x-auto px-4 py-2 sm:px-7 lg:px-10"
         >
-          {professionalLinks.map(({ href, label }) => {
+          {professionalLinks.map(({ href, key }) => {
             const active = path === href || path.startsWith(`${href}/`);
             return (
               <a
@@ -46,7 +78,7 @@ export function ProfessionalQuickNavigationFrame({ children }: { children: React
                     : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
-                {label}
+                {message(locale, key)}
               </a>
             );
           })}

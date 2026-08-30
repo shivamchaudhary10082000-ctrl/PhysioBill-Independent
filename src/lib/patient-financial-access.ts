@@ -38,6 +38,25 @@ export type PatientFinancialSummary = {
   }>;
 };
 
+export type InvoicePaymentInstructions = {
+  invoiceId: string;
+  invoiceNumber: string;
+  physiotherapistPublicId: string;
+  outstanding: number;
+  destination: null | {
+    destinationId: string;
+    type: 'upi' | 'bank' | 'provider';
+    label: string;
+    upiId: string;
+    bankName: string;
+    accountNumberDisplay: string;
+    ifscDisplay: string;
+    providerCode: string;
+  };
+  instructionOnly: true;
+  settlementEvidence: false;
+};
+
 function text(value: unknown, max = 5000) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
@@ -123,10 +142,56 @@ function normalize(raw: unknown): PatientFinancialSummary[] {
   });
 }
 
+function normalizePaymentInstructions(raw: unknown): InvoicePaymentInstructions {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid payment-instruction response.');
+  const row = raw as Record<string, unknown>;
+  const invoiceId = text(row.invoiceId, 36);
+  const invoiceNumber = text(row.invoiceNumber, 100);
+  const physiotherapistPublicId = text(row.physiotherapistPublicId, 32);
+  if (!invoiceId || !invoiceNumber || !physiotherapistPublicId || row.instructionOnly !== true || row.settlementEvidence !== false) {
+    throw new Error('Invalid payment-instruction response.');
+  }
+
+  let destination: InvoicePaymentInstructions['destination'] = null;
+  if (row.destination && typeof row.destination === 'object' && !Array.isArray(row.destination)) {
+    const d = row.destination as Record<string, unknown>;
+    const type = text(d.type, 20);
+    if (type !== 'upi' && type !== 'bank' && type !== 'provider') throw new Error('Invalid payment destination.');
+    destination = {
+      destinationId: text(d.destinationId, 36),
+      type,
+      label: text(d.label, 160),
+      upiId: text(d.upiId, 320),
+      bankName: text(d.bankName, 160),
+      accountNumberDisplay: text(d.accountNumberDisplay, 160),
+      ifscDisplay: text(d.ifscDisplay, 64),
+      providerCode: text(d.providerCode, 80),
+    };
+  }
+
+  return {
+    invoiceId,
+    invoiceNumber,
+    physiotherapistPublicId,
+    outstanding: number(row.outstanding),
+    destination,
+    instructionOnly: true,
+    settlementEvidence: false,
+  };
+}
+
 export async function loadMyFinancialSummary() {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error('Supabase is not configured.');
   const { data, error } = await supabase.rpc('list_my_financial_summary');
   if (error) throw error;
   return normalize(data);
+}
+
+export async function loadMyInvoicePaymentInstructions(invoiceId: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data, error } = await supabase.rpc('get_my_invoice_payment_instructions', { p_invoice_id: invoiceId });
+  if (error) throw error;
+  return normalizePaymentInstructions(data);
 }

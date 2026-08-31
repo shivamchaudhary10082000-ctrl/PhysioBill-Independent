@@ -19,22 +19,24 @@ function PatientDirectorySearchClear() {
 
       const parent = input.parentElement;
       input.classList.remove('pr-4');
-      input.classList.add('pr-10');
+      input.classList.add('pr-14');
+
+      const clearSearch = () => {
+        const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        valueSetter?.call(input, '');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+      };
 
       let button = parent.querySelector<HTMLButtonElement>('[data-patient-search-clear]');
       if (!button) {
         button = document.createElement('button');
         button.type = 'button';
-        button.setAttribute('aria-label', 'Clear search');
+        button.setAttribute('aria-label', 'Clear patient search');
         button.setAttribute('data-patient-search-clear', 'true');
-        button.className = 'absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground';
-        button.innerHTML = '<span aria-hidden="true" class="text-lg leading-none">×</span>';
-        button.addEventListener('click', () => {
-          const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-          valueSetter?.call(input, '');
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.focus();
-        });
+        button.className = 'absolute right-1.5 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+        button.innerHTML = '<span aria-hidden="true" class="text-xl leading-none">×</span>';
+        button.addEventListener('click', clearSearch);
         parent.appendChild(button);
       }
 
@@ -46,6 +48,12 @@ function PatientDirectorySearchClear() {
       if (!input.dataset.clearSearchBound) {
         input.dataset.clearSearchBound = 'true';
         input.addEventListener('input', syncVisibility);
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && input.value) {
+            event.preventDefault();
+            clearSearch();
+          }
+        });
       }
     };
 

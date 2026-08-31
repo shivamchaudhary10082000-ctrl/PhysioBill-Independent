@@ -16,6 +16,7 @@ import { PublicFooter } from '@/Components/PublicFooter';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
 import { requestPatientAppointment } from '@/lib/appointments';
 import { getAuthSession, resolveAuthenticatedSessionPersona } from '@/lib/auth';
+import { requestHomeVisitAppointment } from '@/lib/home-visit-service-location';
 import {
   getVerifiedTherapistAvailabilityBatch,
   type TherapistAvailabilityByPhysio,
@@ -115,14 +116,22 @@ function TherapistCard({
 }) {
   const [requestingWindowId, setRequestingWindowId] = useState<string | null>(null);
   const [requestedWindowIds, setRequestedWindowIds] = useState<Set<string>>(() => new Set());
+  const [selectedServiceAreaId, setSelectedServiceAreaId] = useState<string>('');
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
   const registration = [
     therapist.verified_registration_authority,
     therapist.verified_registration_number,
   ].filter(Boolean);
+  const hasHomeVisitAvailability = availability.some((window) => window.serviceMode === 'home_visit');
 
-  const requestWindow = async (availabilityWindowId: string) => {
+  const requestWindow = async (availabilityWindowId: string, serviceMode: TherapistServiceMode) => {
+    if (serviceMode === 'home_visit' && !selectedServiceAreaId) {
+      setRequestNotice(null);
+      setRequestError('Choose the therapist service area where the home visit should take place before requesting this time.');
+      return;
+    }
+
     setRequestingWindowId(availabilityWindowId);
     setRequestError(null);
     setRequestNotice(null);
@@ -140,15 +149,24 @@ function TherapistCard({
         return;
       }
 
-      await requestPatientAppointment(availabilityWindowId);
+      if (serviceMode === 'home_visit') {
+        await requestHomeVisitAppointment(availabilityWindowId, selectedServiceAreaId);
+      } else {
+        await requestPatientAppointment(availabilityWindowId);
+      }
+
       setRequestedWindowIds((current) => {
         const next = new Set(current);
         next.add(availabilityWindowId);
         return next;
       });
-      setRequestNotice('Request sent. The physiotherapist must accept it before the time is scheduled.');
+      setRequestNotice(
+        serviceMode === 'home_visit'
+          ? 'Home-visit request sent with the selected service area. The physiotherapist must accept it before the time is scheduled.'
+          : 'Request sent. The physiotherapist must accept it before the time is scheduled.',
+      );
     } catch {
-      setRequestError('This time could not be requested. It may already be requested or no longer be available.');
+      setRequestError('This time could not be requested. It may already be requested, the selected service area may no longer be active, or the time may no longer be available.');
     } finally {
       setRequestingWindowId(null);
     }
@@ -162,7 +180,7 @@ function TherapistCard({
         </div>
         <div className="min-w-0 flex-1">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-success/15 bg-success/8 px-2.5 py-1 text-[11px] font-semibold text-success">
-            <CheckCircle2 size={13} /> Verified professional
+            <CheckCircle2 size={13} aria-hidden="true" /> Verified professional
           </span>
           <h2 className="mt-2 text-xl font-bold tracking-[-.025em] sm:text-2xl">{therapist.display_name}</h2>
           {therapist.verified_qualification && (
@@ -176,7 +194,7 @@ function TherapistCard({
           {therapist.headline && <p className="font-semibold leading-6">{therapist.headline}</p>}
           {therapist.clinic_name && (
             <p className="mt-1 inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <Building2 size={15} /> {therapist.clinic_name}
+              <Building2 size={15} aria-hidden="true" /> {therapist.clinic_name}
             </p>
           )}
         </div>
@@ -186,7 +204,7 @@ function TherapistCard({
 
       {registration.length > 0 && (
         <div className="mt-5 flex items-start gap-3 border-t pt-5">
-          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-success" />
+          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
           <div>
             <p className="text-xs font-semibold text-muted-foreground">Verified registration</p>
             <p className="mt-1 text-sm font-medium">{registration.join(' · ')}</p>
@@ -208,22 +226,51 @@ function TherapistCard({
       )}
 
       {therapist.service_areas.length > 0 && (
-        <div className="mt-5">
-          <p className="text-xs font-semibold text-muted-foreground">Service areas</p>
+        <fieldset className="mt-5">
+          <legend className="text-xs font-semibold text-muted-foreground">
+            {hasHomeVisitAvailability ? 'Choose a home-visit service area' : 'Service areas'}
+          </legend>
+          {hasHomeVisitAvailability && (
+            <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+              This is coarse scheduling evidence only. It does not prove your exact location or attendance.
+            </p>
+          )}
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {therapist.service_areas.map((area) => (
-              <div key={`${area.locality}-${area.city}-${area.state}`} className="flex items-center gap-2 rounded-xl bg-secondary/55 px-3 py-2.5 text-sm font-medium">
-                <MapPin size={15} className="shrink-0 text-primary" />
-                <span>{area.locality}, {area.city}</span>
-              </div>
-            ))}
+            {therapist.service_areas.map((area) => {
+              const selected = selectedServiceAreaId === area.id;
+              return hasHomeVisitAvailability ? (
+                <label
+                  key={area.id}
+                  className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium outline-none transition focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${selected ? 'border-primary bg-primary/7' : 'border-border bg-secondary/55'}`}
+                >
+                  <input
+                    type="radio"
+                    name={`home-visit-service-area-${therapist.physio_id}`}
+                    value={area.id}
+                    checked={selected}
+                    onChange={() => {
+                      setSelectedServiceAreaId(area.id);
+                      setRequestError(null);
+                    }}
+                    className="size-4"
+                  />
+                  <MapPin size={15} className="shrink-0 text-primary" aria-hidden="true" />
+                  <span>{area.locality}, {area.city}</span>
+                </label>
+              ) : (
+                <div key={area.id} className="flex min-h-11 items-center gap-2 rounded-xl bg-secondary/55 px-3 py-2.5 text-sm font-medium">
+                  <MapPin size={15} className="shrink-0 text-primary" aria-hidden="true" />
+                  <span>{area.locality}, {area.city}</span>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </fieldset>
       )}
 
       <div className="mt-5 border-t pt-5">
         <div className="flex items-center gap-2">
-          <CalendarClock size={17} className="text-primary" />
+          <CalendarClock size={17} className="text-primary" aria-hidden="true" />
           <p className="text-xs font-semibold text-muted-foreground">Upcoming availability</p>
         </div>
         {availabilityLoading ? (
@@ -237,6 +284,7 @@ function TherapistCard({
           <div className="mt-3 space-y-2">
             {availability.map((window) => {
               const alreadyRequested = requestedWindowIds.has(window.id);
+              const homeVisitNeedsArea = window.serviceMode === 'home_visit' && !selectedServiceAreaId;
               return (
                 <div key={window.id} className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -246,12 +294,18 @@ function TherapistCard({
                     </div>
                     <button
                       type="button"
-                      disabled={alreadyRequested || requestingWindowId === window.id}
-                      onClick={() => void requestWindow(window.id)}
-                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                      disabled={alreadyRequested || requestingWindowId === window.id || homeVisitNeedsArea}
+                      onClick={() => void requestWindow(window.id, window.serviceMode)}
+                      className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground outline-none transition hover:bg-[hsl(var(--primary-hover))] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <CalendarPlus size={15} />
-                      {alreadyRequested ? 'Requested' : requestingWindowId === window.id ? 'Requesting…' : 'Request this time'}
+                      <CalendarPlus size={15} aria-hidden="true" />
+                      {alreadyRequested
+                        ? 'Requested'
+                        : requestingWindowId === window.id
+                          ? 'Requesting…'
+                          : homeVisitNeedsArea
+                            ? 'Choose area first'
+                            : 'Request this time'}
                     </button>
                   </div>
                 </div>
@@ -265,7 +319,7 @@ function TherapistCard({
         {requestError && <p role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{requestError}</p>}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11px] leading-5 text-muted-foreground">A request is not confirmed until the physiotherapist accepts it. It creates no clinical or payment access.</p>
-          <a href="/patient/appointments" className="text-xs font-semibold text-primary">My requests</a>
+          <a href="/patient/appointments" className="inline-flex min-h-11 items-center rounded-lg px-2 text-xs font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">My requests</a>
         </div>
       </div>
     </article>

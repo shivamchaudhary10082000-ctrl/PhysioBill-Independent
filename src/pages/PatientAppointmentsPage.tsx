@@ -54,6 +54,8 @@ function indexLinkage(items: AppointmentClinicalLinkageStatus[]) {
   return Object.fromEntries(items.map((item) => [item.appointmentRequestId, item]));
 }
 
+const actionFocusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
 export function PatientAppointmentsPage() {
   const [requests, setRequests] = useState<PatientAppointmentRequest[]>([]);
   const [linkageByAppointment, setLinkageByAppointment] = useState<Record<string, AppointmentClinicalLinkageStatus>>({});
@@ -170,24 +172,26 @@ export function PatientAppointmentsPage() {
     }
   };
 
+  const pageBusy = loading || busyId !== null || rescheduleLoadingId !== null;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={pageBusy}>
       <section className="rounded-[26px] border border-primary/14 bg-[hsl(var(--primary-soft))] px-5 py-7 sm:px-7 sm:py-8">
         <p className="workspace-section-kicker">Patient scheduling</p>
         <h1 className="mt-2 text-3xl font-bold tracking-[-.04em] sm:text-4xl">Your appointment requests</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Accepted future appointments can be cancelled or rescheduled here. Rescheduling creates a new linked request and never rewrites the original accepted time.</p>
       </section>
 
-      {error && <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
-      {notice && <div role="status" className="rounded-xl border border-success/15 bg-success/7 p-3 text-sm text-success">{notice}</div>}
+      {error && <div role="alert" aria-live="assertive" className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
+      {notice && <div role="status" aria-live="polite" className="rounded-xl border border-success/15 bg-success/7 p-3 text-sm text-success">{notice}</div>}
 
-      <div className="flex items-center justify-between gap-3">
-        <a href="/find-physio" className="inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Find a physiotherapist</a>
-        <button type="button" onClick={() => void reload()} className="inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold"><RefreshCw size={15} /> Refresh</button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <a href="/find-physio" className={`inline-flex min-h-11 items-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground ${actionFocusClass}`}>Find a physiotherapist</a>
+        <button type="button" onClick={() => void reload()} disabled={pageBusy} className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${actionFocusClass}`}><RefreshCw size={15} aria-hidden="true" /> Refresh</button>
       </div>
 
       {loading ? (
-        <div className="space-y-3"><div className="skeleton h-36 rounded-2xl" /><div className="skeleton h-36 rounded-2xl" /></div>
+        <div role="status" aria-live="polite" className="space-y-3"><span className="sr-only">Loading appointment requests…</span><div className="skeleton h-36 rounded-2xl" /><div className="skeleton h-36 rounded-2xl" /></div>
       ) : requests.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground">You have no appointment requests yet.</div>
       ) : (
@@ -199,18 +203,19 @@ export function PatientAppointmentsPage() {
             const options = rescheduleOptions[request.id] ?? [];
             const linkage = linkageByAppointment[request.id];
             const canRequestClinicalConnection = request.status === 'accepted' && linkage?.linkStatus !== 'linked' && linkage?.requestStatus !== 'pending';
+            const reschedulePanelId = `appointment-reschedule-${request.id}`;
 
             return (
               <article key={request.id} className="rounded-2xl border bg-card p-5 shadow-[0_10px_28px_hsl(var(--foreground)/.03)]">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold text-primary">{STATUS_LABELS[request.status]}</p>
-                    <h2 className="mt-1 text-lg font-bold">{request.therapistDisplayName}</h2>
-                    {request.therapistClinicName && <p className="mt-0.5 text-sm text-muted-foreground">{request.therapistClinicName}</p>}
+                    <h2 className="mt-1 break-words text-lg font-bold">{request.therapistDisplayName}</h2>
+                    {request.therapistClinicName && <p className="mt-0.5 break-words text-sm text-muted-foreground">{request.therapistClinicName}</p>}
                   </div>
-                  <span className="rounded-full border bg-secondary/55 px-3 py-1 text-xs font-semibold">{THERAPIST_SERVICE_MODE_LABELS[request.serviceMode]}</span>
+                  <span className="w-fit rounded-full border bg-secondary/55 px-3 py-1 text-xs font-semibold">{THERAPIST_SERVICE_MODE_LABELS[request.serviceMode]}</span>
                 </div>
-                <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/45 px-3 py-3 text-sm font-medium"><CalendarClock size={16} className="mt-0.5 shrink-0 text-primary" /><span>{formatWindow(request)}</span></div>
+                <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/45 px-3 py-3 text-sm font-medium"><CalendarClock size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" /><span>{formatWindow(request)}</span></div>
 
                 {request.status === 'accepted' && (
                   <div className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3">
@@ -223,7 +228,7 @@ export function PatientAppointmentsPage() {
                       <p className="mt-1 text-xs leading-5 text-muted-foreground">An accepted appointment does not create a clinical chart. You may separately request a clinical connection with this therapist.</p>
                     )}
                     {canRequestClinicalConnection && (
-                      <button type="button" disabled={busyId === request.id} onClick={() => void requestClinicalConnection(request)} className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl border border-primary/15 px-3 text-sm font-semibold text-primary disabled:opacity-60"><Link2 size={15} /> {busyId === request.id ? 'Working…' : 'Request clinical connection'}</button>
+                      <button type="button" disabled={busyId === request.id} aria-busy={busyId === request.id} onClick={() => void requestClinicalConnection(request)} className={`mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/15 px-3 py-2 text-sm font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-60 ${actionFocusClass}`}><Link2 size={15} aria-hidden="true" /> {busyId === request.id ? 'Working…' : 'Request clinical connection'}</button>
                     )}
                   </div>
                 )}
@@ -231,27 +236,27 @@ export function PatientAppointmentsPage() {
                 {(canCancel || canReschedule) && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {canCancel && (
-                      <button type="button" disabled={busyId === request.id} onClick={() => void cancel(request)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-destructive/15 px-3 text-sm font-semibold text-destructive disabled:opacity-60"><X size={15} /> {busyId === request.id ? 'Working…' : request.status === 'accepted' ? 'Cancel appointment' : 'Cancel request'}</button>
+                      <button type="button" disabled={busyId === request.id} aria-busy={busyId === request.id} onClick={() => void cancel(request)} className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-destructive/15 px-3 py-2 text-sm font-semibold text-destructive disabled:cursor-not-allowed disabled:opacity-60 ${actionFocusClass}`}><X size={15} aria-hidden="true" /> {busyId === request.id ? 'Working…' : request.status === 'accepted' ? 'Cancel appointment' : 'Cancel request'}</button>
                     )}
                     {canReschedule && (
-                      <button type="button" disabled={busyId === request.id || rescheduleLoadingId === request.id} onClick={() => void openReschedule(request)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-primary/15 px-3 text-sm font-semibold text-primary disabled:opacity-60"><CalendarPlus size={15} /> {rescheduleLoadingId === request.id ? 'Loading times…' : rescheduleForId === request.id ? 'Hide times' : 'Reschedule'}</button>
+                      <button type="button" disabled={busyId === request.id || rescheduleLoadingId === request.id} aria-expanded={rescheduleForId === request.id} aria-controls={reschedulePanelId} aria-busy={rescheduleLoadingId === request.id} onClick={() => void openReschedule(request)} className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/15 px-3 py-2 text-sm font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-60 ${actionFocusClass}`}><CalendarPlus size={15} aria-hidden="true" /> {rescheduleLoadingId === request.id ? 'Loading times…' : rescheduleForId === request.id ? 'Hide times' : 'Reschedule'}</button>
                     )}
                   </div>
                 )}
 
                 {rescheduleForId === request.id && (
-                  <div className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3">
+                  <div id={reschedulePanelId} className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3">
                     <p className="text-sm font-semibold">Choose another published time</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">Only the same verified physiotherapist and service type can replace this appointment. Your current accepted appointment is cancelled only when a valid replacement request is created.</p>
                     {rescheduleLoadingId === request.id ? (
-                      <div className="mt-3 space-y-2"><div className="skeleton h-10 rounded-xl" /><div className="skeleton h-10 rounded-xl" /></div>
+                      <div role="status" aria-live="polite" className="mt-3 space-y-2"><span className="sr-only">Loading replacement appointment times…</span><div className="skeleton h-11 rounded-xl" /><div className="skeleton h-11 rounded-xl" /></div>
                     ) : options.length === 0 ? (
                       <p className="mt-3 text-sm text-muted-foreground">No different future times are currently published. Your existing scheduling record has not been changed.</p>
                     ) : (
                       <div className="mt-3 space-y-2">
                         {options.map((option) => (
-                          <button key={option.id} type="button" disabled={busyId === request.id} onClick={() => void reschedule(request, option)} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border bg-card px-3 py-2 text-left text-sm font-semibold hover:bg-secondary disabled:opacity-60">
-                            <span>{formatAvailability(option)}</span>
+                          <button key={option.id} type="button" disabled={busyId === request.id} onClick={() => void reschedule(request, option)} className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border bg-card px-3 py-2 text-left text-sm font-semibold hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60 ${actionFocusClass}`}>
+                            <span className="min-w-0 break-words">{formatAvailability(option)}</span>
                             <span className="shrink-0 text-xs text-primary">Request</span>
                           </button>
                         ))}
@@ -263,7 +268,7 @@ export function PatientAppointmentsPage() {
                 {request.status === 'cancelled' && request.respondedAt === null && future && (
                   <div className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3 text-sm leading-6 text-muted-foreground">
                     <p>This pending request was cancelled before acceptance. Choose any new published time as a fresh request.</p>
-                    <a href="/find-physio" className="mt-2 inline-flex font-semibold text-primary">Find another time</a>
+                    <a href="/find-physio" className={`mt-2 inline-flex min-h-11 items-center rounded-lg px-1 font-semibold text-primary ${actionFocusClass}`}>Find another time</a>
                   </div>
                 )}
               </article>
@@ -272,7 +277,7 @@ export function PatientAppointmentsPage() {
         </div>
       )}
 
-      <div className="flex items-start gap-3 rounded-2xl border border-warning/15 bg-warning/5 p-4 text-sm leading-6 text-muted-foreground"><CircleAlert size={18} className="mt-0.5 shrink-0 text-warning" /><p>Scheduling cancellation or rescheduling grants no therapist chart, clinical, invoice, payment or account-linkage access. A patient-triggered clinical connection remains a separate database-controlled consent workflow.</p></div>
+      <div className="flex items-start gap-3 rounded-2xl border border-warning/15 bg-warning/5 p-4 text-sm leading-6 text-muted-foreground"><CircleAlert size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-warning" /><p>Scheduling cancellation or rescheduling grants no therapist chart, clinical, invoice, payment or account-linkage access. A patient-triggered clinical connection remains a separate database-controlled consent workflow.</p></div>
     </div>
   );
 }

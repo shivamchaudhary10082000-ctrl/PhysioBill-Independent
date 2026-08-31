@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, Check, Link2, Plus, RefreshCw, X } from 'lucide-react';
+import { CalendarClock, Check, Link2, MapPin, Plus, RefreshCw, X } from 'lucide-react';
 import {
   acceptClinicalChartLinkRequest,
   cancelMyProfessionalAppointment,
@@ -11,6 +11,10 @@ import {
   type ProfessionalClinicalOnboardingRequest,
 } from '@/lib/appointments';
 import { createAndAcceptClinicalChartLinkRequest, type NewClinicalChartInput } from '@/lib/clinical-onboarding';
+import {
+  loadMyHomeVisitServiceLocations,
+  type HomeVisitServiceLocationSnapshot,
+} from '@/lib/home-visit-service-location';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
 import { THERAPIST_SERVICE_MODE_LABELS } from '@/lib/therapist-discovery';
 
@@ -43,10 +47,15 @@ function isFuture(request: ProfessionalAppointmentRequest) {
   return new Date(request.startsAt).getTime() > Date.now();
 }
 
+function indexServiceLocations(items: HomeVisitServiceLocationSnapshot[]) {
+  return Object.fromEntries(items.map((item) => [item.appointmentRequestId, item]));
+}
+
 export function ProfessionalAppointmentRequestsPage() {
   const [requests, setRequests] = useState<ProfessionalAppointmentRequest[]>([]);
   const [onboarding, setOnboarding] = useState<ProfessionalClinicalOnboardingRequest[]>([]);
   const [patients, setPatients] = useState<ProductionPatient[]>([]);
+  const [serviceLocations, setServiceLocations] = useState<Record<string, HomeVisitServiceLocationSnapshot>>({});
   const [selectedChart, setSelectedChart] = useState<Record<string, string>>({});
   const [newChartFor, setNewChartFor] = useState<string | null>(null);
   const [newChart, setNewChart] = useState<NewClinicalChartInput>(EMPTY_NEW_CHART);
@@ -57,14 +66,16 @@ export function ProfessionalAppointmentRequestsPage() {
 
   const reload = async () => {
     setError(null);
-    const [loaded, clinicalRequests, ownedPatients] = await Promise.all([
+    const [loaded, clinicalRequests, ownedPatients, locations] = await Promise.all([
       loadMyProfessionalAppointmentRequests(),
       loadMyProfessionalClinicalOnboardingRequests(),
       loadPatients(),
+      loadMyHomeVisitServiceLocations(),
     ]);
     setRequests(loaded);
     setOnboarding(clinicalRequests);
     setPatients(ownedPatients);
+    setServiceLocations(indexServiceLocations(locations));
   };
 
   useEffect(() => {
@@ -74,12 +85,14 @@ export function ProfessionalAppointmentRequestsPage() {
       loadMyProfessionalAppointmentRequests(),
       loadMyProfessionalClinicalOnboardingRequests(),
       loadPatients(),
+      loadMyHomeVisitServiceLocations(),
     ])
-      .then(([loaded, clinicalRequests, ownedPatients]) => {
+      .then(([loaded, clinicalRequests, ownedPatients, locations]) => {
         if (!active) return;
         setRequests(loaded);
         setOnboarding(clinicalRequests);
         setPatients(ownedPatients);
+        setServiceLocations(indexServiceLocations(locations));
       })
       .catch(() => { if (active) setError('Unable to load scheduling or clinical connection requests right now.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -196,15 +209,28 @@ export function ProfessionalAppointmentRequestsPage() {
         <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground">No patient appointment requests are waiting here.</div>
       ) : (
         <div className="space-y-3">
-          {requests.map((request) => (
-            <article key={request.id} className="rounded-2xl border bg-card p-5 shadow-[0_10px_28px_hsl(var(--foreground)/.03)]">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="text-xs font-semibold text-primary">{STATUS_LABELS[request.status]}</p><h2 className="mt-1 break-all text-lg font-bold">{request.publicPatientId}</h2><p className="mt-1 text-xs text-muted-foreground">Platform patient identifier · not a clinical chart identifier</p></div><span className="self-start rounded-full border bg-secondary/55 px-3 py-1 text-xs font-semibold">{THERAPIST_SERVICE_MODE_LABELS[request.serviceMode]}</span></div>
-              <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/45 px-3 py-3 text-sm font-medium"><CalendarClock size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" /><span>{formatWindow(request)}</span></div>
-              {request.status === 'requested' && <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busyId === request.id} onClick={() => void respond(request.id, 'accepted')} className={`${ACTION_CLASS} bg-primary text-primary-foreground`}><Check size={15} aria-hidden="true" /> {busyId === request.id ? 'Saving…' : 'Accept'}</button><button type="button" disabled={busyId === request.id} onClick={() => void respond(request.id, 'rejected')} className={`${ACTION_CLASS} border border-destructive/15 text-destructive`}><X size={15} aria-hidden="true" /> Reject</button></div>}
-              {request.status === 'accepted' && isFuture(request) && <button type="button" disabled={busyId === request.id} onClick={() => void cancelAccepted(request)} className={`${ACTION_CLASS} mt-4 border border-destructive/15 text-destructive`}><X size={15} aria-hidden="true" /> {busyId === request.id ? 'Cancelling…' : 'Cancel appointment'}</button>}
-              {request.status === 'cancelled' && isFuture(request) && <p className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3 text-sm leading-6 text-muted-foreground">This time remains cancelled. Publish availability deliberately if you want patients to request a replacement time.</p>}
-            </article>
-          ))}
+          {requests.map((request) => {
+            const serviceLocation = serviceLocations[request.id];
+            return (
+              <article key={request.id} className="rounded-2xl border bg-card p-5 shadow-[0_10px_28px_hsl(var(--foreground)/.03)]">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="text-xs font-semibold text-primary">{STATUS_LABELS[request.status]}</p><h2 className="mt-1 break-all text-lg font-bold">{request.publicPatientId}</h2><p className="mt-1 text-xs text-muted-foreground">Platform patient identifier · not a clinical chart identifier</p></div><span className="self-start rounded-full border bg-secondary/55 px-3 py-1 text-xs font-semibold">{THERAPIST_SERVICE_MODE_LABELS[request.serviceMode]}</span></div>
+                <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/45 px-3 py-3 text-sm font-medium"><CalendarClock size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" /><span>{formatWindow(request)}</span></div>
+                {request.serviceMode === 'home_visit' && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-primary/10 bg-primary/5 px-3 py-3 text-sm">
+                    <MapPin size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="font-semibold">Declared home-visit service area</p>
+                      <p className="mt-1 break-words text-muted-foreground">{serviceLocation ? `${serviceLocation.locality}, ${serviceLocation.city}, ${serviceLocation.state} · ${serviceLocation.countryCode}` : 'No coarse service-area snapshot is available for this scheduling record.'}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">Scheduling evidence only. This is not an exact address, GPS/attendance proof, identity evidence, clinical access, treatment evidence, invoice authority, or payment proof.</p>
+                    </div>
+                  </div>
+                )}
+                {request.status === 'requested' && <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busyId === request.id} onClick={() => void respond(request.id, 'accepted')} className={`${ACTION_CLASS} bg-primary text-primary-foreground`}><Check size={15} aria-hidden="true" /> {busyId === request.id ? 'Saving…' : 'Accept'}</button><button type="button" disabled={busyId === request.id} onClick={() => void respond(request.id, 'rejected')} className={`${ACTION_CLASS} border border-destructive/15 text-destructive`}><X size={15} aria-hidden="true" /> Reject</button></div>}
+                {request.status === 'accepted' && isFuture(request) && <button type="button" disabled={busyId === request.id} onClick={() => void cancelAccepted(request)} className={`${ACTION_CLASS} mt-4 border border-destructive/15 text-destructive`}><X size={15} aria-hidden="true" /> {busyId === request.id ? 'Cancelling…' : 'Cancel appointment'}</button>}
+                {request.status === 'cancelled' && isFuture(request) && <p className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3 text-sm leading-6 text-muted-foreground">This time remains cancelled. Publish availability deliberately if you want patients to request a replacement time.</p>}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

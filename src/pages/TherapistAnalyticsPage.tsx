@@ -4,6 +4,11 @@ import {
   loadMyTherapistOperatingAnalytics,
   type TherapistOperatingAnalytics,
 } from '@/lib/therapist-operating-analytics';
+import {
+  loadTherapistAnalyticsLocale,
+  therapistAnalyticsCopy,
+} from '@/lib/therapist-analytics-locale';
+import { DEFAULT_LOCALE, type SupportedLocale } from '@/lib/locale';
 
 function isoDate(date: Date) {
   const year = date.getFullYear();
@@ -43,12 +48,14 @@ export function TherapistAnalyticsPage() {
   const [analytics, setAnalytics] = useState<TherapistOperatingAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locale, setLocale] = useState<SupportedLocale>(DEFAULT_LOCALE);
+  const copy = therapistAnalyticsCopy(locale);
 
   const load = async () => {
     if (loading && analytics !== null) return;
     if (!start || !end || start >= end) {
       setAnalytics(null);
-      setError('Choose an end date after the start date. The selected period was not sent to analytics.');
+      setError(copy.invalidPeriod);
       return;
     }
 
@@ -56,13 +63,27 @@ export function TherapistAnalyticsPage() {
     setError(null);
     try {
       setAnalytics(await loadMyTherapistOperatingAnalytics({ periodStart: start, periodEndExclusive: end }));
-    } catch (err) {
+    } catch {
       setAnalytics(null);
-      setError(err instanceof Error ? err.message : 'Unable to load therapist analytics.');
+      setError(copy.unableToLoad);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      const preferredLocale = await loadTherapistAnalyticsLocale();
+      if (!active) return;
+      setLocale(preferredLocale);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     void load();
@@ -71,26 +92,24 @@ export function TherapistAnalyticsPage() {
   }, []);
 
   return (
-    <section className="space-y-6" aria-busy={loading}>
+    <section className="space-y-6" aria-busy={loading} lang={locale}>
       <div>
-        <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Professional analytics</p>
-        <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Operating overview</h1>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Aggregate operational metrics are resolved by the database for your physiotherapist account only. No patient identity is returned by this analytics boundary.
-        </p>
+        <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">{copy.eyebrow}</p>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight">{copy.title}</h1>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{copy.description}</p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-end">
         <label className="flex-1 text-xs font-semibold text-muted-foreground">
-          Start date
+          {copy.startDate}
           <input value={start} onChange={(event) => setStart(event.target.value)} type="date" disabled={loading} className={`mt-1.5 min-h-11 w-full rounded-xl border bg-background px-3 py-2.5 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`} />
         </label>
         <label className="flex-1 text-xs font-semibold text-muted-foreground">
-          End date (exclusive)
+          {copy.endDateExclusive}
           <input value={end} onChange={(event) => setEnd(event.target.value)} type="date" disabled={loading} className={`mt-1.5 min-h-11 w-full rounded-xl border bg-background px-3 py-2.5 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`} />
         </label>
         <button type="button" onClick={() => void load()} disabled={loading} aria-busy={loading} className={`min-h-11 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}>
-          {loading ? 'Loading…' : 'Refresh analytics'}
+          {loading ? copy.loadingButton : copy.refresh}
         </button>
       </div>
 
@@ -98,23 +117,23 @@ export function TherapistAnalyticsPage() {
 
       {loading ? (
         <div role="status" aria-live="polite" className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
-          Loading therapist operating analytics…
+          {copy.loading}
         </div>
       ) : analytics ? (
         <>
-          <div role="status" aria-live="polite" className="sr-only">Therapist operating analytics loaded for the selected period.</div>
+          <div role="status" aria-live="polite" className="sr-only">{copy.loaded}</div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Patients treated" value={String(analytics.patientsTreated)} detail="Distinct therapist-owned patient charts with a recorded visit in the selected period." icon={<Users size={20} />} />
-            <MetricCard label="Visits" value={String(analytics.visits)} detail={`${analytics.totalTreatmentMinutes} documented treatment minutes; average ${analytics.averageVisitMinutes} minutes per visit.`} icon={<Timer size={20} />} />
-            <MetricCard label="New episodes" value={String(analytics.newEpisodes)} detail={`${analytics.ongoingAtPeriodEnd} treatment episodes were ongoing at the period end.`} icon={<Stethoscope size={20} />} />
-            <MetricCard label="Unlinked visits" value={String(analytics.unlinkedVisits)} detail="Visits not attached to a treatment episode. This is a documentation-quality signal, not a patient access status." icon={<Link2 size={20} />} />
+            <MetricCard label={copy.patientsTreated} value={String(analytics.patientsTreated)} detail={copy.patientsTreatedDetail} icon={<Users size={20} />} />
+            <MetricCard label={copy.visits} value={String(analytics.visits)} detail={copy.visitsDetail(analytics.totalTreatmentMinutes, analytics.averageVisitMinutes)} icon={<Timer size={20} />} />
+            <MetricCard label={copy.newEpisodes} value={String(analytics.newEpisodes)} detail={copy.newEpisodesDetail(analytics.ongoingAtPeriodEnd)} icon={<Stethoscope size={20} />} />
+            <MetricCard label={copy.unlinkedVisits} value={String(analytics.unlinkedVisits)} detail={copy.unlinkedVisitsDetail} icon={<Link2 size={20} />} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard label="Recovered / discharged" value={String(analytics.recoveredDischarged)} detail="Outcome transitions recorded during the selected period." icon={<Activity size={20} />} />
-            <MetricCard label="Left / discontinued" value={String(analytics.leftDiscontinued)} detail="Discontinuation transitions recorded during the selected period." icon={<Activity size={20} />} />
-            <MetricCard label="Finalized invoices" value={String(analytics.finalizedInvoices)} detail="Counted from immutable invoice issuance snapshots." icon={<FileText size={20} />} />
-            <MetricCard label="Immutable billed total" value={`₹${analytics.billedTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} detail="Issued invoice value only. It is explicitly not proof of cash, bank, UPI, provider settlement, or collected revenue." icon={<IndianRupee size={20} />} />
+            <MetricCard label={copy.recoveredDischarged} value={String(analytics.recoveredDischarged)} detail={copy.recoveredDischargedDetail} icon={<Activity size={20} />} />
+            <MetricCard label={copy.leftDiscontinued} value={String(analytics.leftDiscontinued)} detail={copy.leftDiscontinuedDetail} icon={<Activity size={20} />} />
+            <MetricCard label={copy.finalizedInvoices} value={String(analytics.finalizedInvoices)} detail={copy.finalizedInvoicesDetail} icon={<FileText size={20} />} />
+            <MetricCard label={copy.billedTotal} value={`₹${analytics.billedTotal.toLocaleString(locale, { maximumFractionDigits: 2 })}`} detail={copy.billedTotalDetail} icon={<IndianRupee size={20} />} />
           </div>
         </>
       ) : null}

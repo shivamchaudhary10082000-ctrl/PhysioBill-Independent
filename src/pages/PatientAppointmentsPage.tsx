@@ -11,6 +11,7 @@ import {
 } from '@/lib/appointments';
 import {
   loadMyHomeVisitServiceLocations,
+  requestHomeVisitAppointmentReschedule,
   type HomeVisitServiceLocationSnapshot,
 } from '@/lib/home-visit-service-location';
 import {
@@ -170,19 +171,36 @@ export function PatientAppointmentsPage() {
   };
 
   const reschedule = async (request: PatientAppointmentRequest, option: TherapistAvailabilityWindow) => {
-    const confirmed = window.confirm(`Request ${formatAvailability(option)} instead? Your current accepted appointment will be cancelled only if this replacement request is created successfully.`);
+    const homeVisit = request.serviceMode === 'home_visit';
+    const confirmed = window.confirm(
+      homeVisit
+        ? `Request ${formatAvailability(option)} instead? PhysioBill will revalidate the same therapist service area and create a fresh immutable coarse-area snapshot with the replacement. Your current accepted appointment is cancelled only if the whole replacement transaction succeeds.`
+        : `Request ${formatAvailability(option)} instead? Your current accepted appointment will be cancelled only if this replacement request is created successfully.`,
+    );
     if (!confirmed) return;
 
     setBusyId(request.id);
     setError(null);
     setNotice(null);
     try {
-      await requestPatientAppointmentReschedule(request.id, option.id);
+      if (homeVisit) {
+        await requestHomeVisitAppointmentReschedule(request.id, option.id);
+      } else {
+        await requestPatientAppointmentReschedule(request.id, option.id);
+      }
       await reload();
       setRescheduleForId(null);
-      setNotice('Reschedule request sent. The original accepted appointment was preserved in history and cancelled; the new time now awaits therapist acceptance.');
+      setNotice(
+        homeVisit
+          ? 'Home-visit reschedule requested. The replacement carries a fresh immutable coarse service-area snapshot; the original scheduling record remains in history and is cancelled only as part of the same successful transaction.'
+          : 'Reschedule request sent. The original accepted appointment was preserved in history and cancelled; the new time now awaits therapist acceptance.',
+      );
     } catch {
-      setError('This replacement time could not be requested. Your existing appointment was not changed unless it had already been cancelled earlier.');
+      setError(
+        homeVisit
+          ? 'This home-visit replacement could not be requested. If the previously declared therapist service area is no longer active, choose a fresh home-visit booking instead. The existing appointment remains unchanged unless it had already been cancelled earlier.'
+          : 'This replacement time could not be requested. Your existing appointment was not changed unless it had already been cancelled earlier.',
+      );
     } finally {
       setBusyId(null);
     }
@@ -275,7 +293,11 @@ export function PatientAppointmentsPage() {
                 {rescheduleForId === request.id && (
                   <div id={reschedulePanelId} className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3">
                     <p className="text-sm font-semibold">Choose another published time</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Only the same verified physiotherapist and service type can replace this appointment. Your current accepted appointment is cancelled only when a valid replacement request is created.</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {request.serviceMode === 'home_visit'
+                        ? 'Only the same verified physiotherapist and home-visit service type can replace this appointment. The previously declared coarse therapist service area must still be active; PhysioBill creates a fresh immutable snapshot and cancels the current appointment only if the entire transaction succeeds.'
+                        : 'Only the same verified physiotherapist and service type can replace this appointment. Your current accepted appointment is cancelled only when a valid replacement request is created.'}
+                    </p>
                     {rescheduleLoadingId === request.id ? (
                       <div role="status" aria-live="polite" className="mt-3 space-y-2"><span className="sr-only">Loading replacement appointment times…</span><div className="skeleton h-11 rounded-xl" /><div className="skeleton h-11 rounded-xl" /></div>
                     ) : options.length === 0 ? (

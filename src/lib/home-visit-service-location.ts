@@ -18,6 +18,28 @@ function safeText(value: unknown, maxLength: number) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
 }
 
+export async function requestHomeVisitAppointment(
+  availabilityWindowId: string,
+  serviceAreaId: string,
+): Promise<string> {
+  if (!UUID_PATTERN.test(availabilityWindowId) || !UUID_PATTERN.test(serviceAreaId)) {
+    throw new Error('The home-visit appointment selection is invalid.');
+  }
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('request_home_visit_appointment', {
+    p_availability_window_id: availabilityWindowId,
+    p_service_area_id: serviceAreaId,
+  });
+
+  if (error) throw error;
+  if (typeof data !== 'string' || !UUID_PATTERN.test(data)) {
+    throw new Error('The home-visit appointment request could not be confirmed.');
+  }
+
+  return data;
+}
+
 export async function setMyHomeVisitServiceArea(
   appointmentRequestId: string,
   serviceAreaId: string,

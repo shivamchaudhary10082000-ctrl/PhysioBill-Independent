@@ -63,7 +63,7 @@ export function ProfessionalQuickNavigationFrame({ children }: { children: React
       <div className="border-b border-border bg-background">
         <nav
           aria-label={message(locale, professionalNavigationMessageKeys.ariaLabel)}
-          className="mx-auto flex max-w-[1420px] gap-2 overflow-x-auto px-4 py-2 sm:px-7 lg:px-10"
+          className="mx-auto flex max-w-[1420px] touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-4 py-2 [scrollbar-width:thin] sm:px-7 lg:px-10"
         >
           {professionalLinks.map(({ href, key }) => {
             const active = path === href || path.startsWith(`${href}/`);

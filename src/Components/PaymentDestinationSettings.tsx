@@ -39,6 +39,8 @@ const emptyDraft = (): Draft => ({
   makeDefault: false,
 });
 
+const actionFocus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2';
+
 export function PaymentDestinationSettings() {
   const [items, setItems] = useState<Destination[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -113,8 +115,15 @@ export function PaymentDestinationSettings() {
     setBusy(false);
   };
 
+  const formInvalid = Boolean(
+    !draft?.label.trim()
+      || (draft?.type === 'upi'
+        ? !draft.upiId.trim()
+        : !draft?.bankName.trim() || !draft?.accountDisplay.trim() || !draft?.ifsc.trim()),
+  );
+
   return (
-    <section className="rounded-2xl border bg-card p-6">
+    <section className="rounded-2xl border bg-card p-6" aria-busy={loading || busy}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Payment destinations</p>
@@ -123,30 +132,38 @@ export function PaymentDestinationSettings() {
             These destinations belong to your physiotherapist account. Provider-managed settlement remains externally activated and cannot be configured here.
           </p>
         </div>
-        <button type="button" disabled={busy} onClick={() => setDraft(emptyDraft())} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-          <Plus size={16} /> Add destination
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setDraft(emptyDraft())}
+          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50 ${actionFocus}`}
+        >
+          <Plus size={16} aria-hidden="true" /> Add destination
         </button>
       </div>
 
-      {error && <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+      <div className="sr-only" role="status" aria-live="polite">
+        {loading ? 'Loading payment destinations.' : busy ? 'Updating payment destination.' : ''}
+      </div>
+      {error && <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
       <div className="mt-5 space-y-3">
-        {loading ? <p className="text-sm text-muted-foreground">Loading payment destinations…</p> : items.length ? items.map((item) => (
+        {loading ? <p role="status" className="text-sm text-muted-foreground">Loading payment destinations…</p> : items.length ? items.map((item) => (
           <div key={item.id} className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-bold">{item.display_label}</p>
+                <p className="break-words font-bold">{item.display_label}</p>
                 {item.is_default && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary">Default</span>}
                 {item.status !== 'active' && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{item.status.replace(/_/g, ' ')}</span>}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 break-words text-sm text-muted-foreground">
                 {item.destination_type === 'upi' ? item.upi_id : item.destination_type === 'bank' ? [item.bank_name, item.account_number_display, item.ifsc_display].filter(Boolean).join(' · ') : `Provider activation pending${item.provider_code ? ` · ${item.provider_code}` : ''}`}
               </p>
             </div>
             {item.destination_type !== 'provider' && item.status === 'active' && (
-              <div className="flex gap-2">
-                <button type="button" disabled={busy} onClick={() => edit(item)} className="rounded-xl bg-secondary px-3 py-2 text-sm font-semibold disabled:opacity-50">Edit</button>
-                <button type="button" disabled={busy} onClick={() => void disable(item)} className="rounded-xl bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive disabled:opacity-50">Disable</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={busy} onClick={() => edit(item)} className={`min-h-11 rounded-xl bg-secondary px-3 py-2 text-sm font-semibold disabled:opacity-50 ${actionFocus}`}>Edit</button>
+                <button type="button" disabled={busy} onClick={() => void disable(item)} className={`min-h-11 rounded-xl bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive disabled:opacity-50 ${actionFocus}`}>Disable</button>
               </div>
             )}
           </div>
@@ -155,14 +172,25 @@ export function PaymentDestinationSettings() {
 
       {draft && (
         <div className="mt-5 rounded-2xl border bg-background p-5">
-          <div className="flex items-center justify-between gap-3"><h4 className="font-extrabold">{draft.id ? 'Edit destination' : 'Add destination'}</h4><button type="button" aria-label="Close" onClick={() => setDraft(null)}><X size={18} /></button></div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Type</span><select value={draft.type} onChange={(event) => setDraft((current) => current ? { ...current, type: event.target.value as Draft['type'] } : current)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm"><option value="upi">UPI</option><option value="bank">Bank transfer</option></select></label>
-            <label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Label</span><input value={draft.label} onChange={(event) => setDraft((current) => current ? { ...current, label: event.target.value } : current)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm" placeholder="e.g. Clinic UPI" /></label>
-            {draft.type === 'upi' ? <label className="space-y-1.5 md:col-span-2"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">UPI ID</span><input value={draft.upiId} onChange={(event) => setDraft((current) => current ? { ...current, upiId: event.target.value } : current)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm" placeholder="name@bank" /></label> : <><label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Bank name</span><input value={draft.bankName} onChange={(event) => setDraft((current) => current ? { ...current, bankName: event.target.value } : current)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm" /></label><label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Account display</span><input value={draft.accountDisplay} onChange={(event) => setDraft((current) => current ? { ...current, accountDisplay: event.target.value } : current)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm" placeholder="Masked or intended display value" /></label><label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">IFSC</span><input value={draft.ifsc} onChange={(event) => setDraft((current) => current ? { ...current, ifsc: event.target.value } : current)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm uppercase" /></label></>}
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="font-extrabold">{draft.id ? 'Edit destination' : 'Add destination'}</h4>
+            <button
+              type="button"
+              aria-label="Close payment destination editor"
+              disabled={busy}
+              onClick={() => setDraft(null)}
+              className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl disabled:opacity-50 ${actionFocus}`}
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
           </div>
-          <label className="mt-4 flex items-center gap-3 rounded-xl border p-4 text-sm font-semibold"><input type="checkbox" checked={draft.makeDefault} onChange={(event) => setDraft((current) => current ? { ...current, makeDefault: event.target.checked } : current)} /> Use as default active destination</label>
-          <div className="mt-4 flex justify-end"><button type="button" disabled={busy || !draft.label.trim() || (draft.type === 'upi' ? !draft.upiId.trim() : !draft.bankName.trim() || !draft.accountDisplay.trim() || !draft.ifsc.trim())} onClick={() => void save()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Check size={16} /> {busy ? 'Saving…' : 'Save destination'}</button></div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Type</span><select disabled={busy} value={draft.type} onChange={(event) => setDraft((current) => current ? { ...current, type: event.target.value as Draft['type'] } : current)} className={`h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:opacity-50 ${actionFocus}`}><option value="upi">UPI</option><option value="bank">Bank transfer</option></select></label>
+            <label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Label</span><input disabled={busy} value={draft.label} onChange={(event) => setDraft((current) => current ? { ...current, label: event.target.value } : current)} className={`h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:opacity-50 ${actionFocus}`} placeholder="e.g. Clinic UPI" /></label>
+            {draft.type === 'upi' ? <label className="space-y-1.5 md:col-span-2"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">UPI ID</span><input disabled={busy} value={draft.upiId} onChange={(event) => setDraft((current) => current ? { ...current, upiId: event.target.value } : current)} className={`h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:opacity-50 ${actionFocus}`} placeholder="name@bank" /></label> : <><label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Bank name</span><input disabled={busy} value={draft.bankName} onChange={(event) => setDraft((current) => current ? { ...current, bankName: event.target.value } : current)} className={`h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:opacity-50 ${actionFocus}`} /></label><label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Account display</span><input disabled={busy} value={draft.accountDisplay} onChange={(event) => setDraft((current) => current ? { ...current, accountDisplay: event.target.value } : current)} className={`h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:opacity-50 ${actionFocus}`} placeholder="Masked or intended display value" /></label><label className="space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">IFSC</span><input disabled={busy} value={draft.ifsc} onChange={(event) => setDraft((current) => current ? { ...current, ifsc: event.target.value } : current)} className={`h-11 w-full rounded-xl border bg-card px-3.5 text-sm uppercase disabled:opacity-50 ${actionFocus}`} /></label></>}
+          </div>
+          <label className="mt-4 flex min-h-11 items-center gap-3 rounded-xl border p-4 text-sm font-semibold"><input className="size-5 shrink-0" disabled={busy} type="checkbox" checked={draft.makeDefault} onChange={(event) => setDraft((current) => current ? { ...current, makeDefault: event.target.checked } : current)} /> Use as default active destination</label>
+          <div className="mt-4 flex justify-end"><button type="button" disabled={busy || formInvalid} onClick={() => void save()} className={`inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50 ${actionFocus}`}><Check size={16} aria-hidden="true" /> {busy ? 'Saving…' : 'Save destination'}</button></div>
         </div>
       )}
     </section>

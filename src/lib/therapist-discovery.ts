@@ -15,11 +15,14 @@ export const THERAPIST_SERVICE_MODE_LABELS: Record<TherapistServiceMode, string>
 };
 
 export type TherapistDiscoveryServiceArea = {
-  id: string;
   locality: string;
   city: string;
   state: string;
   country_code: string;
+};
+
+export type VerifiedTherapistDiscoveryServiceArea = TherapistDiscoveryServiceArea & {
+  id: string;
 };
 
 export type VerifiedTherapistDiscoveryResult = {
@@ -32,7 +35,7 @@ export type VerifiedTherapistDiscoveryResult = {
   verified_registration_authority: string;
   verified_registration_number: string;
   service_modes: TherapistServiceMode[];
-  service_areas: TherapistDiscoveryServiceArea[];
+  service_areas: VerifiedTherapistDiscoveryServiceArea[];
   is_verified: true;
 };
 
@@ -60,50 +63,32 @@ export function normalizeTherapistServiceMode(value: string | null | undefined):
 
 function normalizeServiceModes(value: unknown): TherapistServiceMode[] {
   if (!Array.isArray(value)) return [];
-
   const modes = value.filter(
     (item): item is TherapistServiceMode =>
-      typeof item === 'string' &&
-      THERAPIST_SERVICE_MODES.includes(item as TherapistServiceMode),
+      typeof item === 'string' && THERAPIST_SERVICE_MODES.includes(item as TherapistServiceMode),
   );
-
   return Array.from(new Set(modes));
 }
 
-function normalizeServiceAreas(value: unknown): TherapistDiscoveryServiceArea[] {
+function normalizeServiceAreas(value: unknown): VerifiedTherapistDiscoveryServiceArea[] {
   if (!Array.isArray(value)) return [];
-
   return value.flatMap((item) => {
     if (!isRecord(item)) return [];
-
     const id = safeText(item.id, 36);
     const locality = safeText(item.locality, 120);
     const city = safeText(item.city, 100);
     const state = safeText(item.state, 100);
     const countryCode = safeText(item.country_code, 2).toUpperCase();
-
     if (!UUID_PATTERN.test(id) || !locality || !city || !state || !/^[A-Z]{2}$/.test(countryCode)) return [];
-
-    return [
-      {
-        id,
-        locality,
-        city,
-        state,
-        country_code: countryCode,
-      },
-    ];
+    return [{ id, locality, city, state, country_code: countryCode }];
   });
 }
 
 function normalizeDiscoveryRow(value: unknown): VerifiedTherapistDiscoveryResult | null {
   if (!isRecord(value)) return null;
-
   const physioId = safeText(value.physio_id, 36);
   const displayName = safeText(value.display_name, 120);
-
   if (!UUID_PATTERN.test(physioId) || !displayName || value.is_verified !== true) return null;
-
   return {
     physio_id: physioId,
     display_name: displayName,
@@ -119,29 +104,16 @@ function normalizeDiscoveryRow(value: unknown): VerifiedTherapistDiscoveryResult
   };
 }
 
-export async function searchVerifiedTherapists(
-  search: TherapistDiscoverySearch,
-): Promise<VerifiedTherapistDiscoveryResult[]> {
+export async function searchVerifiedTherapists(search: TherapistDiscoverySearch): Promise<VerifiedTherapistDiscoveryResult[]> {
   const city = search.city.trim();
   const locality = search.locality?.trim() ?? '';
   const serviceMode = normalizeTherapistServiceMode(search.serviceMode);
   const supabase = getSupabaseClient();
-
   const { data, error } = await supabase.rpc('search_verified_therapists', {
     p_city: city || null,
     p_locality: locality || null,
     p_service_mode: serviceMode,
   });
-
-  if (error) {
-    throw new Error('Unable to search verified physiotherapists right now.');
-  }
-
-  if (!Array.isArray(data)) {
-    throw new Error('Unable to search verified physiotherapists right now.');
-  }
-
-  return data
-    .map((row: unknown) => normalizeDiscoveryRow(row))
-    .filter((row): row is VerifiedTherapistDiscoveryResult => row !== null);
+  if (error || !Array.isArray(data)) throw new Error('Unable to search verified physiotherapists right now.');
+  return data.map((row: unknown) => normalizeDiscoveryRow(row)).filter((row): row is VerifiedTherapistDiscoveryResult => row !== null);
 }

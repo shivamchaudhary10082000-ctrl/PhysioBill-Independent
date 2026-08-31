@@ -21,18 +21,20 @@ function defaultPeriod() {
 
 function MetricCard({ label, value, detail, icon }: { label: string; value: string; detail: string; icon: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+    <div className="min-w-0 rounded-2xl border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-extrabold tracking-tight">{value}</p>
+        <div className="min-w-0">
+          <p className="break-words text-xs font-semibold uppercase tracking-[.12em] text-muted-foreground">{label}</p>
+          <p className="mt-2 break-words text-3xl font-extrabold tracking-tight">{value}</p>
         </div>
-        <div className="rounded-xl bg-secondary p-2.5 text-primary">{icon}</div>
+        <div aria-hidden="true" className="shrink-0 rounded-xl bg-secondary p-2.5 text-primary">{icon}</div>
       </div>
-      <p className="mt-3 text-xs leading-5 text-muted-foreground">{detail}</p>
+      <p className="mt-3 break-words text-xs leading-5 text-muted-foreground">{detail}</p>
     </div>
   );
 }
+
+const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
 export function TherapistAnalyticsPage() {
   const initial = useMemo(defaultPeriod, []);
@@ -43,6 +45,13 @@ export function TherapistAnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
+    if (loading && analytics !== null) return;
+    if (!start || !end || start >= end) {
+      setAnalytics(null);
+      setError('Choose an end date after the start date. The selected period was not sent to analytics.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -57,10 +66,12 @@ export function TherapistAnalyticsPage() {
 
   useEffect(() => {
     void load();
+    // Initial period is intentionally loaded once; subsequent date changes require an explicit refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6" aria-busy={loading}>
       <div>
         <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Professional analytics</p>
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Operating overview</h1>
@@ -72,21 +83,26 @@ export function TherapistAnalyticsPage() {
       <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-end">
         <label className="flex-1 text-xs font-semibold text-muted-foreground">
           Start date
-          <input value={start} onChange={(event) => setStart(event.target.value)} type="date" className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2.5 text-sm text-foreground" />
+          <input value={start} onChange={(event) => setStart(event.target.value)} type="date" disabled={loading} className={`mt-1.5 min-h-11 w-full rounded-xl border bg-background px-3 py-2.5 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`} />
         </label>
         <label className="flex-1 text-xs font-semibold text-muted-foreground">
           End date (exclusive)
-          <input value={end} onChange={(event) => setEnd(event.target.value)} type="date" className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2.5 text-sm text-foreground" />
+          <input value={end} onChange={(event) => setEnd(event.target.value)} type="date" disabled={loading} className={`mt-1.5 min-h-11 w-full rounded-xl border bg-background px-3 py-2.5 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`} />
         </label>
-        <button type="button" onClick={() => void load()} disabled={loading} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">
-          {loading ? 'Loading…' : 'Refresh'}
+        <button type="button" onClick={() => void load()} disabled={loading} aria-busy={loading} className={`min-h-11 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}>
+          {loading ? 'Loading…' : 'Refresh analytics'}
         </button>
       </div>
 
-      {error ? <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
+      {error ? <div role="alert" aria-live="assertive" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
 
-      {analytics ? (
+      {loading ? (
+        <div role="status" aria-live="polite" className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
+          Loading therapist operating analytics…
+        </div>
+      ) : analytics ? (
         <>
+          <div role="status" aria-live="polite" className="sr-only">Therapist operating analytics loaded for the selected period.</div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="Patients treated" value={String(analytics.patientsTreated)} detail="Distinct therapist-owned patient charts with a recorded visit in the selected period." icon={<Users size={20} />} />
             <MetricCard label="Visits" value={String(analytics.visits)} detail={`${analytics.totalTreatmentMinutes} documented treatment minutes; average ${analytics.averageVisitMinutes} minutes per visit.`} icon={<Timer size={20} />} />
@@ -101,7 +117,7 @@ export function TherapistAnalyticsPage() {
             <MetricCard label="Immutable billed total" value={`₹${analytics.billedTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`} detail="Issued invoice value only. It is explicitly not proof of cash, bank, UPI, provider settlement, or collected revenue." icon={<IndianRupee size={20} />} />
           </div>
         </>
-      ) : loading ? <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">Loading therapist operating analytics…</div> : null}
+      ) : null}
     </section>
   );
 }

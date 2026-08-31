@@ -40,6 +40,28 @@ export async function requestHomeVisitAppointment(
   return data;
 }
 
+export async function requestHomeVisitAppointmentReschedule(
+  appointmentRequestId: string,
+  availabilityWindowId: string,
+): Promise<string> {
+  if (!UUID_PATTERN.test(appointmentRequestId) || !UUID_PATTERN.test(availabilityWindowId)) {
+    throw new Error('The home-visit reschedule selection is invalid.');
+  }
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('request_home_visit_appointment_reschedule', {
+    p_request_id: appointmentRequestId,
+    p_availability_window_id: availabilityWindowId,
+  });
+
+  if (error) throw error;
+  if (typeof data !== 'string' || !UUID_PATTERN.test(data)) {
+    throw new Error('The home-visit reschedule request could not be confirmed.');
+  }
+
+  return data;
+}
+
 export async function setMyHomeVisitServiceArea(
   appointmentRequestId: string,
   serviceAreaId: string,

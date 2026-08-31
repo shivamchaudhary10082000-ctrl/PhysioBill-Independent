@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, CalendarPlus, CircleAlert, Link2, RefreshCw, X } from 'lucide-react';
+import { CalendarClock, CalendarPlus, CircleAlert, Link2, MapPin, RefreshCw, X } from 'lucide-react';
 import {
   cancelMyAppointmentRequest,
   loadMyAppointmentClinicalLinkageStatus,
@@ -9,6 +9,10 @@ import {
   type AppointmentClinicalLinkageStatus,
   type PatientAppointmentRequest,
 } from '@/lib/appointments';
+import {
+  loadMyHomeVisitServiceLocations,
+  type HomeVisitServiceLocationSnapshot,
+} from '@/lib/home-visit-service-location';
 import {
   getVerifiedTherapistAvailability,
   type TherapistAvailabilityWindow,
@@ -54,11 +58,16 @@ function indexLinkage(items: AppointmentClinicalLinkageStatus[]) {
   return Object.fromEntries(items.map((item) => [item.appointmentRequestId, item]));
 }
 
+function indexServiceLocations(items: HomeVisitServiceLocationSnapshot[]) {
+  return Object.fromEntries(items.map((item) => [item.appointmentRequestId, item]));
+}
+
 const actionFocusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
 export function PatientAppointmentsPage() {
   const [requests, setRequests] = useState<PatientAppointmentRequest[]>([]);
   const [linkageByAppointment, setLinkageByAppointment] = useState<Record<string, AppointmentClinicalLinkageStatus>>({});
+  const [serviceLocations, setServiceLocations] = useState<Record<string, HomeVisitServiceLocationSnapshot>>({});
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,22 +78,29 @@ export function PatientAppointmentsPage() {
 
   const reload = async () => {
     setError(null);
-    const [loaded, linkage] = await Promise.all([
+    const [loaded, linkage, locations] = await Promise.all([
       loadMyPatientAppointmentRequests(),
       loadMyAppointmentClinicalLinkageStatus(),
+      loadMyHomeVisitServiceLocations(),
     ]);
     setRequests(loaded);
     setLinkageByAppointment(indexLinkage(linkage));
+    setServiceLocations(indexServiceLocations(locations));
   };
 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    Promise.all([loadMyPatientAppointmentRequests(), loadMyAppointmentClinicalLinkageStatus()])
-      .then(([loaded, linkage]) => {
+    Promise.all([
+      loadMyPatientAppointmentRequests(),
+      loadMyAppointmentClinicalLinkageStatus(),
+      loadMyHomeVisitServiceLocations(),
+    ])
+      .then(([loaded, linkage, locations]) => {
         if (!active) return;
         setRequests(loaded);
         setLinkageByAppointment(indexLinkage(linkage));
+        setServiceLocations(indexServiceLocations(locations));
       })
       .catch(() => { if (active) setError('Unable to load your appointment requests right now.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -202,6 +218,7 @@ export function PatientAppointmentsPage() {
             const canReschedule = future && (request.status === 'accepted' || (request.status === 'cancelled' && request.respondedAt !== null));
             const options = rescheduleOptions[request.id] ?? [];
             const linkage = linkageByAppointment[request.id];
+            const serviceLocation = serviceLocations[request.id];
             const canRequestClinicalConnection = request.status === 'accepted' && linkage?.linkStatus !== 'linked' && linkage?.requestStatus !== 'pending';
             const reschedulePanelId = `appointment-reschedule-${request.id}`;
 
@@ -216,6 +233,17 @@ export function PatientAppointmentsPage() {
                   <span className="w-fit rounded-full border bg-secondary/55 px-3 py-1 text-xs font-semibold">{THERAPIST_SERVICE_MODE_LABELS[request.serviceMode]}</span>
                 </div>
                 <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/45 px-3 py-3 text-sm font-medium"><CalendarClock size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" /><span>{formatWindow(request)}</span></div>
+
+                {request.serviceMode === 'home_visit' && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-primary/10 bg-primary/5 px-3 py-3 text-sm">
+                    <MapPin size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="font-semibold">Declared home-visit service area</p>
+                      <p className="mt-1 break-words text-muted-foreground">{serviceLocation ? `${serviceLocation.locality}, ${serviceLocation.city}, ${serviceLocation.state} · ${serviceLocation.countryCode}` : 'No coarse service-area snapshot is available for this scheduling record.'}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">Scheduling evidence only. This is not an exact address, GPS/attendance proof, identity evidence, clinical access, treatment evidence, invoice authority, or payment proof.</p>
+                    </div>
+                  </div>
+                )}
 
                 {request.status === 'accepted' && (
                   <div className="mt-4 rounded-xl border border-primary/10 bg-primary/5 p-3">

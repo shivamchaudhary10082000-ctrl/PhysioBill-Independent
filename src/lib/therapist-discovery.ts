@@ -15,6 +15,7 @@ export const THERAPIST_SERVICE_MODE_LABELS: Record<TherapistServiceMode, string>
 };
 
 export type TherapistDiscoveryServiceArea = {
+  id: string;
   locality: string;
   city: string;
   state: string;
@@ -75,15 +76,17 @@ function normalizeServiceAreas(value: unknown): TherapistDiscoveryServiceArea[] 
   return value.flatMap((item) => {
     if (!isRecord(item)) return [];
 
+    const id = safeText(item.id, 36);
     const locality = safeText(item.locality, 120);
     const city = safeText(item.city, 100);
     const state = safeText(item.state, 100);
     const countryCode = safeText(item.country_code, 2).toUpperCase();
 
-    if (!locality || !city || !state || !/^[A-Z]{2}$/.test(countryCode)) return [];
+    if (!UUID_PATTERN.test(id) || !locality || !city || !state || !/^[A-Z]{2}$/.test(countryCode)) return [];
 
     return [
       {
+        id,
         locality,
         city,
         state,

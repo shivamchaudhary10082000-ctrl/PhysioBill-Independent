@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -19,6 +19,7 @@ export function LocalePreferenceControl({ className = '' }: { className?: string
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const statusId = useId();
 
   useEffect(() => {
     let active = true;
@@ -69,15 +70,16 @@ export function LocalePreferenceControl({ className = '' }: { className?: string
   };
 
   return (
-    <div className={className}>
+    <div className={className} aria-busy={loading || saving || undefined}>
       <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <span className="sr-only">Language</span>
         <select
           aria-label="Language"
+          aria-describedby={statusId}
           value={locale}
           disabled={loading || saving}
           onChange={(event) => void changeLocale(event.target.value)}
-          className="rounded-xl border bg-card px-2.5 py-2 text-xs font-semibold text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-11 rounded-xl border bg-card px-3 py-2 text-xs font-semibold text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {SUPPORTED_LOCALES.map((supportedLocale) => (
             <option key={supportedLocale} value={supportedLocale}>
@@ -85,13 +87,10 @@ export function LocalePreferenceControl({ className = '' }: { className?: string
             </option>
           ))}
         </select>
-        {saving && <span aria-live="polite">Saving…</span>}
+        <span id={statusId} className={error ? 'text-destructive' : ''} role={error ? 'alert' : 'status'} aria-live="polite">
+          {loading ? 'Loading language…' : saving ? 'Saving…' : error ?? ''}
+        </span>
       </label>
-      {error && (
-        <p role="alert" className="mt-1 max-w-56 text-[11px] leading-4 text-destructive">
-          {error}
-        </p>
-      )}
     </div>
   );
 }

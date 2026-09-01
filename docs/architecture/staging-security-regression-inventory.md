@@ -47,7 +47,7 @@ Legacy therapist-owned clinical/financial tables (`patients`, `visits`, `clinica
 
 The bounded direct-table audit at this checkpoint additionally confirmed composite ownership foreign keys for dependent rows and identity triggers that derive or preserve therapist ownership instead of trusting caller-supplied ownership fields.
 
-Transactional impersonation now provides dynamic staging evidence:
+Transactional impersonation provides dynamic staging evidence:
 
 - Physiotherapist A could see **1** own patient and **0** Physiotherapist B patients.
 - Physiotherapist A could see **0** Physiotherapist B visits, clinical records, invoices, and payments.
@@ -56,38 +56,68 @@ Transactional impersonation now provides dynamic staging evidence:
 
 These tests were transactional and left no residue. Full details are locked in `legacy-direct-table-rls-audit.md`.
 
+## Dynamic RPC persona / owner-isolation regression
+
+A bounded transactional RPC matrix was executed against the same isolated staging project using two controlled patient personas, two controlled physiotherapist personas, two therapist-owned legacy charts, and temporary active platform-patient/chart links created only inside rollback transactions.
+
+Patient self-read isolation passed symmetrically:
+
+- Patient A `list_my_clinical_care_summary()` returned only the temporary link to Physiotherapist A and only Physiotherapist A's synthetic episode/visit data; no Patient B / Physiotherapist B clinical data appeared.
+- Patient A `list_my_credit_summary()` returned only the Physiotherapist A link and its own credit state.
+- Patient A `list_my_financial_summary()` returned only the Physiotherapist A link; no Physiotherapist B financial surface appeared.
+- Patient B `list_my_clinical_care_summary()` returned only the temporary link to Physiotherapist B and only Physiotherapist B's synthetic episode/visit data; no Patient A / Physiotherapist A clinical data appeared.
+- Patient B `list_my_credit_summary()` returned only the Physiotherapist B link and its own credit state.
+- Patient B `list_my_financial_summary()` returned only the Physiotherapist B link; no Physiotherapist A financial surface appeared.
+
+Professional cross-owner rejection passed:
+
+- Physiotherapist A `list_patient_credit_ledger()` against Physiotherapist B's chart failed with SQLSTATE `42501`.
+- Physiotherapist A `record_patient_credit_ledger_entry()` against Physiotherapist B's chart failed with SQLSTATE `42501`.
+- Physiotherapist A `apply_patient_credit_to_invoice()` against Physiotherapist B's invoice failed with SQLSTATE `42501`.
+- Physiotherapist B `list_patient_credit_ledger()` against Physiotherapist A's chart failed with SQLSTATE `42501`.
+- Physiotherapist B `record_patient_credit_ledger_entry()` against Physiotherapist A's chart failed with SQLSTATE `42501`.
+
+Cross-persona rejection passed:
+
+- A patient persona invoking `record_patient_credit_ledger_entry()` failed with SQLSTATE `42501` because no physiotherapist workspace can be resolved.
+- A physiotherapist persona invoking `list_my_clinical_care_summary()` failed with SQLSTATE `42501` because patient clinical access is restricted to patient accounts.
+
+Every temporary link fixture was created inside a transaction followed by `ROLLBACK`; every mutation probe either failed before mutation or ran in a rollback transaction. No test-created clinical link, credit entry, invoice application, or other financial row was intentionally persisted.
+
+No authorization defect was demonstrated by this bounded RPC matrix. Therefore no database migration was created or applied merely to manufacture a change. Migration, rollback-migration and migration-concurrency testing are not applicable to this regression-only checkpoint.
+
 ## SECURITY DEFINER review state
 
 The current Supabase Security Advisor still reports generic review warnings for intentional anonymous and authenticated `SECURITY DEFINER` RPCs. The retired legacy `request_my_clinical_chart_link(uuid)` no longer appears as an authenticated executable warning after the accepted-appointment hardening migration.
 
 Financial source review confirms that credit-ledger, invoice-credit, therapist payment-destination and reimbursement-document RPCs are database self-authorizing: therapist mutations resolve `private.current_physio_id()` and re-check target ownership, patient credit reads resolve the patient persona and active chart linkage, sensitive tables deny direct client access, and public reimbursement verification exposes no patient or clinical payload. These generic advisor warnings are therefore not being silenced through broad grant revocation.
 
-Dynamic direct-table evidence now supplements the prior source-level review. RPC-level cross-persona and cross-owner mutation coverage remains incomplete and is still required before production freeze.
+Dynamic direct-table and bounded RPC persona-isolation evidence now supplement the prior source-level review. Remaining RPC-level coverage should focus on appointment/onboarding, payment-destination, reimbursement-document, telephysiotherapy, service-location, communications and analytics boundaries rather than repeating the credit/clinical self-read cases recorded above.
 
 ## Required pre-production regression
 
 Before a production-candidate freeze, complete staged multi-persona tests proving:
 
-1. Patient A cannot read Patient B clinical or financial data through bounded patient RPCs.
-2. Physiotherapist A cannot read or mutate Physiotherapist B patients, visits, clinical records, invoices, payments, availability, service areas, analytics or payment destinations.
-3. A patient account cannot enter physiotherapist workspace routes or execute physiotherapist-only mutations, and vice versa.
+1. Patient A cannot read Patient B clinical or financial data through bounded patient RPCs. **Bounded clinical/credit/financial self-read matrix passed at this checkpoint; expand only if new patient read surfaces are added.**
+2. Physiotherapist A cannot read or mutate Physiotherapist B patients, visits, clinical records, invoices, payments, availability, service areas, analytics or payment destinations. **Legacy direct-table isolation and bounded credit/invoice-credit RPC ownership checks passed; remaining professional feature RPCs still require coverage.**
+3. A patient account cannot enter physiotherapist workspace routes or execute physiotherapist-only mutations, and vice versa. **Database RPC persona rejection is partially proven; browser route enforcement remains deferred.**
 4. PAT and PHY identifiers cannot be reassigned or mutated.
 5. Linkage creation/revocation does not independently expose clinical data.
 6. Accepted-appointment onboarding cannot attach to a chart owned by another physiotherapist.
 7. Home-visit location evidence remains coarse immutable scheduling evidence and cannot become exact-location/attendance authority.
-8. Credit ledger, payment-destination and reimbursement-document boundaries reject unauthorized callers.
+8. Credit ledger, payment-destination and reimbursement-document boundaries reject unauthorized callers. **Credit-ledger and cross-owner invoice-credit rejection passed; payment-destination/reimbursement mutation matrix remains.**
 9. Offline/PWA behavior cannot surface cached authenticated clinical or financial responses or report offline mutations as successful.
 10. Locale changes alter presentation only and never database enums, identifiers, ownership, authorization or monetary values.
 
 ## Current execution state
 
-Transactional SQL impersonation is available and has now been used for the legacy direct-table RLS matrix. The remaining gap is not raw SQL availability; it is breadth of controlled staged persona fixtures and RPC-level mutation coverage. No dynamic result beyond the tests explicitly recorded above is claimed.
+Transactional SQL impersonation is available and has now been used for both the legacy direct-table RLS matrix and the bounded patient/physiotherapist RPC persona-isolation matrix above. The remaining gap is breadth across the other feature-specific RPC families plus browser/runtime acceptance; it is no longer a lack of controlled SQL impersonation capability.
 
 ## Deferred / external activation pending
 
 The following are explicitly not represented as completed by this lock:
 
-- remaining controlled multi-persona RPC-level staging regression
+- remaining feature-family multi-persona RPC-level staging regression
 - real browser/mobile/PWA/screen-reader regression
 - real SMS/WhatsApp provider activation and delivery
 - payment-provider KYC/secrets/live settlement

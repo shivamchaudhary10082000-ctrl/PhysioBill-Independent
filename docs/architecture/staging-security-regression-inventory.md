@@ -14,18 +14,20 @@ Checkpoint scope: isolated PhysioBill Staging only. This document records read-o
 
 ## Verified staging checkpoint
 
-At the time of this lock, staging migration history ends at `20260831134114 — atomic_home_visit_appointment_reschedule`.
+Current isolated staging migration history ends at `20260901073337 — harden_clinical_linkage_accepted_appointment_only`.
 
-Read-only database probes returned:
+The preceding read-only database probes returned:
 
 - invalid `app_users.role` values outside patient/physio/admin: **0**
 - platform patients with null PAT identifier: **0**
 - physiotherapists with null PHY identifier: **0**
 - PAT/PHY identifier collisions: **0**
 - platform-patient/clinical-chart links whose chart owner differs from the recorded physiotherapist: **0**
-- active chart links in the current staging dataset: **0**
+- active chart links in the inspected staging dataset: **0**
 
-The zero active-link count means this run validates schema/integrity state, not a synthetic linked-patient happy path. No fake clinical linkage was created to manufacture coverage.
+The zero active-link count from that probe means it validated schema/integrity state, not a synthetic linked-patient happy path. No fake clinical linkage was created merely to manufacture coverage.
+
+The accepted-appointment linkage hardening migration was subsequently applied and accepted separately with transactional negative, positive/idempotent and rollback tests, leaving no test-created request/link residue.
 
 ## Sensitive-table RLS / direct-grant snapshot
 
@@ -37,8 +39,21 @@ RPC-only sensitive foundations additionally deny direct authenticated SELECT whe
 - `patient_credit_ledger_entries`
 - `physiotherapist_payment_destinations`
 - `platform_patient_clinical_chart_links`
+- `invoice_credit_applications`
+- `invoice_credit_application_reversals`
+- `professional_reimbursement_documents`
+- `telephysiotherapy_sessions`
+- communication preference/event/delivery-transition tables
 
 Legacy therapist-owned clinical/financial tables (`patients`, `visits`, `clinical_records`, `invoices`, `payments`) remain authenticated-readable only behind their existing ownership RLS policies. An authenticated table grant is therefore not evidence of cross-tenant access; ownership policy remains the database authority and must be regression-tested with real staged personas before production freeze.
+
+## SECURITY DEFINER review state
+
+The current Supabase Security Advisor still reports generic review warnings for intentional anonymous and authenticated `SECURITY DEFINER` RPCs. The retired legacy `request_my_clinical_chart_link(uuid)` no longer appears as an authenticated executable warning after the accepted-appointment hardening migration.
+
+Financial source review confirms that credit-ledger, invoice-credit, therapist payment-destination and reimbursement-document RPCs are database self-authorizing: therapist mutations resolve `private.current_physio_id()` and re-check target ownership, patient credit reads resolve the patient persona and active chart linkage, sensitive tables deny direct client access, and public reimbursement verification exposes no patient or clinical payload. These generic advisor warnings are therefore not being silenced through broad grant revocation.
+
+This classification is source-level evidence only. Dynamic cross-persona/cross-owner staging calls remain required.
 
 ## Required pre-production regression
 
@@ -55,10 +70,15 @@ Before a production-candidate freeze, run staged multi-persona tests proving:
 9. Offline/PWA behavior cannot surface cached authenticated clinical or financial responses or report offline mutations as successful.
 10. Locale changes alter presentation only and never database enums, identifiers, ownership, authorization or monetary values.
 
+## Current execution limitation
+
+The automation tool boundary can inspect the staging project, migration ledger and security advisor, but raw transactional SQL execution for the multi-persona matrix is currently blocked. No dynamic cross-persona result is therefore being claimed in this checkpoint. The correct response is to preserve the source-level audit and continue independent hardening rather than weakening tests or creating permanent fake fixtures.
+
 ## Deferred / external activation pending
 
 The following are explicitly not represented as completed by this lock:
 
+- controlled multi-persona dynamic staging regression where execution is currently unavailable
 - real browser/mobile/PWA/screen-reader regression
 - real SMS/WhatsApp provider activation and delivery
 - payment-provider KYC/secrets/live settlement

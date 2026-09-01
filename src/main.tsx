@@ -6,6 +6,42 @@ import { PublicRouteBoundary } from '@/pages/PublicRouteBoundary';
 
 import './index.css';
 
+const LEGACY_SENSITIVE_STORAGE_KEYS = new Set([
+  'physiobill-demo-session',
+]);
+
+const LEGACY_SENSITIVE_STORAGE_PREFIXES = [
+  'physiobill-profile-',
+  'physiobill-patients-',
+  'physiobill-visits-',
+  'physiobill-invoices-',
+] as const;
+
+function clearLegacySensitiveLocalStorage() {
+  try {
+    const keysToRemove: string[] = [];
+
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key) continue;
+
+      if (
+        LEGACY_SENSITIVE_STORAGE_KEYS.has(key) ||
+        LEGACY_SENSITIVE_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts. The app
+    // must continue without weakening the Supabase-backed authorization path.
+  }
+}
+
+clearLegacySensitiveLocalStorage();
+
 function PatientDirectorySearchClear() {
   useEffect(() => {
     const root = document.getElementById('root');

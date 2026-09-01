@@ -1,7 +1,7 @@
-const CACHE_NAME = 'physiobill-static-v2';
+const CACHE_NAME = 'physiobill-static-v3';
 const CACHE_PREFIX = 'physiobill-static-';
 const INSTALL_ASSETS = ['/offline.html', '/favicon.svg', '/manifest.webmanifest'];
-const STATIC_PATHS = new Set(['/offline.html', '/favicon.svg', '/manifest.webmanifest']);
+const STATIC_PATHS = new Set(INSTALL_ASSETS);
 const CACHEABLE_BUILD_DESTINATIONS = new Set(['script', 'style', 'font', 'image']);
 
 function responseAllowsStaticCaching(response) {
@@ -14,8 +14,35 @@ function responseAllowsStaticCaching(response) {
   return true;
 }
 
+function isApprovedStaticRequest(request, url) {
+  if (request.method !== 'GET') return false;
+  if (url.origin !== self.location.origin) return false;
+  if (request.headers.has('authorization')) return false;
+
+  if (STATIC_PATHS.has(url.pathname)) return true;
+
+  return (
+    url.pathname.startsWith('/assets/') &&
+    CACHEABLE_BUILD_DESTINATIONS.has(request.destination)
+  );
+}
+
+async function cacheInstallAssets() {
+  const cache = await caches.open(CACHE_NAME);
+
+  await Promise.all(
+    INSTALL_ASSETS.map(async (assetPath) => {
+      const request = new Request(assetPath, { cache: 'reload' });
+      const response = await fetch(request);
+
+      if (!responseAllowsStaticCaching(response)) return;
+      await cache.put(request, response.clone());
+    }),
+  );
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(INSTALL_ASSETS)));
+  event.waitUntil(cacheInstallAssets());
 });
 
 self.addEventListener('activate', (event) => {
@@ -50,13 +77,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const isBuildAsset =
-    url.pathname.startsWith('/assets/') &&
-    CACHEABLE_BUILD_DESTINATIONS.has(request.destination);
-  const isExplicitStatic = STATIC_PATHS.has(url.pathname);
-  if (!isBuildAsset && !isExplicitStatic) return;
-
-  if (request.headers.has('authorization')) return;
+  if (!isApprovedStaticRequest(request, url)) return;
 
   event.respondWith(
     caches.match(request).then(async (cached) => {

@@ -4,15 +4,37 @@ import {
   SUPPORTED_LOCALES,
   loadPreferredLocale,
   normalizeLocale,
-  savePreferredLocale,
   type SupportedLocale,
 } from '@/lib/locale';
+import { getSupabaseClient } from '@/lib/supabase';
 
 const localeLabels: Record<SupportedLocale, string> = {
   'en-IN': 'English',
   'hi-IN': 'हिंदी',
   'gu-IN': 'ગુજરાતી',
 };
+
+async function saveCurrentUserPreferredLocale(locale: SupportedLocale): Promise<SupportedLocale> {
+  const normalized = normalizeLocale(locale);
+  const supabase = getSupabaseClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) throw userError;
+  if (!user) throw new Error('An authenticated session is required to save language preference.');
+
+  const { data, error } = await supabase
+    .from('app_users')
+    .update({ preferred_locale: normalized })
+    .eq('id', user.id)
+    .select('preferred_locale')
+    .single();
+
+  if (error) throw error;
+  return normalizeLocale(data?.preferred_locale);
+}
 
 export function LocalePreferenceControl({ className = '' }: { className?: string }) {
   const [locale, setLocale] = useState<SupportedLocale>(DEFAULT_LOCALE);
@@ -56,7 +78,7 @@ export function LocalePreferenceControl({ className = '' }: { className?: string
     setError(null);
 
     try {
-      const saved = await savePreferredLocale(nextLocale);
+      const saved = await saveCurrentUserPreferredLocale(nextLocale);
       setLocale(saved);
       document.documentElement.lang = saved;
       window.dispatchEvent(new CustomEvent<SupportedLocale>('physiobill:locale-changed', { detail: saved }));

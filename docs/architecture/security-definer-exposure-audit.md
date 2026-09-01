@@ -37,6 +37,43 @@ The production-candidate hardening migration `20260901073000_harden_clinical_lin
 
 At migration time isolated staging contained zero pending and zero historical linkage requests with null appointment provenance, so retiring the legacy entry point did not strand staging workflow state.
 
+## Financial authorization sub-audit
+
+A follow-up production-candidate review classified the currently exposed credit-ledger, invoice-credit, therapist payment-destination, and reimbursement-document RPCs. No grant reduction or schema change is justified from source inspection alone.
+
+### Therapist credit ledger
+
+- `record_patient_credit_ledger_entry(...)` resolves the caller through `private.current_physio_id()` and requires the target clinical chart to be owned by that physiotherapist before any entry is recorded.
+- The ledger is append-only at table level, direct `public`/`anon`/`authenticated` table access is revoked, and balance mutations are serialized with an advisory transaction lock scoped to `(physio_id, patient_id)`.
+- `list_patient_credit_ledger(uuid)` repeats the therapist-owned chart check and filters ledger rows by both therapist and patient identifiers.
+- `list_my_credit_summary()` is the patient read boundary: it resolves only an `app_users.role = 'patient'` platform patient and returns entries only through that platform patient's active, non-revoked chart links. PAT identity therefore does not become direct chart ownership authority.
+
+### Invoice credit application
+
+- `apply_patient_credit_to_invoice(uuid,numeric)` resolves the current physiotherapist, locks and requires an invoice owned by that physiotherapist, requires a finalized invoice and a therapist-owned patient chart, and serializes the patient credit balance before applying credit.
+- The application and ledger records are append-only; invoice settlement reconciliation remains database-controlled.
+- `list_invoice_credit_applications(uuid)` first proves invoice ownership and then filters by the same therapist identifier.
+
+### Therapist payment destinations
+
+- Payment-destination tables deny direct client-role access.
+- List/save/disable RPCs resolve `private.current_physio_id()` and never accept a caller-supplied therapist identifier.
+- Updates and disables constrain both destination ID and the resolved therapist owner, and per-therapist advisory locking protects the single-default invariant.
+- Provider destinations cannot be activated through the manual destination RPCs; provider KYC, secrets and settlement activation remain external/manual gates.
+
+### Professional reimbursement documents
+
+- Issuance resolves the current physiotherapist and accepts an invoice only through a finalized issuance snapshot owned by that same physiotherapist.
+- Issued reimbursement documents are immutable and direct client table access is revoked.
+- Therapist document listing is owner-filtered.
+- Anonymous verification is intentionally token-based and returns bounded invoice/professional verification facts only; it does not return patient identifiers or clinical content.
+
+### Decision
+
+The generic Supabase `authenticated_security_definer_function_executable` warnings for these functions are not, by themselves, authorization defects. Replacing these self-authorizing database RPCs with frontend filtering would weaken the Security Constitution. Any future revocation must be supported by a concrete bypass or by a replacement database-authoritative path.
+
+This source audit is not a substitute for the required dynamic multi-persona staging regression. Cross-owner and cross-persona calls still require execution with controlled staging identities before production-candidate freeze.
+
 ## Grant decision
 
 No broad EXECUTE revocation is appropriate.
@@ -47,7 +84,7 @@ Any future grant reduction must be function-specific and must first prove an equ
 
 ## Acceptance evidence
 
-Staging acceptance for the hardening migration requires all of the following:
+Staging acceptance for the clinical-linkage hardening migration requires all of the following:
 
 - legacy linkage-request RPC: no EXECUTE for `PUBLIC`, `anon`, `authenticated`, or `service_role`;
 - existing-chart acceptance RPC: EXECUTE only for `authenticated` among exposed client roles;
@@ -56,8 +93,11 @@ Staging acceptance for the hardening migration requires all of the following:
 - rollback test: temporarily restoring the legacy authenticated grant inside a transaction is fully reversed by rollback;
 - no test-created linkage/request state remains after rollback.
 
+The financial sub-audit above is source-level acceptance only. Dynamic patient-A/patient-B and physiotherapist-A/physiotherapist-B adversarial calls remain required and must not be represented as passed until they are actually executed against controlled staging identities.
+
 ## Deferred items
 
+- Dynamic multi-persona staging fixtures and adversarial caller tests remain pending where controlled identities are not yet available through the current automation tool boundary.
 - Account-level leaked-password protection remains an external/account configuration gate.
 - Provider activation, secrets, webhooks, payment KYC, telehealth activation, Cloudflare settings, and production promotion remain external gates.
 - Browser acceptance remains independent of this database audit.

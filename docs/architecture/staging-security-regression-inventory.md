@@ -114,24 +114,47 @@ Post-migration transactional acceptance passed:
 
 This slice therefore includes a real forward migration, rollback-safety check, owner/cross-owner/persona security tests and idempotency/concurrency-boundary verification rather than documentation-only progress.
 
+## Appointment and accepted-clinical-onboarding regression
+
+A bounded transactional matrix was executed against the appointment request and accepted-appointment clinical-onboarding boundaries.
+
+Appointment/persona isolation passed:
+
+- Patient A attempting `request_clinical_link_from_accepted_appointment()` against Patient B's accepted appointment was rejected with SQLSTATE `P0002`; the appointment lookup remained scoped to the authenticated platform patient.
+- A temporary Patient B appointment request was inserted only inside a rollback transaction. Patient A attempting `cancel_my_appointment_request()` against it was rejected with SQLSTATE `P0002`.
+- A physiotherapist who did not own the temporary request attempting `respond_to_appointment_request()` was rejected with SQLSTATE `P0002`.
+- Patient B attempting the professional `respond_to_appointment_request()` mutation was rejected with SQLSTATE `42501`.
+- The correct target physiotherapist could reject the temporary request successfully, proving the positive owner path remained operational.
+
+Accepted-appointment onboarding and chart ownership passed:
+
+- Patient B could create an explicit pending clinical-linkage request from Patient B's currently accepted appointment.
+- A non-target physiotherapist attempting `create_and_accept_clinical_chart_link_request()` against that request was rejected with SQLSTATE `42501`.
+- The target physiotherapist attempting `accept_clinical_chart_link_request()` with a clinical chart owned by another physiotherapist was rejected with SQLSTATE `42501`.
+- The target verified physiotherapist could successfully execute `create_and_accept_clinical_chart_link_request()` against the same pending request, creating a therapist-owned chart and active link only inside the rollback transaction.
+
+This proves dynamically that the accepted appointment is provenance for an explicit patient linkage request, not clinical authority by itself; the request remains target-therapist-bound; and an existing chart owned by another therapist cannot be attached. PAT identity remained distinct from the therapist-owned chart throughout.
+
+Both appointment and onboarding fixture transactions were rolled back. Post-test checks returned **0** temporary appointment residue and **0** synthetic onboarding-chart residue. No authorization defect was demonstrated, so no database migration was created or applied for this regression-only checkpoint.
+
 ## SECURITY DEFINER review state
 
 The current Supabase Security Advisor still reports generic review warnings for intentional anonymous and authenticated `SECURITY DEFINER` RPCs. The retired legacy `request_my_clinical_chart_link(uuid)` no longer appears as an authenticated executable warning after the accepted-appointment hardening migration.
 
 Financial source review confirms that credit-ledger, invoice-credit, therapist payment-destination and reimbursement-document RPCs are database self-authorizing: therapist mutations resolve `private.current_physio_id()` and re-check target ownership, patient credit reads resolve the patient persona and active chart linkage, sensitive tables deny direct client access, and public reimbursement verification exposes no patient or clinical payload. The reimbursement issuance positive path is now also dynamically accepted after the ambiguity fix. These generic advisor warnings are therefore not being silenced through broad grant revocation.
 
-Dynamic direct-table and bounded RPC persona-isolation evidence now supplement the prior source-level review. Remaining RPC-level coverage should focus on appointment/onboarding, telephysiotherapy, service-location, communications and analytics boundaries rather than repeating the credit/clinical/payment-destination/reimbursement cases recorded above.
+Dynamic direct-table and bounded RPC persona-isolation evidence now supplement the prior source-level review. Remaining RPC-level coverage should focus on telephysiotherapy, service-location, communications and analytics boundaries rather than repeating the clinical/credit/appointment/onboarding/payment-destination/reimbursement cases recorded above.
 
 ## Required pre-production regression
 
 Before a production-candidate freeze, complete staged multi-persona tests proving:
 
 1. Patient A cannot read Patient B clinical or financial data through bounded patient RPCs. **Bounded clinical/credit/financial self-read matrix passed at this checkpoint; expand only if new patient read surfaces are added.**
-2. Physiotherapist A cannot read or mutate Physiotherapist B patients, visits, clinical records, invoices, payments, availability, service areas, analytics or payment destinations. **Legacy direct-table isolation, bounded credit/invoice-credit RPC ownership checks and payment-destination cross-owner rejection passed; availability/service-area/analytics RPC breadth remains.**
-3. A patient account cannot enter physiotherapist workspace routes or execute physiotherapist-only mutations, and vice versa. **Database RPC persona rejection is partially proven; browser route enforcement remains deferred.**
+2. Physiotherapist A cannot read or mutate Physiotherapist B patients, visits, clinical records, invoices, payments, availability, service areas, analytics or payment destinations. **Legacy direct-table isolation, bounded credit/invoice-credit RPC ownership checks, appointment-response ownership, onboarding target ownership and payment-destination cross-owner rejection passed; availability/service-area/analytics RPC breadth remains.**
+3. A patient account cannot enter physiotherapist workspace routes or execute physiotherapist-only mutations, and vice versa. **Database RPC persona rejection now includes financial mutations and appointment response; browser route enforcement remains deferred.**
 4. PAT and PHY identifiers cannot be reassigned or mutated.
 5. Linkage creation/revocation does not independently expose clinical data.
-6. Accepted-appointment onboarding cannot attach to a chart owned by another physiotherapist.
+6. Accepted-appointment onboarding cannot attach to a chart owned by another physiotherapist. **Passed dynamically: target therapist could not attach a foreign-owned chart, while legitimate target-therapist new-chart onboarding succeeded transactionally.**
 7. Home-visit location evidence remains coarse immutable scheduling evidence and cannot become exact-location/attendance authority.
 8. Credit ledger, payment-destination and reimbursement-document boundaries reject unauthorized callers. **Bounded dynamic coverage for all three now passes.**
 9. Offline/PWA behavior cannot surface cached authenticated clinical or financial responses or report offline mutations as successful.
@@ -139,7 +162,7 @@ Before a production-candidate freeze, complete staged multi-persona tests provin
 
 ## Current execution state
 
-Transactional SQL impersonation is available and has now been used for the legacy direct-table RLS matrix, bounded patient/physiotherapist RPC persona-isolation, therapist-owned payment-destination mutations and reimbursement issuance/verification. The remaining gap is breadth across appointment/onboarding, telephysiotherapy, service-location, communications and analytics plus browser/runtime acceptance; it is no longer a lack of controlled SQL impersonation capability.
+Transactional SQL impersonation is available and has now been used for the legacy direct-table RLS matrix, bounded patient/physiotherapist RPC persona-isolation, appointment/onboarding ownership and persona isolation, therapist-owned payment-destination mutations and reimbursement issuance/verification. The remaining gap is breadth across telephysiotherapy, service-location, communications and analytics plus browser/runtime acceptance; it is no longer a lack of controlled SQL impersonation capability.
 
 ## Deferred / external activation pending
 

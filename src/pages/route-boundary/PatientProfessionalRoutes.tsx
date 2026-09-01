@@ -30,9 +30,9 @@ export function ProfessionalSignInRoute() {
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (auth.loading || !auth.user || auth.passwordRecovery || !auth.role) return;
+    if (auth.loading || auth.error || !auth.user || auth.passwordRecovery || !auth.role) return;
     window.location.replace(auth.role === 'patient' ? '/patient' : '/app/dashboard');
-  }, [auth.loading, auth.passwordRecovery, auth.role, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.passwordRecovery, auth.role, auth.user?.id]);
 
   if (!auth.configured) return <App />;
   if (auth.loading) return <RouteLoading message="Restoring secure session…" />;
@@ -47,10 +47,10 @@ export function PatientSignInRoute() {
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (!auth.loading && auth.user && auth.role === 'patient') {
+    if (!auth.loading && !auth.error && auth.user && auth.role === 'patient') {
       window.location.replace('/patient');
     }
-  }, [auth.loading, auth.role, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.role, auth.user?.id]);
 
   if (!auth.configured) return <NotFoundPage />;
   if (auth.loading) return <RouteLoading message="Restoring secure patient session…" />;
@@ -74,14 +74,15 @@ export function PatientGatewayRoute() {
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (!auth.loading && !auth.user) {
+    if (!auth.loading && !auth.error && !auth.user) {
       window.location.replace('/patient/sign-in?returnTo=%2Fpatient');
     }
-  }, [auth.loading, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.user?.id]);
 
   if (!auth.configured) return <NotFoundPage />;
-  if (auth.loading || !auth.user) return <RouteLoading message="Checking patient session…" />;
+  if (auth.loading) return <RouteLoading message="Checking patient session…" />;
   if (auth.error) return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message="Opening patient sign-in…" />;
   if (auth.role !== 'patient') {
     return (
       <PersonaDeniedPage
@@ -117,14 +118,15 @@ function PatientPersonaGate({ children, returnToPath, loadingMessage, deniedTitl
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (!auth.loading && !auth.user) {
+    if (!auth.loading && !auth.error && !auth.user) {
       window.location.replace(`/patient/sign-in?returnTo=${encodeURIComponent(returnToPath)}`);
     }
-  }, [auth.loading, auth.user?.id, returnToPath]);
+  }, [auth.error, auth.loading, auth.user?.id, returnToPath]);
 
   if (!auth.configured) return <NotFoundPage />;
-  if (auth.loading || !auth.user) return <RouteLoading message={loadingMessage} />;
+  if (auth.loading) return <RouteLoading message={loadingMessage} />;
   if (auth.error) return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message="Opening patient sign-in…" />;
   if (auth.role !== 'patient') {
     return (
       <PersonaDeniedPage
@@ -209,14 +211,15 @@ export function ProfessionalWorkspaceRoute() {
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (!auth.loading && !auth.user) {
+    if (!auth.loading && !auth.error && !auth.user) {
       window.location.replace('/professional/sign-in');
     }
-  }, [auth.loading, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.user?.id]);
 
   if (!auth.configured) return <App />;
-  if (auth.loading || !auth.user) return <RouteLoading message="Checking professional workspace authority…" />;
+  if (auth.loading) return <RouteLoading message="Checking professional workspace authority…" />;
   if (auth.error) return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message="Opening professional sign-in…" />;
   if (auth.passwordRecovery) {
     window.location.replace(PASSWORD_RECOVERY_PATH);
     return <RouteLoading message="Opening password recovery…" />;
@@ -255,14 +258,15 @@ function ProfessionalPersonaGate({ children, deniedTitle }: { children: ReactNod
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (!auth.loading && !auth.user) {
+    if (!auth.loading && !auth.error && !auth.user) {
       window.location.replace('/professional/sign-in');
     }
-  }, [auth.loading, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.user?.id]);
 
   if (!auth.configured || auth.passwordRecovery) return <NotFoundPage />;
-  if (auth.loading || !auth.user) return <RouteLoading message="Restoring secure session…" />;
+  if (auth.loading) return <RouteLoading message="Restoring secure session…" />;
   if (auth.error) return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message="Opening professional sign-in…" />;
   if (auth.role !== 'physio') {
     return (
       <PersonaDeniedPage

@@ -25,22 +25,23 @@ export function TelephysiotherapyRoute({ persona }: { persona: 'patient' | 'phys
   const signInPath = persona === 'patient' ? '/patient/sign-in?returnTo=%2Fpatient%2Ftelephysiotherapy' : '/professional/sign-in';
 
   useEffect(() => {
-    if (!auth.loading && !auth.user) window.location.replace(signInPath);
-  }, [auth.loading, auth.user?.id, signInPath]);
+    if (!auth.loading && !auth.error && !auth.user) window.location.replace(signInPath);
+  }, [auth.error, auth.loading, auth.user?.id, signInPath]);
 
   useEffect(() => {
     let active = true;
-    if (!auth.loading && auth.user) {
+    if (!auth.loading && !auth.error && auth.user) {
       void loadTelephysiotherapyLocale().then((resolved) => {
         if (active) setLocale(resolved);
       });
     }
     return () => { active = false; };
-  }, [auth.loading, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.user?.id]);
 
   if (!auth.configured) return <NotFoundPage />;
-  if (auth.loading || !auth.user) return <RouteLoading message={copy.checkingAuthority} />;
+  if (auth.loading) return <RouteLoading message={copy.checkingAuthority} />;
   if (auth.error) return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message={copy.checkingAuthority} />;
   if (auth.passwordRecovery) return <NotFoundPage />;
   if (auth.role !== persona) {
     return (

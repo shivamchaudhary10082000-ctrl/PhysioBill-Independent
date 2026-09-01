@@ -16,10 +16,10 @@ export function AdminSignInRoute() {
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (auth.user && auth.role === 'physio' && !auth.passwordRecovery) {
+    if (!auth.error && auth.user && auth.role === 'physio' && !auth.passwordRecovery) {
       window.location.replace('/admin/verifications');
     }
-  }, [auth.passwordRecovery, auth.role, auth.user?.id]);
+  }, [auth.error, auth.passwordRecovery, auth.role, auth.user?.id]);
 
   if (!auth.configured) return <NotFoundPage />;
   if (auth.loading) return <RouteLoading message="Restoring secure Admin session…" />;
@@ -42,14 +42,15 @@ export function AdminVerificationRoute({ requestId }: { requestId?: string }) {
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (!auth.loading && !auth.user) {
+    if (!auth.loading && !auth.error && !auth.user) {
       window.location.replace('/admin/sign-in');
     }
-  }, [auth.loading, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.user?.id]);
 
   if (!auth.configured || auth.passwordRecovery) return <NotFoundPage />;
-  if (auth.loading || !auth.user) return <RouteLoading message="Checking reviewer authority…" />;
+  if (auth.loading) return <RouteLoading message="Checking reviewer authority…" />;
   if (auth.error) return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message="Opening Admin sign-in…" />;
   if (auth.role !== 'physio') {
     return (
       <PersonaDeniedPage

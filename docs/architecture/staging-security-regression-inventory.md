@@ -1,6 +1,6 @@
 # Staging Security Regression Inventory
 
-Checkpoint scope: isolated PhysioBill Staging only. This document records read-only verification results and release invariants; it does not grant authority or replace database enforcement.
+Checkpoint scope: isolated PhysioBill Staging only. This document records verification results and release invariants; it does not grant authority or replace database enforcement.
 
 ## Frozen invariants
 
@@ -16,7 +16,7 @@ Checkpoint scope: isolated PhysioBill Staging only. This document records read-o
 
 Current isolated staging migration history ends at `20260901073337 — harden_clinical_linkage_accepted_appointment_only`.
 
-The preceding read-only database probes returned:
+The preceding integrity probes returned:
 
 - invalid `app_users.role` values outside patient/physio/admin: **0**
 - platform patients with null PAT identifier: **0**
@@ -25,9 +25,7 @@ The preceding read-only database probes returned:
 - platform-patient/clinical-chart links whose chart owner differs from the recorded physiotherapist: **0**
 - active chart links in the inspected staging dataset: **0**
 
-The zero active-link count from that probe means it validated schema/integrity state, not a synthetic linked-patient happy path. No fake clinical linkage was created merely to manufacture coverage.
-
-The accepted-appointment linkage hardening migration was subsequently applied and accepted separately with transactional negative, positive/idempotent and rollback tests, leaving no test-created request/link residue.
+The accepted-appointment linkage hardening migration was applied and accepted separately with transactional negative, positive/idempotent and rollback tests, leaving no test-created request/link residue.
 
 ## Sensitive-table RLS / direct-grant snapshot
 
@@ -45,7 +43,18 @@ RPC-only sensitive foundations additionally deny direct authenticated SELECT whe
 - `telephysiotherapy_sessions`
 - communication preference/event/delivery-transition tables
 
-Legacy therapist-owned clinical/financial tables (`patients`, `visits`, `clinical_records`, `invoices`, `payments`) remain authenticated-readable only behind their existing ownership RLS policies. An authenticated table grant is therefore not evidence of cross-tenant access; ownership policy remains the database authority and must be regression-tested with real staged personas before production freeze.
+Legacy therapist-owned clinical/financial tables (`patients`, `visits`, `clinical_records`, `invoices`, `payments`) remain behind authenticated ownership RLS based on `private.owns_physio(physio_id)`.
+
+The bounded direct-table audit at this checkpoint additionally confirmed composite ownership foreign keys for dependent rows and identity triggers that derive or preserve therapist ownership instead of trusting caller-supplied ownership fields.
+
+Transactional impersonation now provides dynamic staging evidence:
+
+- Physiotherapist A could see **1** own patient and **0** Physiotherapist B patients.
+- Physiotherapist A could see **0** Physiotherapist B visits, clinical records, invoices, and payments.
+- A direct UPDATE attempt against Physiotherapist B's patient rows affected **0** rows.
+- A patient-persona authenticated identity could directly see **0** rows across `patients`, `visits`, `clinical_records`, `invoices`, and `payments`.
+
+These tests were transactional and left no residue. Full details are locked in `legacy-direct-table-rls-audit.md`.
 
 ## SECURITY DEFINER review state
 
@@ -53,13 +62,13 @@ The current Supabase Security Advisor still reports generic review warnings for 
 
 Financial source review confirms that credit-ledger, invoice-credit, therapist payment-destination and reimbursement-document RPCs are database self-authorizing: therapist mutations resolve `private.current_physio_id()` and re-check target ownership, patient credit reads resolve the patient persona and active chart linkage, sensitive tables deny direct client access, and public reimbursement verification exposes no patient or clinical payload. These generic advisor warnings are therefore not being silenced through broad grant revocation.
 
-This classification is source-level evidence only. Dynamic cross-persona/cross-owner staging calls remain required.
+Dynamic direct-table evidence now supplements the prior source-level review. RPC-level cross-persona and cross-owner mutation coverage remains incomplete and is still required before production freeze.
 
 ## Required pre-production regression
 
-Before a production-candidate freeze, run staged multi-persona tests proving:
+Before a production-candidate freeze, complete staged multi-persona tests proving:
 
-1. Patient A cannot read Patient B clinical or financial data.
+1. Patient A cannot read Patient B clinical or financial data through bounded patient RPCs.
 2. Physiotherapist A cannot read or mutate Physiotherapist B patients, visits, clinical records, invoices, payments, availability, service areas, analytics or payment destinations.
 3. A patient account cannot enter physiotherapist workspace routes or execute physiotherapist-only mutations, and vice versa.
 4. PAT and PHY identifiers cannot be reassigned or mutated.
@@ -70,15 +79,15 @@ Before a production-candidate freeze, run staged multi-persona tests proving:
 9. Offline/PWA behavior cannot surface cached authenticated clinical or financial responses or report offline mutations as successful.
 10. Locale changes alter presentation only and never database enums, identifiers, ownership, authorization or monetary values.
 
-## Current execution limitation
+## Current execution state
 
-The automation tool boundary can inspect the staging project, migration ledger and security advisor, but raw transactional SQL execution for the multi-persona matrix is currently blocked. No dynamic cross-persona result is therefore being claimed in this checkpoint. The correct response is to preserve the source-level audit and continue independent hardening rather than weakening tests or creating permanent fake fixtures.
+Transactional SQL impersonation is available and has now been used for the legacy direct-table RLS matrix. The remaining gap is not raw SQL availability; it is breadth of controlled staged persona fixtures and RPC-level mutation coverage. No dynamic result beyond the tests explicitly recorded above is claimed.
 
 ## Deferred / external activation pending
 
 The following are explicitly not represented as completed by this lock:
 
-- controlled multi-persona dynamic staging regression where execution is currently unavailable
+- remaining controlled multi-persona RPC-level staging regression
 - real browser/mobile/PWA/screen-reader regression
 - real SMS/WhatsApp provider activation and delivery
 - payment-provider KYC/secrets/live settlement

@@ -14,7 +14,7 @@ Checkpoint scope: isolated PhysioBill Staging only. This document records verifi
 
 ## Verified staging checkpoint
 
-Current isolated staging migration history ends at `20260901073337 — harden_clinical_linkage_accepted_appointment_only`.
+Current isolated staging migration history ends at `20260901113439 — fix_reimbursement_document_conflict_target`.
 
 The preceding integrity probes returned:
 
@@ -84,34 +84,62 @@ Cross-persona rejection passed:
 
 Every temporary link fixture was created inside a transaction followed by `ROLLBACK`; every mutation probe either failed before mutation or ran in a rollback transaction. No test-created clinical link, credit entry, invoice application, or other financial row was intentionally persisted.
 
-No authorization defect was demonstrated by this bounded RPC matrix. Therefore no database migration was created or applied merely to manufacture a change. Migration, rollback-migration and migration-concurrency testing are not applicable to this regression-only checkpoint.
+No authorization defect was demonstrated by this bounded RPC matrix. Therefore no database migration was created or applied merely to manufacture a change. Migration, rollback-migration and migration-concurrency testing are not applicable to that regression-only checkpoint.
+
+## Payment-destination and reimbursement regression
+
+A subsequent bounded financial RPC matrix covered therapist-owned payment destinations and professional reimbursement documents.
+
+Payment-destination ownership/persona isolation passed transactionally:
+
+- Physiotherapist A created a temporary UPI destination through `save_my_manual_payment_destination()`.
+- Physiotherapist B could neither update that destination through `save_my_manual_payment_destination()` nor disable it through `disable_my_payment_destination()`; both rejected cross-owner access with SQLSTATE `42501`.
+- A patient persona could neither create a professional payment destination nor list professional payment destinations; both rejected the caller with SQLSTATE `42501`.
+- The transaction was rolled back and a post-test residue query returned **0** matching temporary destination rows.
+
+The first reimbursement positive-path probe exposed a concrete staging defect: `issue_my_reimbursement_document(uuid)` is a table-returning PL/pgSQL function with an output parameter named `invoice_id`, so its original `ON CONFLICT (invoice_id) DO NOTHING` target was ambiguous and raised PostgreSQL error `42702` for legitimate owner issuance.
+
+The committed forward migration `20260901113000_fix_reimbursement_document_conflict_target.sql` changes only that conflict target to the existing unique constraint `professional_reimbursement_documents_invoice_id_key`. Staging recorded the exact applied migration as `20260901113439 — fix_reimbursement_document_conflict_target`. Authorization, therapist ownership resolution, verified-professional requirements and advisory transaction locking remain unchanged.
+
+Post-migration transactional acceptance passed:
+
+- Physiotherapist B attempting to issue a reimbursement document for Physiotherapist A's snapshot was rejected with SQLSTATE `42501`.
+- Physiotherapist A successfully issued the document.
+- A second owner issuance for the same invoice returned the same verification token, proving idempotent single-document behavior under the existing advisory-lock + unique-constraint design.
+- `list_my_reimbursement_documents()` returned exactly that owner document.
+- A patient persona attempting professional reimbursement issuance was rejected with SQLSTATE `42501`.
+- Anonymous `verify_reimbursement_document()` returned exactly one valid bounded verification result for the generated token and the expected `physiotherapy_reimbursement_statement` type; the public function's declared result contains no patient identifier or clinical payload.
+- The entire fixture transaction was rolled back; post-test snapshot residue = **0** and reimbursement-document residue = **0**.
+- A transactional EXECUTE-grant rollback probe confirmed authenticated execution remained restored after rollback, and the live function definition still contains the fixed named-constraint conflict target.
+
+This slice therefore includes a real forward migration, rollback-safety check, owner/cross-owner/persona security tests and idempotency/concurrency-boundary verification rather than documentation-only progress.
 
 ## SECURITY DEFINER review state
 
 The current Supabase Security Advisor still reports generic review warnings for intentional anonymous and authenticated `SECURITY DEFINER` RPCs. The retired legacy `request_my_clinical_chart_link(uuid)` no longer appears as an authenticated executable warning after the accepted-appointment hardening migration.
 
-Financial source review confirms that credit-ledger, invoice-credit, therapist payment-destination and reimbursement-document RPCs are database self-authorizing: therapist mutations resolve `private.current_physio_id()` and re-check target ownership, patient credit reads resolve the patient persona and active chart linkage, sensitive tables deny direct client access, and public reimbursement verification exposes no patient or clinical payload. These generic advisor warnings are therefore not being silenced through broad grant revocation.
+Financial source review confirms that credit-ledger, invoice-credit, therapist payment-destination and reimbursement-document RPCs are database self-authorizing: therapist mutations resolve `private.current_physio_id()` and re-check target ownership, patient credit reads resolve the patient persona and active chart linkage, sensitive tables deny direct client access, and public reimbursement verification exposes no patient or clinical payload. The reimbursement issuance positive path is now also dynamically accepted after the ambiguity fix. These generic advisor warnings are therefore not being silenced through broad grant revocation.
 
-Dynamic direct-table and bounded RPC persona-isolation evidence now supplement the prior source-level review. Remaining RPC-level coverage should focus on appointment/onboarding, payment-destination, reimbursement-document, telephysiotherapy, service-location, communications and analytics boundaries rather than repeating the credit/clinical self-read cases recorded above.
+Dynamic direct-table and bounded RPC persona-isolation evidence now supplement the prior source-level review. Remaining RPC-level coverage should focus on appointment/onboarding, telephysiotherapy, service-location, communications and analytics boundaries rather than repeating the credit/clinical/payment-destination/reimbursement cases recorded above.
 
 ## Required pre-production regression
 
 Before a production-candidate freeze, complete staged multi-persona tests proving:
 
 1. Patient A cannot read Patient B clinical or financial data through bounded patient RPCs. **Bounded clinical/credit/financial self-read matrix passed at this checkpoint; expand only if new patient read surfaces are added.**
-2. Physiotherapist A cannot read or mutate Physiotherapist B patients, visits, clinical records, invoices, payments, availability, service areas, analytics or payment destinations. **Legacy direct-table isolation and bounded credit/invoice-credit RPC ownership checks passed; remaining professional feature RPCs still require coverage.**
+2. Physiotherapist A cannot read or mutate Physiotherapist B patients, visits, clinical records, invoices, payments, availability, service areas, analytics or payment destinations. **Legacy direct-table isolation, bounded credit/invoice-credit RPC ownership checks and payment-destination cross-owner rejection passed; availability/service-area/analytics RPC breadth remains.**
 3. A patient account cannot enter physiotherapist workspace routes or execute physiotherapist-only mutations, and vice versa. **Database RPC persona rejection is partially proven; browser route enforcement remains deferred.**
 4. PAT and PHY identifiers cannot be reassigned or mutated.
 5. Linkage creation/revocation does not independently expose clinical data.
 6. Accepted-appointment onboarding cannot attach to a chart owned by another physiotherapist.
 7. Home-visit location evidence remains coarse immutable scheduling evidence and cannot become exact-location/attendance authority.
-8. Credit ledger, payment-destination and reimbursement-document boundaries reject unauthorized callers. **Credit-ledger and cross-owner invoice-credit rejection passed; payment-destination/reimbursement mutation matrix remains.**
+8. Credit ledger, payment-destination and reimbursement-document boundaries reject unauthorized callers. **Bounded dynamic coverage for all three now passes.**
 9. Offline/PWA behavior cannot surface cached authenticated clinical or financial responses or report offline mutations as successful.
 10. Locale changes alter presentation only and never database enums, identifiers, ownership, authorization or monetary values.
 
 ## Current execution state
 
-Transactional SQL impersonation is available and has now been used for both the legacy direct-table RLS matrix and the bounded patient/physiotherapist RPC persona-isolation matrix above. The remaining gap is breadth across the other feature-specific RPC families plus browser/runtime acceptance; it is no longer a lack of controlled SQL impersonation capability.
+Transactional SQL impersonation is available and has now been used for the legacy direct-table RLS matrix, bounded patient/physiotherapist RPC persona-isolation, therapist-owned payment-destination mutations and reimbursement issuance/verification. The remaining gap is breadth across appointment/onboarding, telephysiotherapy, service-location, communications and analytics plus browser/runtime acceptance; it is no longer a lack of controlled SQL impersonation capability.
 
 ## Deferred / external activation pending
 

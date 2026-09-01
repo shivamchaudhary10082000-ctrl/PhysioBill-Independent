@@ -1,17 +1,22 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MapPin, Search } from 'lucide-react';
 import {
-  THERAPIST_SERVICE_MODE_LABELS,
   THERAPIST_SERVICE_MODES,
   normalizeTherapistServiceMode,
   type TherapistServiceMode,
 } from '@/lib/therapist-discovery';
+import { DEFAULT_LOCALE, type SupportedLocale } from '@/lib/locale';
+import {
+  detectPublicTherapistSearchLocale,
+  publicTherapistSearchCopy,
+} from '@/lib/public-therapist-search-locale';
 
 type PublicTherapistSearchProps = {
   initialCity?: string;
   initialLocality?: string;
   initialMode?: TherapistServiceMode;
   compact?: boolean;
+  locale?: SupportedLocale;
 };
 
 export function buildTherapistSearchUrl({
@@ -35,6 +40,7 @@ export function PublicTherapistSearch({
   initialLocality = '',
   initialMode = 'home_visit',
   compact = false,
+  locale,
 }: PublicTherapistSearchProps) {
   const [city, setCity] = useState(initialCity);
   const [locality, setLocality] = useState(initialLocality);
@@ -42,13 +48,21 @@ export function PublicTherapistSearch({
     normalizeTherapistServiceMode(initialMode),
   );
   const [cityError, setCityError] = useState<string | null>(null);
+  const resolvedLocale = useMemo<SupportedLocale>(() => {
+    if (locale) return locale;
+    if (typeof navigator === 'undefined') return DEFAULT_LOCALE;
+    return detectPublicTherapistSearchLocale(
+      navigator.languages?.length ? navigator.languages : [navigator.language],
+    );
+  }, [locale]);
+  const copy = useMemo(() => publicTherapistSearchCopy(resolvedLocale), [resolvedLocale]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedCity = city.trim();
 
     if (!normalizedCity) {
-      setCityError('Enter a city to continue.');
+      setCityError(copy.cityRequired);
       document.getElementById('discovery-city')?.focus();
       return;
     }
@@ -72,7 +86,7 @@ export function PublicTherapistSearch({
       className={`grid gap-3 ${compact ? 'lg:grid-cols-[1.05fr_1fr_1fr_auto]' : 'lg:grid-cols-[1.05fr_1fr_1fr_auto]'}`}
     >
       <label className="block">
-        <span className="mb-2 block text-xs font-semibold text-muted-foreground">Service</span>
+        <span className="mb-2 block text-xs font-semibold text-muted-foreground">{copy.service}</span>
         <select
           id="discovery-service"
           value={mode}
@@ -81,14 +95,14 @@ export function PublicTherapistSearch({
         >
           {THERAPIST_SERVICE_MODES.map((serviceMode) => (
             <option key={serviceMode} value={serviceMode}>
-              {THERAPIST_SERVICE_MODE_LABELS[serviceMode]}
+              {copy.serviceModeLabels[serviceMode]}
             </option>
           ))}
         </select>
       </label>
 
       <label className="block">
-        <span className="mb-2 block text-xs font-semibold text-muted-foreground">City</span>
+        <span className="mb-2 block text-xs font-semibold text-muted-foreground">{copy.city}</span>
         <span className="relative block">
           <MapPin
             aria-hidden="true"
@@ -107,7 +121,7 @@ export function PublicTherapistSearch({
             }}
             aria-invalid={Boolean(cityError)}
             aria-describedby={cityError ? 'discovery-city-error' : undefined}
-            placeholder="Surat"
+            placeholder={copy.cityPlaceholder}
             className={`${fieldClass} pl-11`}
           />
         </span>
@@ -120,7 +134,7 @@ export function PublicTherapistSearch({
 
       <label className="block">
         <span className="mb-2 block text-xs font-semibold text-muted-foreground">
-          Area <span className="font-normal text-muted-foreground/75">(optional)</span>
+          {copy.area} <span className="font-normal text-muted-foreground/75">({copy.optional})</span>
         </span>
         <input
           id="discovery-locality"
@@ -128,7 +142,7 @@ export function PublicTherapistSearch({
           autoComplete="address-level3"
           value={locality}
           onChange={(event) => setLocality(event.target.value)}
-          placeholder="Dindoli"
+          placeholder={copy.areaPlaceholder}
           className={fieldClass}
         />
       </label>
@@ -138,7 +152,7 @@ export function PublicTherapistSearch({
           type="submit"
           className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_hsl(var(--primary)/.16)] transition hover:bg-[hsl(var(--primary-hover))] focus:outline-none focus:ring-4 focus:ring-primary/20 lg:min-w-[190px]"
         >
-          <Search size={18} /> Find physiotherapists
+          <Search size={18} /> {copy.findPhysiotherapists}
         </button>
       </div>
     </form>

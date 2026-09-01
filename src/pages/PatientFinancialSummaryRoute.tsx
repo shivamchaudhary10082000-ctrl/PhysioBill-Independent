@@ -10,14 +10,15 @@ export function PatientFinancialSummaryRoute() {
   const auth = useAuthSession();
 
   useEffect(() => {
-    if (!auth.loading && !auth.user) {
+    if (!auth.loading && !auth.error && !auth.user) {
       window.location.replace('/patient/sign-in?returnTo=%2Fpatient%2Ffinancial-summary');
     }
-  }, [auth.loading, auth.user?.id]);
+  }, [auth.error, auth.loading, auth.user?.id]);
 
   if (!auth.configured) return <NotFoundPage />;
-  if (auth.loading || !auth.user) return <RouteLoading message="Checking patient financial access…" />;
+  if (auth.loading) return <RouteLoading message="Checking patient financial access…" />;
   if (auth.error) return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message="Opening patient sign-in…" />;
   if (auth.role !== 'patient') {
     return <PersonaDeniedPage title="Patient financial access is not available to this account." message="A physiotherapist session cannot enter the patient financial surface." primaryHref="/app/dashboard" primaryLabel="Open professional workspace" />;
   }

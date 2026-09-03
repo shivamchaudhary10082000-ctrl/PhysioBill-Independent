@@ -1,3 +1,25 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="52" x2="445" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#05070B"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="142" y1="131" x2="380" y2="381" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8A5B"/>
+      <stop offset="1" stop-color="#FF3C00"/>
+    </linearGradient>
+    <filter id="shadow" x="86" y="91" width="340" height="340" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="20" y="20" width="472" height="472" rx="96" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
+
+  <g filter="url(#shadow)">
+    <path d="M139 374V138H234C286 138 319 165 319 207C319 234 305 253 281 264C313 273 332 296 332 329C332 376 296 401 239 401H139V374ZM188 236H228C255 236 270 225 270 205C270 184 255 174 227 174H188V236ZM188 365H236C267 365 283 353 283 330C283 307 266 295 235 295H188V365Z" fill="white"/>
+    <path d="M302 138H373C409 138 432 159 432 193C432 222 414 242 386 246C417 252 437 275 437 307C437 346 409 374 367 374H302V138ZM348 231H368C382 231 391 220 391 203C391 186 382 176 367 176H348V231ZM348 337H370C387 337 397 325 397 306C397 287 387 276 369 276H348V337Z" fill="url(#accent)"/>
+  </g>
+
+  <circle cx="382" cy="134" r="11" fill="#FF3C00"/>
 </svg>

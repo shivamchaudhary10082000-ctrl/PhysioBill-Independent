@@ -1,4 +1,4 @@
-const CACHE_NAME = 'physiobill-static-v5';
+const CACHE_NAME = 'physiobill-static-v6';
 const CACHE_PREFIX = 'physiobill-static-';
 const INSTALL_ASSETS = ['/offline.html'];
 const STATIC_PATHS = new Set(INSTALL_ASSETS);

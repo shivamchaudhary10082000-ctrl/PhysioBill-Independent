@@ -25,7 +25,7 @@ const copy: Record<SupportedLocale, PublicTherapistSearchCopy> = {
     findPhysiotherapists: 'Find physiotherapists',
     serviceModeLabels: {
       home_visit: 'Home visit',
-      clinic: 'Clinic visit',
+      clinic_visit: 'Clinic visit',
       telephysiotherapy: 'Telephysiotherapy',
     },
   },
@@ -40,7 +40,7 @@ const copy: Record<SupportedLocale, PublicTherapistSearchCopy> = {
     findPhysiotherapists: 'फिजियोथेरेपिस्ट खोजें',
     serviceModeLabels: {
       home_visit: 'होम विज़िट',
-      clinic: 'क्लिनिक विज़िट',
+      clinic_visit: 'क्लिनिक विज़िट',
       telephysiotherapy: 'टेलीफिजियोथेरेपी',
     },
   },
@@ -55,7 +55,7 @@ const copy: Record<SupportedLocale, PublicTherapistSearchCopy> = {
     findPhysiotherapists: 'ફિઝિયોથેરાપિસ્ટ શોધો',
     serviceModeLabels: {
       home_visit: 'હોમ વિઝિટ',
-      clinic: 'ક્લિનિક વિઝિટ',
+      clinic_visit: 'ક્લિનિક વિઝિટ',
       telephysiotherapy: 'ટેલિફિઝિયોથેરાપી',
     },
   },

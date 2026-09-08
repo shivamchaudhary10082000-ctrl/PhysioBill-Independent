@@ -111,7 +111,7 @@ const copy: Record<SupportedLocale, PublicTherapistDiscoveryCopy> = {
     adjustControls: 'You can adjust the same location and service controls above.',
     dismissSearchHelp: 'Dismiss search help',
     professionalSignIn: 'Professional sign in',
-    serviceModeLabels: { home_visit: 'Home visit', clinic: 'Clinic visit', telephysiotherapy: 'Telephysiotherapy' },
+    serviceModeLabels: { home_visit: 'Home visit', clinic_visit: 'Clinic visit', telephysiotherapy: 'Telephysiotherapy' },
   },
   'hi-IN': {
     loadingVerifiedPhysiotherapists: 'सत्यापित फिजियोथेरेपिस्ट लोड हो रहे हैं',
@@ -166,7 +166,7 @@ const copy: Record<SupportedLocale, PublicTherapistDiscoveryCopy> = {
     adjustControls: 'ऊपर वही लोकेशन और सेवा नियंत्रण बदल सकते हैं।',
     dismissSearchHelp: 'खोज सहायता बंद करें',
     professionalSignIn: 'प्रोफेशनल साइन इन',
-    serviceModeLabels: { home_visit: 'होम विज़िट', clinic: 'क्लिनिक विज़िट', telephysiotherapy: 'टेलीफिजियोथेरेपी' },
+    serviceModeLabels: { home_visit: 'होम विज़िट', clinic_visit: 'क्लिनिक विज़िट', telephysiotherapy: 'टेलीफिजियोथेरेपी' },
   },
   'gu-IN': {
     loadingVerifiedPhysiotherapists: 'ચકાસાયેલ ફિઝિયોથેરાપિસ્ટ લોડ થઈ રહ્યા છે',
@@ -221,7 +221,7 @@ const copy: Record<SupportedLocale, PublicTherapistDiscoveryCopy> = {
     adjustControls: 'ઉપરના એ જ લોકેશન અને સેવા નિયંત્રણો બદલી શકો છો.',
     dismissSearchHelp: 'શોધ સહાય બંધ કરો',
     professionalSignIn: 'પ્રોફેશનલ સાઇન ઇન',
-    serviceModeLabels: { home_visit: 'હોમ વિઝિટ', clinic: 'ક્લિનિક વિઝિટ', telephysiotherapy: 'ટેલિફિઝિયોથેરાપી' },
+    serviceModeLabels: { home_visit: 'હોમ વિઝિટ', clinic_visit: 'ક્લિનિક વિઝિટ', telephysiotherapy: 'ટેલિફિઝિયોથેરાપી' },
   },
 };
 

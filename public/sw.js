@@ -1,6 +1,6 @@
-const CACHE_NAME = 'physiobill-static-v3';
+const CACHE_NAME = 'physiobill-static-v4';
 const CACHE_PREFIX = 'physiobill-static-';
-const INSTALL_ASSETS = ['/offline.html', '/favicon.svg', '/manifest.webmanifest'];
+const INSTALL_ASSETS = ['/offline.html'];
 const STATIC_PATHS = new Set(INSTALL_ASSETS);
 const CACHEABLE_BUILD_DESTINATIONS = new Set(['script', 'style', 'font', 'image']);
 

@@ -113,8 +113,15 @@ export async function signInAdmin(
 
 export async function signOutCurrentSession() {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+
+  // Prefer a global sign-out so refresh tokens are invalidated across devices.
+  // If the Auth service is temporarily unreachable, still clear the local
+  // browser session so the user is never trapped in a stale signed-in state.
+  const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+  if (!globalError) return;
+
+  const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+  if (localError) throw globalError;
 }
 
 // Compatibility alias for callers outside this bounded slice.

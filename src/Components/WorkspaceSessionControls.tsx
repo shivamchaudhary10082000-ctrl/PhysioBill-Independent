@@ -30,6 +30,15 @@ function refreshWorkspaceActiveNavigation() {
   });
 }
 
+function postSignOutDestination(path: string) {
+  if (path.startsWith('/patient')) return '/patient/sign-in';
+  if (path.startsWith('/admin')) return '/admin/sign-in';
+  if (path.startsWith('/app') || path.startsWith('/professional')) {
+    return '/professional/sign-in';
+  }
+  return '/';
+}
+
 export function WorkspaceSignOut({
   className = '',
 }: {
@@ -47,9 +56,11 @@ export function WorkspaceSignOut({
   const signOut = async () => {
     setBusy(true);
     setError(null);
+    const destination = postSignOutDestination(window.location.pathname);
+
     try {
       await signOutCurrentSession();
-      window.location.replace('/');
+      window.location.replace(destination);
     } catch {
       setError('Unable to sign out. Please try again.');
       setBusy(false);

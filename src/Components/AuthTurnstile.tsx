@@ -29,9 +29,19 @@ declare global {
 
 let turnstileLoadPromise: Promise<TurnstileApi> | null = null;
 
+function isAuthTurnstileEnabled() {
+  return import.meta.env.VITE_AUTH_CAPTCHA_ENABLED === 'true';
+}
+
 export function getAuthTurnstileSiteKey(): string | null {
+  if (!isAuthTurnstileEnabled()) return null;
+
   const raw = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim();
-  if (!raw) return null;
+  if (!raw) {
+    throw new Error(
+      'VITE_TURNSTILE_SITE_KEY is required when VITE_AUTH_CAPTCHA_ENABLED=true.',
+    );
+  }
   if (!TURNSTILE_SITE_KEY_PATTERN.test(raw)) {
     throw new Error('VITE_TURNSTILE_SITE_KEY is malformed.');
   }

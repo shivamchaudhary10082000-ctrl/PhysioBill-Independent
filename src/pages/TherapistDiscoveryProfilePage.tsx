@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeCheck, CheckCircle2, CircleAlert, Eye, MapPin, Plus, Save, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { THERAPIST_SERVICE_MODES, type TherapistDiscoveryServiceArea, type TherapistServiceMode } from '@/lib/therapist-discovery';
 import {
@@ -39,6 +39,8 @@ export function TherapistDiscoveryProfilePage() {
   const [locale, setLocale] = useState<SupportedLocale>(DEFAULT_LOCALE);
   const [state, setState] = useState<TherapistDiscoveryManagementState | null>(null);
   const [draft, setDraft] = useState<TherapistDiscoveryDraft | null>(null);
+  const draftRef = useRef<TherapistDiscoveryDraft | null>(null);
+  draftRef.current = draft;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -49,6 +51,7 @@ export function TherapistDiscoveryProfilePage() {
     const loaded = await loadMyTherapistDiscoveryManagement();
     setState(loaded);
     setDraft(loaded.draft);
+    return loaded;
   };
 
   useEffect(() => {
@@ -105,16 +108,31 @@ export function TherapistDiscoveryProfilePage() {
   };
 
   const save = async () => {
+    const snapshot = draftRef.current;
+    if (!snapshot) return;
+
     setError(null);
     setNotice(null);
-    if (draft.displayName.length > 120 || draft.headline.length > 200 || draft.bio.length > 2000 || draft.clinicName.length > 160) return setError(msg(locale, 'lengthError'));
-    if (draft.serviceAreas.some((area) => !areaComplete(area))) return setError(msg(locale, 'areaError'));
+    if (snapshot.displayName.length > 120 || snapshot.headline.length > 200 || snapshot.bio.length > 2000 || snapshot.clinicName.length > 160) return setError(msg(locale, 'lengthError'));
+    if (snapshot.serviceAreas.some((area) => !areaComplete(area))) return setError(msg(locale, 'areaError'));
     if (duplicateAreas) return setError(msg(locale, 'duplicateError'));
-    if (draft.isDiscoverable && !listingReady) return setError(msg(locale, 'publishError'));
+    if (snapshot.isDiscoverable && !listingReady) return setError(msg(locale, 'publishError'));
     setSaving(true);
     try {
-      await saveMyTherapistDiscoveryProfile(draft);
-      await reload();
+      await saveMyTherapistDiscoveryProfile(snapshot);
+      const loaded = await reload();
+      const requestedModes = [...snapshot.serviceModes].sort();
+      const persistedModes = [...loaded.draft.serviceModes].sort();
+
+      if (
+        requestedModes.length !== persistedModes.length ||
+        requestedModes.some((mode, index) => mode !== persistedModes[index])
+      ) {
+        setDraft(snapshot);
+        setError(msg(locale, 'saveError'));
+        return;
+      }
+
       setNotice(msg(locale, 'saved'));
     } catch {
       setError(msg(locale, 'saveError'));

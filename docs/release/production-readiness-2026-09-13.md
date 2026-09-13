@@ -1,8 +1,31 @@
 # PhysioBill Production Readiness — 2026-09-13
 
-Status: **STAGING RELEASE CANDIDATE — CODE/SECURITY/LEGAL PREP COMPLETE; FINAL REAL-USER VERIFICATION + EXTERNAL DELIVERY CONFIG REQUIRED BEFORE PRODUCTION PROMOTION**
+Status: **PART 1 PASS — STAGING RELEASE CANDIDATE CODE/SECURITY/LEGAL CLOSEOUT COMPLETE; FINAL REAL-USER VERIFICATION + EXTERNAL DELIVERY CONFIG REQUIRED BEFORE PRODUCTION PROMOTION**
 
 This document freezes the current release posture for `futureweb-production-backend`. It does not authorize a merge to `main` or a production database migration by itself.
+
+## Part 1 final staging closeout — 13 September 2026
+
+The candidate commit containing this closeout is the Part 1 freeze point. The exact immutable SHA is recorded in the final handoff after GitHub accepts the commit and its checks complete; this avoids placing a self-referential pre-commit SHA in the repository.
+
+Fresh final evidence:
+
+- clean dependency installation is now reproducible through the committed `package-lock.json`; all GitHub Node workflows use `npm ci`;
+- the stale Phase 3 workflow defect was reproduced from its GitHub log (`VITE_SUPABASE_URL is required to generate the frontend CSP`) and repaired by providing the staging public build configuration;
+- TypeScript production typecheck: **PASS**;
+- staging-configured Vite production build and CSP generation: **PASS**;
+- production dependency audit at HIGH severity: **PASS — 0 vulnerabilities**;
+- canonical staging CSP names only `nbsvrzypypmmuvlgdpln.supabase.co`; the production Supabase ref is absent from the served JavaScript and CSP;
+- protected `/app/dashboard`, `/patient`, `/admin/verifications` and `/auth/reset-password` responses: **PASS — `private, no-store` plus CSP**;
+- staging indexing protection: **PASS — `noindex, nofollow, noarchive, nosnippet` plus `robots.txt` `Disallow: /`**;
+- MDN HTTP Observatory: **PASS — A+, 135, 12/12 tests**;
+- OWASP ZAP passive baseline on the canonical staging origin: **PASS — 0 FAIL alerts**;
+- the served bundle contains no Meta Pixel, `fbq`, `fbevents.js`, Meta collection endpoint, or Conversions API implementation; its only “Meta Conversions API” phrase is the Privacy Notice stating that no such integration exists;
+- staging migration ledger contains **73** applied migrations and exactly matches the **73** repository migration names, ending at `20260913183222_account_legal_acknowledgement_foundation`;
+- fresh Supabase catalog checks found **20** RPC-only RLS tables, **0** anonymous/authenticated direct CRUD grants on them, **0** invalid persona rows, **0** PAT/PHY dual-persona users, **0** malformed/missing PAT or PHY identifiers, **0** identifier collisions, and **0** invalid legal-acknowledgement rows;
+- the Security Advisor findings are intentional review items rather than a green-zero list: 20 RPC-only `RLS enabled, no policy` INFO notices, four bounded anonymous discovery/availability/reimbursement `SECURITY DEFINER` warnings, 57 authenticated self-authorizing RPC warnings, and one external leaked-password-protection warning. No warning was silenced by weakening or inventing database policy.
+
+No new staging migration was created during this closeout because no new database defect was demonstrated.
 
 ## Release invariants
 
@@ -161,7 +184,7 @@ Production already contains application data. Promotion therefore requires a bac
 1. Freeze the accepted release-candidate commit.
 2. Record production row-count and health baseline.
 3. Obtain a production backup/export checkpoint.
-4. Apply only the 46 missing migration names above in order.
+4. Apply only the 47 missing migration names above in order.
 5. Run production migration-ledger and security-advisor checks.
 6. Verify production persona/ownership smoke probes.
 7. Confirm Cloudflare production environment points to the production Supabase project and production publishable key.

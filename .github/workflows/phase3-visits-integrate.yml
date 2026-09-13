@@ -30,10 +30,13 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Type-check
         run: npm run typecheck
 
       - name: Build
+        env:
+          VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase3-build-placeholder
         run: npm run build

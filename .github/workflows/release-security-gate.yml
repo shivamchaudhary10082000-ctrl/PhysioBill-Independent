@@ -36,7 +36,7 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install --no-fund
+        run: npm ci --no-fund
 
       - name: Type-check
         run: npm run typecheck

@@ -6,6 +6,7 @@ import { PatientClinicalCareRoute } from '@/pages/PatientClinicalCareRoute';
 import { PatientFinancialSummaryRoute } from '@/pages/PatientFinancialSummaryRoute';
 import { ReimbursementVerificationPage } from '@/pages/ReimbursementVerificationPage';
 import { TelephysiotherapyRoute } from '@/pages/TelephysiotherapyRoute';
+import { PrivacyNoticePage, ProfessionalStandardsPage, TermsPage } from '@/pages/LegalPages';
 import { PASSWORD_RECOVERY_PATH } from '@/lib/auth';
 import { NotFoundPage } from '@/pages/route-boundary/SessionBoundaryPages';
 import {
@@ -63,6 +64,9 @@ export function PublicRouteBoundary() {
   const path = window.location.pathname;
 
   if (path === '/') return <PublicLandingPage />;
+  if (path === '/privacy') return <PrivacyNoticePage />;
+  if (path === '/terms') return <TermsPage />;
+  if (path === '/professional-standards') return <ProfessionalStandardsPage />;
   if (path === '/find-physio') return <TherapistDiscoveryPage />;
   if (path.startsWith('/verify/reimbursement/')) {
     const token = path.slice('/verify/reimbursement/'.length);

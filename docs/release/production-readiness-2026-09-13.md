@@ -1,6 +1,6 @@
 # PhysioBill Production Readiness — 2026-09-13
 
-Status: **STAGING RELEASE CANDIDATE — FINAL REAL-USER VERIFICATION REQUIRED BEFORE PRODUCTION PROMOTION**
+Status: **STAGING RELEASE CANDIDATE — CODE/SECURITY/LEGAL PREP COMPLETE; FINAL REAL-USER VERIFICATION + EXTERNAL DELIVERY CONFIG REQUIRED BEFORE PRODUCTION PROMOTION**
 
 This document freezes the current release posture for `futureweb-production-backend`. It does not authorize a merge to `main` or a production database migration by itself.
 
@@ -43,6 +43,23 @@ The browser-only future-appointment reschedule path remains reserved for the fin
 2. Telephysiotherapy read RPCs had the same PostgREST/read-only mismatch. Both are now `VOLATILE` through staging migration `fix_telephysiotherapy_read_rpc_volatility`.
 
 Both fixes passed browser retest and cross-persona SQL rejection probes.
+
+## Public legal / advertising launch controls
+
+The release candidate now also includes:
+
+- public Privacy Notice, Terms of Use and Professional & Advertising Standards pages;
+- explicit professional signup acknowledgement of Terms, Privacy Notice and Professional Standards;
+- explicit patient Terms + Privacy acknowledgement before requesting the first SMS OTP;
+- versioned acknowledgement metadata on newly created Auth identities;
+- public-profile guidance plus blocking of obvious guaranteed-cure / fixed-result / unsupported “best / No. 1” claims;
+- a conservative public disclaimer explaining that PhysioBill verification is platform review and does not replace government/professional registration;
+- configurable production service-operator name and privacy/grievance email;
+- a fail-closed production launch gate if that operator identity/contact is absent;
+- branch-aware robots behavior: staging/preview builds emit noindex + Disallow, while the main production build switches to index/follow + Allow;
+- no Meta Pixel or Meta Conversions API integration in this release, preventing health/clinical details from being sent to Meta by application tracking code.
+
+The regulatory control checklist records the NCAHP/GSAHC, consumer-advertising and DPDP phased-commencement review, plus a market-practice comparison with PhysioDesk. PhysioDesk is not treated as a regulator and its self-declared compliance badges are not copied.
 
 ## Web-security release gate
 
@@ -171,3 +188,12 @@ No server secret was found in repository search, so public visibility has not de
 ## Go / no-go rule
 
 **Do not promote to production until the final real-user journey passes and the SMS/auth delivery path needed for that test is available.**
+
+At the handoff into that journey, the remaining blockers are intentionally external/operational rather than untested application code:
+
+1. configure a real SMS delivery provider for patient OTP on staging, then production;
+2. configure reliable professional confirmation/recovery email delivery for production;
+3. provide the real production operator name and monitored privacy/grievance email;
+4. verify the first real professional's current registration/credential facts using the applicable authority and an auditable review method/reference;
+5. run the two-device real-user journey, including the previously unexercised future reschedule path;
+6. only after that PASS, perform the production backup, 46 ordered migrations, production environment binding, merge/deploy and post-deploy security scans.

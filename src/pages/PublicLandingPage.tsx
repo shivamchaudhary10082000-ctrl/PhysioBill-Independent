@@ -69,6 +69,9 @@ export function PublicLandingPage() {
               </div>
             ))}
           </div>
+          <div className="mx-auto max-w-7xl px-4 pb-10 text-xs leading-5 text-muted-foreground sm:px-6 lg:px-8">
+            PhysioBill supports professional discovery and scheduling. It is not an emergency service and does not guarantee a clinical result. Public professional information remains subject to credential verification and our <a href="/professional-standards" className="font-semibold text-primary hover:underline">Professional Standards</a>.
+          </div>
         </section>
       </main>
 

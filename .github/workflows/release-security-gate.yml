@@ -69,6 +69,16 @@ jobs:
           grep -Fq 'name="robots" content="noindex, nofollow, noarchive, nosnippet"' dist/index.html
           grep -Fq 'Disallow: /' dist/robots.txt
 
+      - name: Verify production indexing switch
+        env:
+          VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
+          CF_PAGES_BRANCH: main
+        run: |
+          npm run generate:csp
+          grep -Fq 'name="robots" content="index, follow"' dist/index.html
+          grep -Fq 'Allow: /' dist/robots.txt
+          ! grep -Fq 'Disallow: /' dist/robots.txt
+
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
 

@@ -217,3 +217,18 @@ Repository secret scan at this checkpoint found no committed service-role key, T
 Migration-ledger hygiene was also corrected on the working branch: the two repository migration filenames now match the exact applied staging ledger versions `20260912183408` and `20260912183712`; duplicate local-timestamp migration files were removed.
 
 Production authorization remains deferred. No production migration, main-branch merge, or protected-ref mutation is authorized by this checkpoint.
+
+
+## 2026-09-13 legal acknowledgement hardening
+
+Staging migration `20260913183222 — account_legal_acknowledgement_foundation` adds an RPC-only / trigger-written acknowledgement table for new account creation.
+
+- anonymous direct SELECT: denied
+- authenticated direct SELECT/INSERT: denied
+- RLS: enabled
+- the Auth provisioning trigger now requires a non-empty legal notice version plus the correct professional or patient signup acknowledgement flag before provisioning a new account
+- professional signup records Terms + Privacy + Professional Standards acknowledgement
+- patient signup records Terms + Privacy acknowledgement
+- existing Auth users are not retroactively rewritten; the final new-account verification will confirm real signup capture
+
+This evidence is intentionally separate from editable Auth user metadata so a later client-side metadata edit cannot erase the server-side signup acknowledgement row.

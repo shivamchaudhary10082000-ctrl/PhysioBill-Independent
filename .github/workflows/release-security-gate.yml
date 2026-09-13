@@ -97,6 +97,54 @@ jobs:
           grep -qi '^x-content-type-options: *nosniff' headers.txt
           grep -qi '^referrer-policy: *no-referrer' headers.txt
           grep -qi '^permissions-policy:' headers.txt
+          if grep -qi '^access-control-allow-origin: *\*
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST             'https://observatory-api.mdn.mozilla.net/api/v2/scan?host=physiobill-independent-staging.pages.dev'             -o observatory.json
+          cat observatory.json
+          node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('observatory.json','utf8'));if(r.error)process.exit(1);if(!['A+','A','A-'].includes(r.grade)){console.error('Observatory grade below A-:',r.grade);process.exit(1)}"
+
+      - name: OWASP ZAP passive baseline
+        shell: bash
+        run: |
+          set -o pipefail
+          docker run --rm -t ghcr.io/zaproxy/zaproxy:stable             zap-baseline.py             -t https://physiobill-independent-staging.pages.dev             -m 1             -I 2>&1 | tee zap-baseline.txt
+ headers.txt; then
+            echo "Unexpected wildcard CORS on HTML shell"
+            exit 1
+          fi
+
+      - name: Verify protected routes fail closed to browser cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in /app/dashboard /patient /admin/verifications /auth/reset-password; do
+            echo "Checking $path"
+            curl -fsSIL --max-time 20 "https://physiobill-independent-staging.pages.dev$path" -o route-headers.txt
+            grep -qi '^cache-control:.*private' route-headers.txt
+            grep -qi '^cache-control:.*no-store' route-headers.txt
+            grep -qi '^content-security-policy:' route-headers.txt
+            if grep -qi '^access-control-allow-origin: *\*
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST             'https://observatory-api.mdn.mozilla.net/api/v2/scan?host=physiobill-independent-staging.pages.dev'             -o observatory.json
+          cat observatory.json
+          node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('observatory.json','utf8'));if(r.error)process.exit(1);if(!['A+','A','A-'].includes(r.grade)){console.error('Observatory grade below A-:',r.grade);process.exit(1)}"
+
+      - name: OWASP ZAP passive baseline
+        shell: bash
+        run: |
+          set -o pipefail
+          docker run --rm -t ghcr.io/zaproxy/zaproxy:stable             zap-baseline.py             -t https://physiobill-independent-staging.pages.dev             -m 1             -I 2>&1 | tee zap-baseline.txt
+ route-headers.txt; then
+              echo "Unexpected wildcard CORS on protected HTML route $path"
+              exit 1
+            fi
+          done
+          curl -fsSIL --max-time 20 https://physiobill-independent-staging.pages.dev/sw.js -o sw-headers.txt
+          grep -qi '^cache-control:.*no-cache' sw-headers.txt
 
       - name: MDN HTTP Observatory scan
         shell: bash

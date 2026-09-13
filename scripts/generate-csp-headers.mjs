@@ -75,6 +75,8 @@ async function main() {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const templatePath = path.join(repoRoot, 'config', '_headers.template');
   const outputPath = path.join(repoRoot, 'dist', '_headers');
+  const indexPath = path.join(repoRoot, 'dist', 'index.html');
+  const robotsPath = path.join(repoRoot, 'dist', 'robots.txt');
   const template = await readFile(templatePath, 'utf8');
 
   assertSinglePlaceholder(template, SUPABASE_PLACEHOLDER, templatePath);
@@ -98,6 +100,27 @@ async function main() {
   }
 
   await writeFile(outputPath, rendered, 'utf8');
+
+  const pagesBranch = process.env.CF_PAGES_BRANCH?.trim() ?? '';
+  const canonicalProductionBuild = pagesBranch === 'main';
+  let indexHtml = await readFile(indexPath, 'utf8');
+  const robotsContent = canonicalProductionBuild
+    ? 'index, follow'
+    : 'noindex, nofollow, noarchive, nosnippet';
+
+  indexHtml = indexHtml.replace(
+    /<meta\s+name=["']robots["']\s+content=["'][^"']*["']\s*\/?>/i,
+    `<meta name="robots" content="${robotsContent}" />`,
+  );
+
+  await writeFile(indexPath, indexHtml, 'utf8');
+  await writeFile(
+    robotsPath,
+    canonicalProductionBuild
+      ? 'User-agent: *\nAllow: /\n'
+      : 'User-agent: *\nDisallow: /\n',
+    'utf8',
+  );
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -3,6 +3,7 @@ import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicFooter } from '@/Components/PublicFooter';
 
 const updated = '13 September 2026';
+const publicContactEmail = (import.meta.env.VITE_PUBLIC_CONTACT_EMAIL as string | undefined)?.trim() || null;
 
 function LegalLayout({ title, eyebrow, children }: { title: string; eyebrow: string; children: ReactNode }) {
   return (
@@ -60,7 +61,12 @@ export function PrivacyNoticePage() {
         <p>No online service can promise absolute security. Users should protect their account credentials, sign out on shared devices and report suspected unauthorized access promptly.</p>
       </Section>
       <Section title="Choices and requests">
-        <p>Users should be able to request access or correction of account information and raise privacy or grievance questions. A production contact/grievance channel must be published before PhysioBill is activated as a public production service.</p>
+        <p>Users should be able to request access or correction of account information and raise privacy or grievance questions.</p>
+        {publicContactEmail ? (
+          <p>Privacy and grievance contact: <a className="font-semibold text-primary hover:underline" href={`mailto:${publicContactEmail}`}>{publicContactEmail}</a>.</p>
+        ) : (
+          <p>A production contact/grievance channel must be configured before PhysioBill is activated as a public production service. The staging environment intentionally does not invent a contact address.</p>
+        )}
         <p>Where consent is used for an optional communication or feature, withdrawing that consent should not be represented as withdrawing consent for unrelated necessary account or recordkeeping functions.</p>
       </Section>
       <Section title="Children and dependent patients">
@@ -102,7 +108,11 @@ export function TermsPage() {
         <p>Access or public visibility may be restricted where credentials cannot be verified, information is misleading, security is threatened, a regulator or lawful authority requires action, or these terms are materially breached.</p>
       </Section>
       <Section title="Production contact">
-        <p>Before public production activation, PhysioBill must publish the responsible operator/contact and grievance channel. The current staging environment is not a substitute for that production disclosure.</p>
+        {publicContactEmail ? (
+          <p>Account, privacy and grievance contact: <a className="font-semibold text-primary hover:underline" href={`mailto:${publicContactEmail}`}>{publicContactEmail}</a>.</p>
+        ) : (
+          <p>Before public production activation, PhysioBill must publish the responsible operator/contact and grievance channel. The current staging environment is not a substitute for that production disclosure.</p>
+        )}
       </Section>
     </LegalLayout>
   );

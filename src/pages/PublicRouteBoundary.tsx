@@ -9,6 +9,24 @@ import { TelephysiotherapyRoute } from '@/pages/TelephysiotherapyRoute';
 import { PrivacyNoticePage, ProfessionalStandardsPage, TermsPage } from '@/pages/LegalPages';
 import { PASSWORD_RECOVERY_PATH } from '@/lib/auth';
 import { NotFoundPage } from '@/pages/route-boundary/SessionBoundaryPages';
+
+function productionComplianceConfigured() {
+  const contact = (import.meta.env.VITE_PUBLIC_CONTACT_EMAIL as string | undefined)?.trim();
+  const operator = (import.meta.env.VITE_PUBLIC_OPERATOR_NAME as string | undefined)?.trim();
+  return Boolean(contact && operator);
+}
+
+function ProductionConfigurationRequired() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
+      <section className="w-full max-w-xl rounded-3xl border bg-card p-7 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Production launch gate</p>
+        <h1 className="mt-3 text-2xl font-bold tracking-[-.025em]">Public launch configuration is incomplete.</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">The canonical production site will stay closed until a real service-operator name and monitored privacy/grievance contact are configured. This prevents an incomplete legal disclosure from being published accidentally.</p>
+      </section>
+    </main>
+  );
+}
 import {
   AdminSignInRoute,
   AdminVerificationRoute,
@@ -62,6 +80,10 @@ function professionalRoute(child: ReactNode) {
 
 export function PublicRouteBoundary() {
   const path = window.location.pathname;
+  const canonicalProductionHost = 'physiobill-independent.pages.dev';
+  if (window.location.hostname.toLowerCase() === canonicalProductionHost && !productionComplianceConfigured()) {
+    return <ProductionConfigurationRequired />;
+  }
 
   if (path === '/') return <PublicLandingPage />;
   if (path === '/privacy') return <PrivacyNoticePage />;

@@ -52,6 +52,11 @@ jobs:
           grep -Fq "Content-Security-Policy:" dist/_headers
           grep -Fq "default-src 'self'" dist/_headers
           grep -Fq "frame-ancestors 'none'" dist/_headers
+          grep -Fq "img-src 'self' data: blob:;" dist/_headers
+          if grep -Eq "img-src[^;]*[[:space:]]https:[[:space:];]" dist/_headers; then
+            echo "Broad https: image source detected"
+            exit 1
+          fi
           grep -Fq "Strict-Transport-Security: max-age=63072000" dist/_headers
           grep -Fq "X-Frame-Options: DENY" dist/_headers
           grep -Fq "X-Content-Type-Options: nosniff" dist/_headers
@@ -76,7 +81,7 @@ jobs:
           ok=0
           for i in {1..18}; do
             if curl -fsSIL --max-time 20 https://physiobill-independent-staging.pages.dev/ -o headers.txt; then
-              if grep -qi '^content-security-policy:' headers.txt \
+              if grep -qi '^content-security-policy:.*img-src '\''self'\'' data: blob:;' headers.txt \
                 && grep -qi '^strict-transport-security: *max-age=63072000' headers.txt \
                 && grep -qi '^cross-origin-opener-policy: *same-origin' headers.txt \
                 && grep -qi '^cross-origin-resource-policy: *same-origin' headers.txt; then

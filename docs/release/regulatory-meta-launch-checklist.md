@@ -17,7 +17,22 @@ Authoritative sources:
 - Digital Personal Data Protection Rules, 2025 and enforcement timeline — MeitY:
   https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa
 
-The NCAHP schedule identifies the physiotherapy profession as Physiotherapist (ISCO 2264). Gujarat currently regulates allied and healthcare professions through GSAHC. Public professional claims must therefore remain tied to genuine, supportable professional identity and current registration/credential facts.
+
+### DPDP phased commencement status checked 13 September 2026
+
+The final Digital Personal Data Protection Rules, 2025 were notified on 13 November 2025. The commencement notification is phased rather than all-at-once:
+
+- Rules 1, 2 and 17–21 and the corresponding already-commenced Act provisions took effect on notification.
+- Rule 4, and the Act provisions expressly scheduled at one year, are due one year after notification (13 November 2026).
+- Rules 3, 5–16, 22 and 23, together with most core processing/consent/rights/children/security obligations scheduled at eighteen months, are due 13 May 2027.
+
+PhysioBill is intentionally building the privacy notice, consent records, contact/grievance path, access/correction/deletion request language, security controls and child/dependent safeguards ahead of the later commencement dates. This document must not claim that every DPDP obligation is already in force on 13 September 2026.
+
+The NCAHP schedule identifies the physiotherapy profession as Physiotherapist (ISCO 2264). Sections 55 to 57 of the Act address practice, false claims of registration, and misuse of titles. Gujarat currently regulates allied and healthcare professions through GSAHC.
+
+GSAHC Rules, 2024 rule 9 provides for an online/live Gujarat State Allied and Healthcare Professionals Register and a registration application/certificate workflow. A PhysioBill “verified” badge therefore must never be represented as a substitute for entry in the applicable government register. Before a real professional profile is published, the submitted registration/credential facts must be checked against the current applicable authority or documentary evidence and any current transition instructions.
+
+As checked on 13 September 2026, GSAHC's public site lists Physiotherapist under Physiotherapy Professional (ISCO 2264) and publishes current Act/Rules and professional notices.
 
 ## Conservative product rules
 
@@ -54,7 +69,7 @@ Before a profile may be discoverable:
 - Clinical access requires explicit linkage after the appropriate scheduling/onboarding workflow.
 - Current release has no Meta Pixel or Meta Conversions API integration.
 - Staging adds a noindex/nofollow robots directive at runtime so final real-user verification profiles are not intended for search indexing.
-- A production operator/grievance contact must be published before public production activation.
+- A production operator identity and monitored privacy/grievance contact must be published before public production activation. The canonical production UI now fails closed if these values are absent.
 - Real patient clinical data should not be used in staging final verification; use the professional's own account plus a consenting test identity and synthetic/minimal patient data.
 
 ## Meta advertising guardrails
@@ -102,6 +117,6 @@ Before promotion to production and Meta campaign launch:
 - production operator name and privacy/grievance contact must be published;
 - the professional profile used in discovery must contain genuine/current credential and registration facts;
 - production backup/export must exist before the 46 missing database migrations are applied;
-- release security gate must be green on the frozen candidate;
+- release security gate must be green on the frozen candidate (typecheck, production build, dependency audit, live headers/cache policy, MDN Observatory and OWASP ZAP passive baseline);
 - after production deploy, HTTP Observatory, live headers and ZAP passive baseline must pass again;
 - Meta ad creative and landing page must receive a final policy copy review immediately before campaign submission.

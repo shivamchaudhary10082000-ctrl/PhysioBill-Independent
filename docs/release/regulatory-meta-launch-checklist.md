@@ -65,6 +65,7 @@ Before a profile may be discoverable:
 - Patient phone authentication and professional authentication remain separate.
 - Patient OTP registration requires a Terms + Privacy acknowledgement.
 - Professional creation requires Terms + Privacy + Professional Standards acknowledgement.
+- New professional/patient account creation records the notice version in an RPC-only server-side acknowledgement table; the Auth provisioning trigger rejects new accounts that bypass the required acknowledgement.
 - Public therapist discovery contains only bounded patient-safe professional data.
 - Clinical access requires explicit linkage after the appropriate scheduling/onboarding workflow.
 - Current release has no Meta Pixel or Meta Conversions API integration.
@@ -116,7 +117,7 @@ Before promotion to production and Meta campaign launch:
 - production professional email confirmation / recovery delivery must be reliable;
 - production operator name and privacy/grievance contact must be published;
 - the professional profile used in discovery must contain genuine/current credential and registration facts;
-- production backup/export must exist before the 46 missing database migrations are applied;
+- production backup/export must exist before the 47 missing database migrations are applied;
 - release security gate must be green on the frozen candidate (typecheck, production build, dependency audit, live headers/cache policy, MDN Observatory and OWASP ZAP passive baseline);
 - after production deploy, HTTP Observatory, live headers and ZAP passive baseline must pass again;
 - Meta ad creative and landing page must receive a final policy copy review immediately before campaign submission.

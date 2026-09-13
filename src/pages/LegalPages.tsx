@@ -4,6 +4,7 @@ import { PublicFooter } from '@/Components/PublicFooter';
 
 const updated = '13 September 2026';
 const publicContactEmail = (import.meta.env.VITE_PUBLIC_CONTACT_EMAIL as string | undefined)?.trim() || null;
+const publicOperatorName = (import.meta.env.VITE_PUBLIC_OPERATOR_NAME as string | undefined)?.trim() || null;
 
 function LegalLayout({ title, eyebrow, children }: { title: string; eyebrow: string; children: ReactNode }) {
   return (
@@ -41,6 +42,7 @@ export function PrivacyNoticePage() {
     <LegalLayout title="Privacy notice" eyebrow="Privacy">
       <Section title="What PhysioBill is">
         <p>PhysioBill is a physiotherapy discovery, scheduling and professional-workspace service. The staging environment is used for controlled verification and is not the final production service.</p>
+        {publicOperatorName && <p>Service operator: <strong className="text-foreground">{publicOperatorName}</strong>.</p>}
       </Section>
       <Section title="Information we process">
         <p>Depending on the feature used, PhysioBill may process professional account and credential information, patient identity and contact information, appointment information, therapist-owned clinical records, invoices, payment-destination details and security/session data.</p>
@@ -60,8 +62,12 @@ export function PrivacyNoticePage() {
         <p>Patient, physiotherapist and reviewer/Admin capabilities are separated. Sensitive database foundations use database-enforced ownership/persona checks, and protected application routes are configured not to be stored in shared browser caches.</p>
         <p>No online service can promise absolute security. Users should protect their account credentials, sign out on shared devices and report suspected unauthorized access promptly.</p>
       </Section>
+      <Section title="Retention, deletion and account records">
+        <p>PhysioBill should retain personal data only for as long as it is needed for the relevant service, security, professional recordkeeping or other lawful purpose. Deleting an account does not automatically mean that a professional may erase a clinical or billing record that must lawfully be retained.</p>
+        <p>Public discovery information should stop being publicly available when a professional disables discovery, loses verification, or the listing is removed. Security and audit records may be retained for a limited period where needed to investigate misuse or demonstrate authorization history.</p>
+      </Section>
       <Section title="Choices and requests">
-        <p>Users should be able to request access or correction of account information and raise privacy or grievance questions.</p>
+        <p>Users may raise requests concerning access, correction, account information, consent choices, deletion where applicable, and privacy grievances. Some professional clinical or financial records may remain subject to lawful retention duties even when an account is closed.</p>
         {publicContactEmail ? (
           <p>Privacy and grievance contact: <a className="font-semibold text-primary hover:underline" href={`mailto:${publicContactEmail}`}>{publicContactEmail}</a>.</p>
         ) : (
@@ -108,6 +114,7 @@ export function TermsPage() {
         <p>Access or public visibility may be restricted where credentials cannot be verified, information is misleading, security is threatened, a regulator or lawful authority requires action, or these terms are materially breached.</p>
       </Section>
       <Section title="Production contact">
+        {publicOperatorName && <p>Service operator: <strong className="text-foreground">{publicOperatorName}</strong>.</p>}
         {publicContactEmail ? (
           <p>Account, privacy and grievance contact: <a className="font-semibold text-primary hover:underline" href={`mailto:${publicContactEmail}`}>{publicContactEmail}</a>.</p>
         ) : (

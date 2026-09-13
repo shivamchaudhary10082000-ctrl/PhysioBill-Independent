@@ -4,17 +4,19 @@ Run this on the canonical staging site before any production migration or merge.
 
 Canonical staging: https://physiobill-independent-staging.pages.dev
 
-Use a new professional identity you control and a separate browser/device for the patient identity. Do not reuse the existing QA professional or fixed test patient for this final journey unless a fallback test identity is explicitly needed.
+Use a new professional identity you control and a separate physical phone/browser for the patient identity. Do not reuse the existing QA professional or fixed test patient for this final journey unless a fallback test identity is explicitly needed.
+
+Use only your own/consenting test identities and the minimum synthetic or test-safe patient information needed to exercise the workflow. Do not place a real patient's diagnosis, clinical notes, invoice details or other sensitive treatment information into staging merely to prove that the UI works.
 
 ## 1. Professional onboarding
 
 1. Create a new professional account from Professional access.
 2. Complete the required email confirmation if Auth requests it.
 3. Sign in and confirm the professional workspace opens without a loop.
-4. Complete Professional Profile with real test-safe professional details.
+4. Complete Professional Profile with your genuine current professional name, qualification and applicable registration/credential facts. Do not invent a registration number or authority.
 5. Complete Discovery Profile with display name, headline, at least one service mode and broad service area.
 6. Submit/complete the intended verification workflow.
-7. Using an authorized reviewer account, approve the professional.
+7. Using an authorized reviewer account that is not the account under review, verify the submitted credential/registration facts against the applicable authority/documentary evidence, record the verification method plus a safe reference, and approve only if they match.
 8. Confirm the therapist becomes discoverable only after verification plus publish opt-in.
 
 PASS only if the new account receives a PHY identity, remains a physio persona, and never receives patient authority.
@@ -28,7 +30,7 @@ PASS only if the new account receives a PHY identity, remains a physio persona, 
 
 ## 3. Patient registration from a second device
 
-1. On another phone/browser, open Patient sign in.
+1. On a separate physical phone/browser, open Patient sign in and review the Terms/Privacy acknowledgement.
 2. Enter a real E.164-capable mobile number if live SMS is configured.
 3. Receive and enter the six-digit OTP.
 4. Confirm a new PAT identifier is issued only after phone confirmation.
@@ -89,6 +91,13 @@ This closes the only browser regression that remained inconclusive during stagin
 4. Admin/reviewer access works only for the authorized professional capability.
 5. Perform logout and re-login for professional, patient and reviewer.
 6. Refresh protected routes after login; no infinite loader, protected-content flash or silent wrong-persona redirect is acceptable.
+
+## Pre-test external prerequisites
+
+- staging real SMS delivery is configured for patient phone OTP; a fixed test OTP does not count as this real-provider test;
+- the professional email address can receive the confirmation/recovery messages needed by the chosen Auth configuration;
+- the candidate release-security gate is green;
+- staging remains non-indexable during the test.
 
 ## Final PASS condition
 

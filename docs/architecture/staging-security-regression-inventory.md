@@ -14,7 +14,7 @@ Checkpoint scope: isolated PhysioBill Staging only. This document records verifi
 
 ## Verified staging checkpoint
 
-Current isolated staging migration history ends at `20260901113439 — fix_reimbursement_document_conflict_target`.
+Current isolated staging migration history ends at `20260912183712 — fix_telephysiotherapy_read_rpc_volatility`.
 
 The preceding integrity probes returned:
 
@@ -180,3 +180,40 @@ The following are explicitly not represented as completed by this lock:
 - legal, business or regulatory filings/facts
 
 These gates must remain deferred rather than bypassed.
+
+## 2026-09-13 continuation checkpoint
+
+Browser/runtime regression was completed on the canonical staging site with controlled patient, professional and reviewer sessions.
+
+Accepted browser evidence:
+
+- professional sign-in, protected-workspace load, reload/session restoration, sign-out to professional sign-in, and sign-in again: **PASS**
+- patient OTP sign-in, patient gateway, protected patient surfaces, sign-out to patient sign-in, and sign-in again: **PASS**
+- reviewer/Admin verification access, sign-out to reviewer sign-in, and reviewer sign-in again with authority restored: **PASS**
+- wrong-persona browser isolation for physiotherapist -> patient and patient -> professional/Admin routes: **PASS**
+- language persistence round-trip English -> Hindi -> Gujarati -> English across refresh and re-login: **PASS**
+- password-recovery separation for an authenticated patient: **PASS**
+- discovery profile read/save, availability publish, appointment-request read/refresh, communications/preferences, telephysiotherapy, patient clinical-care empty state, patient financial-summary empty state, payment-destination create/default behavior, and Admin verification empty state: **PASS**
+- manual future-appointment reschedule remains **INCONCLUSIVE** only because the available accepted staging appointment is already in the past; the database reschedule authority had been verified separately.
+
+Two concrete browser defects were reproduced and fixed on staging:
+
+1. communication event reads failed through PostgREST because `get_my_patient_communication_events(integer)` and `get_my_professional_communication_events(integer)` were marked `STABLE` while calling persona resolvers that take row locks. The applied staging migration `20260912183408 — fix_communication_event_rpc_volatility` marks both RPCs `VOLATILE`. Patient and professional browser retests both pass.
+2. telephysiotherapy session reads had the same mismatch. The applied staging migration `20260912183712 — fix_telephysiotherapy_read_rpc_volatility` marks both read RPCs `VOLATILE`. Patient and professional browser retests both pass.
+
+Post-fix transactional persona probes confirm:
+
+- patient -> professional communication events: rejected with SQLSTATE `42501`
+- patient -> professional telephysiotherapy sessions: rejected with SQLSTATE `42501`
+- physiotherapist -> patient communication events: rejected with SQLSTATE `42501`
+- physiotherapist -> patient telephysiotherapy sessions: rejected with SQLSTATE `42501`
+
+The current Supabase Security Advisor still reports `RLS Enabled No Policy` on RPC-only sensitive tables. A fresh privilege matrix confirms anonymous and authenticated direct `SELECT/INSERT/UPDATE/DELETE` are all denied for the inspected RPC-only tables, including communication, appointment, clinical-linkage, payment-destination, reimbursement and telephysiotherapy foundations. These INFO findings therefore remain intentional RPC-only architecture, not a demonstrated direct-table exposure.
+
+The advisor also reports four anonymous `SECURITY DEFINER` functions. Source review confirms they remain intentional bounded public surfaces: verified therapist discovery, verified therapist availability (single and batch), and token-based reimbursement-document verification. Broad EXECUTE revocation is not justified without a concrete bypass.
+
+Repository secret scan at this checkpoint found no committed service-role key, Twilio auth token, live payment secret, or other obvious server secret. The only tracked environment template is `.env.example`, which contains empty public browser configuration placeholders and explicitly warns that the Turnstile secret must never be placed in a `VITE_*` variable.
+
+Migration-ledger hygiene was also corrected on the working branch: the two repository migration filenames now match the exact applied staging ledger versions `20260912183408` and `20260912183712`; duplicate local-timestamp migration files were removed.
+
+Production authorization remains deferred. No production migration, main-branch merge, or protected-ref mutation is authorized by this checkpoint.

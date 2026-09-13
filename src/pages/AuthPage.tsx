@@ -35,6 +35,7 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
   const [notice, setNotice] = useState<string | null>(initialNotice);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [challengeResetKey, setChallengeResetKey] = useState(0);
+  const [acceptedProfessionalTerms, setAcceptedProfessionalTerms] = useState(false);
   const challengeRequired = isAuthTurnstileConfigured();
 
   function resetChallenge() {
@@ -47,12 +48,17 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
     setPassword('');
     setError(null);
     setNotice(null);
+    if (nextMode !== 'signup') setAcceptedProfessionalTerms(false);
     resetChallenge();
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (challengeRequired && !captchaToken) return;
+    if (mode === 'signup' && !acceptedProfessionalTerms) {
+      setError('Review and accept the Terms, Privacy Notice and Professional Standards before creating a professional account.');
+      return;
+    }
 
     setBusy(true);
     setError(null);
@@ -156,6 +162,21 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
               </div>
             )}
 
+            {mode === 'signup' && (
+              <label className="flex items-start gap-3 rounded-xl border bg-secondary/35 p-3.5 text-sm leading-6">
+                <input
+                  type="checkbox"
+                  checked={acceptedProfessionalTerms}
+                  onChange={(event) => setAcceptedProfessionalTerms(event.target.checked)}
+                  className="mt-1 size-4 accent-[hsl(var(--primary))]"
+                  required
+                />
+                <span className="text-muted-foreground">
+                  I agree to the <a href="/terms" className="font-semibold text-primary hover:underline">Terms</a>, have read the <a href="/privacy" className="font-semibold text-primary hover:underline">Privacy Notice</a>, and agree to follow the <a href="/professional-standards" className="font-semibold text-primary hover:underline">Professional Standards</a>. I understand that public discovery requires credential verification and truthful professional information.
+                </span>
+              </label>
+            )}
+
             <AuthTurnstile
               action={challengeAction[mode]}
               resetKey={challengeResetKey}
@@ -165,7 +186,7 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
             {error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">{error}</p>}
             {notice && <p role="status" className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2.5 text-sm text-foreground">{notice}</p>}
 
-            <button disabled={busy || (challengeRequired && !captchaToken)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
+            <button disabled={busy || (challengeRequired && !captchaToken) || (mode === 'signup' && !acceptedProfessionalTerms)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
               {mode === 'signin' ? <LogIn size={17} /> : mode === 'signup' ? <UserPlus size={17} /> : <Mail size={17} />}
               {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? 'Create physiotherapist account' : 'Send recovery link'}
               {!busy && <ArrowRight size={16} />}

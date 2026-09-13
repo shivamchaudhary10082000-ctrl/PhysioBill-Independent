@@ -45,6 +45,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: release-gate-build-placeholder
+          CF_PAGES_BRANCH: futureweb-production-backend
         run: npm run build
 
       - name: Assert generated security headers
@@ -65,6 +66,8 @@ jobs:
           grep -Fq "Cross-Origin-Resource-Policy: same-origin" dist/_headers
           grep -Fq "Permissions-Policy:" dist/_headers
           grep -Fq "Cache-Control: private, no-store" dist/_headers
+          grep -Fq 'name="robots" content="noindex, nofollow, noarchive, nosnippet"' dist/index.html
+          grep -Fq 'Disallow: /' dist/robots.txt
 
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high

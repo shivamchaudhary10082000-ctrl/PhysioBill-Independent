@@ -45,6 +45,7 @@ export function PatientSignInPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [challengeResetKey, setChallengeResetKey] = useState(0);
+  const [acceptedPatientTerms, setAcceptedPatientTerms] = useState(false);
   const challengeRequired = isAuthTurnstileConfigured();
 
   function resetChallenge() {
@@ -55,6 +56,10 @@ export function PatientSignInPage() {
   async function requestOtp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (challengeRequired && !captchaToken) return;
+    if (!acceptedPatientTerms) {
+      setError('Review and accept the Terms and Privacy Notice before requesting a patient verification code.');
+      return;
+    }
 
     setBusy(true);
     setError(null);
@@ -176,6 +181,19 @@ export function PatientSignInPage() {
                   </span>
                 </label>
 
+                <label className="flex items-start gap-3 rounded-xl border bg-secondary/35 p-3.5 text-sm leading-6">
+                  <input
+                    type="checkbox"
+                    checked={acceptedPatientTerms}
+                    onChange={(event) => setAcceptedPatientTerms(event.target.checked)}
+                    className="mt-1 size-4 accent-[hsl(var(--primary))]"
+                    required
+                  />
+                  <span className="text-muted-foreground">
+                    I confirm that I am an adult using my own mobile number, or I am lawfully acting for the patient. I agree to the <a href="/terms" className="font-semibold text-primary hover:underline">Terms</a> and have read the <a href="/privacy" className="font-semibold text-primary hover:underline">Privacy Notice</a>. My mobile number will be used for identity verification and account access.
+                  </span>
+                </label>
+
                 <AuthTurnstile
                   action="patient-phone-otp"
                   resetKey={challengeResetKey}
@@ -184,7 +202,7 @@ export function PatientSignInPage() {
 
                 {error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">{error}</p>}
 
-                <button disabled={busy || (challengeRequired && !captchaToken)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
+                <button disabled={busy || (challengeRequired && !captchaToken) || !acceptedPatientTerms} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60">
                   <KeyRound size={17} />
                   {busy ? 'Requesting code…' : 'Send SMS code'}
                   {!busy && <ArrowRight size={16} />}

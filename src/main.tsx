@@ -42,6 +42,21 @@ function clearLegacySensitiveLocalStorage() {
 
 clearLegacySensitiveLocalStorage();
 
+function applyStagingRobotsPolicy() {
+  const hostname = window.location.hostname.toLowerCase();
+  if (!hostname.includes('physiobill-independent-staging.pages.dev')) return;
+
+  let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+  if (!robots) {
+    robots = document.createElement('meta');
+    robots.name = 'robots';
+    document.head.appendChild(robots);
+  }
+  robots.content = 'noindex, nofollow, noarchive, nosnippet';
+}
+
+applyStagingRobotsPolicy();
+
 function PatientDirectorySearchClear() {
   useEffect(() => {
     const root = document.getElementById('root');

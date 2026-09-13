@@ -35,6 +35,19 @@ function requestedAtLabel(value: string | null, locale: SupportedLocale) {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
 }
 
+const prohibitedPublicClaimPatterns = [
+  /\b100\s*%\s*(?:cure|relief|recovery|success)/i,
+  /\bguarantee(?:d)?\s+(?:cure|relief|recovery|result|results|success)/i,
+  /\b(?:permanent|miracle|instant)\s+(?:cure|relief|recovery)/i,
+  /\b(?:best|no\.?\s*1|number\s*one)\s+(?:physio|physiotherapist|physiotherapy)/i,
+  /\bcure(?:d)?\s+(?:in|within)\s+\d+\s*(?:day|days|week|weeks|session|sessions)\b/i,
+] as const;
+
+function hasProhibitedPublicClaim(draft: TherapistDiscoveryDraft) {
+  const publicCopy = [draft.headline, draft.bio, draft.clinicName].join(' ');
+  return prohibitedPublicClaimPatterns.some((pattern) => pattern.test(publicCopy));
+}
+
 export function TherapistDiscoveryProfilePage() {
   const [locale, setLocale] = useState<SupportedLocale>(DEFAULT_LOCALE);
   const [state, setState] = useState<TherapistDiscoveryManagementState | null>(null);
@@ -75,7 +88,8 @@ export function TherapistDiscoveryProfilePage() {
     return new Set(keys).size !== keys.length;
   }, [draft]);
 
-  const listingReady = useMemo(() => Boolean(draft && draft.displayName.trim() && draft.displayName.trim().length <= 120 && draft.serviceModes.length > 0 && draft.serviceAreas.length > 0 && draft.serviceAreas.every(areaComplete) && !duplicateAreas), [draft, duplicateAreas]);
+  const hasUnsafeMarketingClaim = useMemo(() => Boolean(draft && hasProhibitedPublicClaim(draft)), [draft]);
+  const listingReady = useMemo(() => Boolean(draft && draft.displayName.trim() && draft.displayName.trim().length <= 120 && draft.serviceModes.length > 0 && draft.serviceAreas.length > 0 && draft.serviceAreas.every(areaComplete) && !duplicateAreas && !hasUnsafeMarketingClaim), [draft, duplicateAreas, hasUnsafeMarketingClaim]);
 
   useEffect(() => {
     if (!listingReady) setDraft((current) => current?.isDiscoverable ? { ...current, isDiscoverable: false } : current);
@@ -116,6 +130,7 @@ export function TherapistDiscoveryProfilePage() {
     if (snapshot.displayName.length > 120 || snapshot.headline.length > 200 || snapshot.bio.length > 2000 || snapshot.clinicName.length > 160) return setError(msg(locale, 'lengthError'));
     if (snapshot.serviceAreas.some((area) => !areaComplete(area))) return setError(msg(locale, 'areaError'));
     if (duplicateAreas) return setError(msg(locale, 'duplicateError'));
+    if (hasProhibitedPublicClaim(snapshot)) return setError(msg(locale, 'marketingClaimError'));
     if (snapshot.isDiscoverable && !listingReady) return setError(msg(locale, 'publishError'));
     setSaving(true);
     try {
@@ -189,6 +204,10 @@ export function TherapistDiscoveryProfilePage() {
       <div className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]"><div className="space-y-6">
         <section className="rounded-2xl border bg-card p-5 shadow-[0_12px_30px_hsl(var(--foreground)/.03)] sm:p-6">
           <div><p className="workspace-section-kicker">{msg(locale, 'patientSafeListing')}</p><h2 className="mt-1 text-xl font-bold tracking-[-.025em]">{msg(locale, 'publicProfile')}</h2></div>
+          <div className={`mt-4 rounded-xl border p-4 text-sm leading-6 ${hasUnsafeMarketingClaim ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-primary/10 bg-primary/5 text-muted-foreground'}`}>
+            <p className="font-semibold text-foreground">{msg(locale, 'advertisingSafety')}</p>
+            <p className="mt-1">{hasUnsafeMarketingClaim ? msg(locale, 'marketingClaimError') : msg(locale, 'advertisingSafetyCopy')}</p>
+          </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'displayName')}</span><input maxLength={120} value={draft.displayName} onChange={(event) => setField('displayName', event.target.value)} className={fieldClass} /><span className="text-[11px] text-muted-foreground">{draft.displayName.length}/120</span></label>
             <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'headline')}</span><input maxLength={200} value={draft.headline} onChange={(event) => setField('headline', event.target.value)} className={fieldClass} /><span className="text-[11px] text-muted-foreground">{draft.headline.length}/200</span></label>

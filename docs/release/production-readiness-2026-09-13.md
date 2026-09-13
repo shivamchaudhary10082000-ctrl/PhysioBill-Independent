@@ -52,6 +52,7 @@ The release candidate now also includes:
 - explicit professional signup acknowledgement of Terms, Privacy Notice and Professional Standards;
 - explicit patient Terms + Privacy acknowledgement before requesting the first SMS OTP;
 - versioned acknowledgement metadata on newly created Auth identities;
+- immutable server-side signup acknowledgement rows for new professional/patient accounts; the Auth provisioning trigger now rejects a new account that bypasses the required current legal acknowledgement;
 - public-profile guidance plus blocking of obvious guaranteed-cure / fixed-result / unsupported “best / No. 1” claims;
 - a conservative public disclaimer explaining that PhysioBill verification is platform review and does not replace government/professional registration;
 - configurable production service-operator name and privacy/grievance email;
@@ -101,7 +102,7 @@ Production Supabase project: `PhysioBill`.
 
 Production currently ends at migration name `verified_therapist_discovery_location_pairing`.
 
-Staging contains **46 later migrations** that must be promoted, in staging order, only after final real-user verification passes:
+Staging contains **47 later migrations** that must be promoted, in staging order, only after final real-user verification passes:
 
 1. therapist_discovery_profile_verification_request_foundation
 2. admin_therapist_verification_authority
@@ -149,6 +150,7 @@ Staging contains **46 later migrations** that must be promoted, in staging order
 44. retire_disabled_service_mode_availability
 45. fix_communication_event_rpc_volatility
 46. fix_telephysiotherapy_read_rpc_volatility
+47. account_legal_acknowledgement_foundation
 
 Production already contains equivalent early migrations named `phase2_initial_schema_fixed` and `phase4_invoice_authority`; they must not be re-applied as duplicate baseline migrations.
 
@@ -196,4 +198,4 @@ At the handoff into that journey, the remaining blockers are intentionally exter
 3. provide the real production operator name and monitored privacy/grievance email;
 4. verify the first real professional's current registration/credential facts using the applicable authority and an auditable review method/reference;
 5. run the two-device real-user journey, including the previously unexercised future reschedule path;
-6. only after that PASS, perform the production backup, 46 ordered migrations, production environment binding, merge/deploy and post-deploy security scans.
+6. only after that PASS, perform the production backup, 47 ordered migrations, production environment binding, merge/deploy and post-deploy security scans.

@@ -53,9 +53,13 @@ export function PublicFooter({ className = '' }: PublicFooterProps) {
           </section>
         </div>
 
-        <div className="flex flex-col gap-2 py-6 text-xs text-[hsl(219_18%_68%)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 py-6 text-xs text-[hsl(219_18%_68%)] sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 PhysioBill</p>
-          <p>Built around physiotherapy care.</p>
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2">
+            <a href="/privacy" className="public-footer-link">Privacy</a>
+            <a href="/terms" className="public-footer-link">Terms</a>
+            <a href="/professional-standards" className="public-footer-link">Professional standards</a>
+          </nav>
         </div>
       </div>
     </footer>

@@ -143,7 +143,7 @@ export function PatientSignInPage() {
             <div className="mt-14 max-w-sm">
               <p className="text-sm font-semibold text-primary">Patient access</p>
               <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-[-.04em]">Your identity first. Your records stay separate.</h1>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">PhysioBill uses a short SMS verification step for patient identity. Booking and clinical access are separate features and are not enabled here.</p>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">PhysioBill uses a short SMS verification step for patient identity. Booking and clinical access are separate from sign-in and are granted only through their own authorized workflows.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">

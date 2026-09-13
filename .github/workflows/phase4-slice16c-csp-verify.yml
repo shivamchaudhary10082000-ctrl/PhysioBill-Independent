@@ -53,6 +53,12 @@ jobs:
           grep -Fq "script-src 'self';" dist/_headers
           grep -Fq "frame-src 'none'" dist/_headers
           grep -Fq "upgrade-insecure-requests" dist/_headers
+          grep -Fq "Strict-Transport-Security: max-age=63072000" dist/_headers
+          grep -Fq "Cross-Origin-Opener-Policy: same-origin" dist/_headers
+          grep -Fq "Cross-Origin-Resource-Policy: same-origin" dist/_headers
+          grep -Fq "X-Frame-Options: DENY" dist/_headers
+          grep -Fq "X-Content-Type-Options: nosniff" dist/_headers
+          grep -Fq "Referrer-Policy: no-referrer" dist/_headers
           if grep -Fq "challenges.cloudflare.com" dist/_headers; then
             echo "Turnstile origin unexpectedly present without site key"
             exit 1
@@ -96,6 +102,12 @@ jobs:
           grep -Fq "frame-ancestors 'none'" dist/_headers
           grep -Fq "frame-src 'none'" dist/_headers
           grep -Fq "upgrade-insecure-requests" dist/_headers
+          grep -Fq "Strict-Transport-Security: max-age=63072000" dist/_headers
+          grep -Fq "Cross-Origin-Opener-Policy: same-origin" dist/_headers
+          grep -Fq "Cross-Origin-Resource-Policy: same-origin" dist/_headers
+          grep -Fq "X-Frame-Options: DENY" dist/_headers
+          grep -Fq "X-Content-Type-Options: nosniff" dist/_headers
+          grep -Fq "Referrer-Policy: no-referrer" dist/_headers
 
       - name: Missing URL fails closed
         run: |

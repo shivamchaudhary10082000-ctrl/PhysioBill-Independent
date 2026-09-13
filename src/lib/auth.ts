@@ -16,6 +16,7 @@ export type PatientPlatformIdentity = {
 };
 
 export const PASSWORD_RECOVERY_PATH = '/auth/reset-password';
+export const LEGAL_NOTICE_VERSION = '2026-09-13';
 
 function normalizedCaptchaToken(captchaToken?: string | null) {
   const token = captchaToken?.trim();
@@ -68,6 +69,8 @@ export async function registerPhysiotherapist(
     options: {
       data: {
         account_type: 'physio',
+        legal_notice_version: LEGAL_NOTICE_VERSION,
+        professional_terms_acknowledged: true,
       },
       ...(token ? { captchaToken: token } : {}),
     },
@@ -189,6 +192,8 @@ export async function requestPatientPhoneOtp(
       channel: 'sms',
       data: {
         account_type: 'patient',
+        legal_notice_version: LEGAL_NOTICE_VERSION,
+        patient_terms_acknowledged: true,
       },
       ...(token ? { captchaToken: token } : {}),
     },

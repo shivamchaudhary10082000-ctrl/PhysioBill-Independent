@@ -42,9 +42,13 @@ function clearLegacySensitiveLocalStorage() {
 
 clearLegacySensitiveLocalStorage();
 
-function applyStagingRobotsPolicy() {
+function applyNonProductionRobotsPolicy() {
   const hostname = window.location.hostname.toLowerCase();
-  if (!hostname.includes('physiobill-independent-staging.pages.dev')) return;
+  const canonicalProductionHost = 'physiobill-independent.pages.dev';
+  const isCloudflarePreviewOrStaging =
+    hostname.endsWith('.pages.dev') && hostname !== canonicalProductionHost;
+
+  if (!isCloudflarePreviewOrStaging) return;
 
   let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
   if (!robots) {
@@ -55,7 +59,7 @@ function applyStagingRobotsPolicy() {
   robots.content = 'noindex, nofollow, noarchive, nosnippet';
 }
 
-applyStagingRobotsPolicy();
+applyNonProductionRobotsPolicy();
 
 function PatientDirectorySearchClear() {
   useEffect(() => {

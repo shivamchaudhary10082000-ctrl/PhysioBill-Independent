@@ -80,8 +80,13 @@ function professionalRoute(child: ReactNode) {
 
 export function PublicRouteBoundary() {
   const path = window.location.pathname;
+  const hostname = window.location.hostname.toLowerCase();
   const canonicalProductionHost = 'physiobill-independent.pages.dev';
-  if (window.location.hostname.toLowerCase() === canonicalProductionHost && !productionComplianceConfigured()) {
+  const localHost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const nonProductionPagesHost = hostname.endsWith('.pages.dev') && hostname !== canonicalProductionHost;
+  const enforceProductionDisclosure = !localHost && !nonProductionPagesHost;
+
+  if (enforceProductionDisclosure && !productionComplianceConfigured()) {
     return <ProductionConfigurationRequired />;
   }
 

@@ -44,4 +44,7 @@ jobs:
         run: npm run typecheck
 
       - name: Build
+        env:
+          VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: phase4-build-placeholder
         run: npm run build

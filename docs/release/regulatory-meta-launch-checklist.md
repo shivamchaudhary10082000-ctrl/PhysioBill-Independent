@@ -113,7 +113,7 @@ Official Meta sources checked:
 
 ## Commercial comparison review
 
-The current public comparison located was MyPhysioDesk (`myphysiodesk.com`). It is a commercial product, not a government regulator or legal authority. Its public appointment, patient-record, SOAP-note, exercise and billing features are useful only as a market-practice comparison. No legal or compliance claim was adopted from it, and no distinct canonical source for a product named exactly “PhysioDesk” was treated as evidence.
+The current public comparison located was PhysioDesk (`physiodesk.com.br`). It is a commercial product, not a government regulator or legal authority. Its public appointment, patient-record, SOAP-note, exercise and billing features are useful only as a market-practice comparison. No legal or compliance claim was adopted from it, and no distinct canonical source for a product named exactly “PhysioDesk” was treated as evidence.
 
 Useful patterns reviewed from PhysioDesk's India-facing public guidance include:
 

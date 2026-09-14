@@ -113,18 +113,16 @@ Official Meta sources checked:
 
 ## Commercial comparison review
 
-The current public comparison located was PhysioDesk (`physiodesk.com.br`). It is a commercial product, not a government regulator or legal authority. Its public appointment, patient-record, SOAP-note, exercise and billing features are useful only as a market-practice comparison. No legal or compliance claim was adopted from it, and no distinct canonical source for a product named exactly “PhysioDesk” was treated as evidence.
+The exact-name PhysioDesk product located in the current public review is `physiodesk.com.br`, a Brazilian commercial physiotherapy platform. Its public Terms and Privacy Policy are framed around Brazil's LGPD. It is useful only as a product-practice comparison, not as an Indian regulator or legal authority.
 
-Useful patterns reviewed from PhysioDesk's India-facing public guidance include:
+Useful product-practice patterns from its public Terms and Privacy Policy include:
 
-- use real business/service areas rather than locations that cannot actually be served;
-- keep clinic/business information consistent and truthful;
-- do not expose patient records, Aadhaar, PAN, bank details, OTPs or passwords in public/verification media;
-- do not use patient photos without consent;
-- collect genuine patient reviews rather than fabricated feedback;
-- maintain treatment documentation and consent.
+- clearly identify the service provider in public terms;
+- publish a privacy notice explaining the platform's role and data handling;
+- distinguish the platform's responsibilities from the physiotherapist's responsibility for lawful patient-data use and consent;
+- keep patient records private rather than treating them as public profile content.
 
-PhysioBill does not copy PhysioDesk's self-declared HIPAA/DISHA or other compliance badges. PhysioBill should not display a legal-compliance badge unless the underlying claim has been independently substantiated.
+PhysioBill does not copy foreign-law or self-declared compliance badges from another product. Any legal-compliance claim shown by PhysioBill must be independently supportable for the actual deployment jurisdiction.
 
 ## Pre-production blockers
 

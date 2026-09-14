@@ -133,7 +133,7 @@ Before promotion to production and Meta campaign launch:
 - production professional email confirmation / recovery delivery must be reliable;
 - production operator name and privacy/grievance contact must be published;
 - the professional profile used in discovery must contain genuine/current credential and registration facts;
-- production backup/export must exist before the 47 missing database migrations are applied;
+- production backup/export must exist before the 48 post-verification database migrations are applied;
 - release security gate must be green on the frozen candidate (typecheck, production build, dependency audit, live headers/cache policy, MDN Observatory and OWASP ZAP passive baseline);
 - after production deploy, HTTP Observatory, live headers and ZAP passive baseline must pass again;
 - Meta ad creative and landing page must receive a final policy copy review immediately before campaign submission.

@@ -6,7 +6,7 @@ Scope: staging only; no production promotion or production Supabase mutation.
 
 ## Candidate verification
 
-The Part 2 delta was applied directly after the frozen Part 1 candidate and contains no architecture or database-schema change. With the canonical staging Supabase URL and public publishable key, TypeScript typecheck, the Vite production build, CSP generation, dependency audit (`0` vulnerabilities) and `git diff --check` pass. The only build diagnostic is the already-known non-blocking large-chunk performance warning.
+The Part 2 delta was applied directly after the frozen Part 1 candidate. One additional staging hardening migration was later added; no architecture change was introduced. With the canonical staging Supabase URL and public publishable key, TypeScript typecheck, the Vite production build, CSP generation, dependency audit (`0` vulnerabilities) and `git diff --check` pass. The only build diagnostic is the already-known non-blocking large-chunk performance warning.
 
 The release handoff must use the exact GitHub commit at the head of `futureweb-production-backend`; no commit on `main` or `futureweb-dh-repair` is authorized or changed by this work.
 
@@ -75,7 +75,7 @@ Current official sources rechecked on 14 September 2026:
 - GSAHC: current site publishes the 2024 Rules, 5 February and 18 July 2026 public notices, and a 10 September 2026 Autonomous Board notification.
 - Department of Consumer Affairs: unsupported, exaggerated and misleading claims remain prohibited; public profiles and ads must therefore avoid cure guarantees, superlatives and fixed recovery promises.
 - Final DPDP Rules, 2025: Rules 1, 2 and 17–21 commenced on 13 November 2025; Rule 4 is scheduled for 13 November 2026; Rules 3, 5–16, 22 and 23 are scheduled for 13 May 2027. PhysioBill continues to prepare ahead of the later phases without falsely claiming all provisions are already in force.
-- The current public comparison located was MyPhysioDesk. It was treated only as a commercial workflow comparison; no legal or compliance claim was adopted from it, and no unsupported HIPAA, DISHA or compliance badge was copied.
+- The exact-name PhysioDesk product located in the current public review is `physiodesk.com.br`, a Brazilian commercial physiotherapy platform. Its public Terms and Privacy Policy are framed around Brazil's LGPD. It is treated only as a product-practice comparison and not as an Indian legal authority; PhysioBill adopts no Brazilian or unsupported compliance badge from it.
 
 Status: **PASS, subject to final professional credential review and normal legal counsel where required.**
 

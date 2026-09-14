@@ -64,7 +64,7 @@ Status: **PASS.**
 - Privacy and Terms pages publish the configured values.
 - Staging intentionally has neither real value and remains usable because it is a non-production Pages host.
 
-Status: **OWNER VALUES PROVIDED — deploy-time Cloudflare environment configuration is still required before production activation.**
+Status: **BLOCKED — a separate site-level service-operator identity and monitored privacy/grievance contact are still required. Do not reuse an individual physiotherapist profile identity/contact unless the owner explicitly chooses that legal role.**
 
 ## Regulatory review
 
@@ -108,7 +108,7 @@ Status: **PASS.**
 ## Exact remaining human actions
 
 1. Complete authenticated Supabase Dashboard access so private Auth Hook, SMTP, redirect and CAPTCHA settings can be read.
-2. Configure the owner-provided production operator name and monitored privacy/grievance email in the Cloudflare Pages production environment variables.
+2. Decide and configure a separate site-level service-operator identity and monitored privacy/grievance email for PhysioBill. Keep this separate from any individual physiotherapist public profile unless the same person is intentionally acting as the legal service operator.
 3. Create/verify the India DLT + MSG91 sender/template/Flow and approve any required payment before secrets are installed or a real OTP is sent.
 4. Choose and verify a production email sending domain/provider, then provide its SMTP settings through a secure secret-entry path.
 5. Create a Cloudflare Turnstile widget for the staging and eventual production hosts, then provide site/secret keys through the correct public/secret configuration paths.

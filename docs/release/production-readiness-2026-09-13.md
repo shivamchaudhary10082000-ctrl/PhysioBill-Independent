@@ -178,7 +178,7 @@ Staging contains **48 later migrations** that remain in the post-verification pr
 
 Production already contains equivalent early migrations named `phase2_initial_schema_fixed` and `phase4_invoice_authority`; they must not be re-applied as duplicate baseline migrations.
 
-Production already contains application data. Promotion therefore requires a backup/export checkpoint before schema mutation. The Supabase organization is currently on the Free plan, so point-in-time recovery must not be assumed.
+Fresh read-only production inspection on 14 September 2026 shows zero rows in `auth.users` and zero rows in the currently deployed public application tables. A backup/export checkpoint is still required immediately before schema mutation because that state can change, and point-in-time recovery must not be assumed.
 
 ## Promotion order after final verification
 

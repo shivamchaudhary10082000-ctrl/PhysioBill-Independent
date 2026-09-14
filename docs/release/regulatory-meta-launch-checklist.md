@@ -18,7 +18,7 @@ Authoritative sources:
   https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa
 
 
-### DPDP phased commencement status checked 13 September 2026
+### DPDP phased commencement status checked 14 September 2026
 
 The final Digital Personal Data Protection Rules, 2025 were notified on 13 November 2025. The commencement notification is phased rather than all-at-once:
 
@@ -32,7 +32,9 @@ The NCAHP schedule identifies the physiotherapy profession as Physiotherapist (I
 
 GSAHC Rules, 2024 rule 9 provides for an online/live Gujarat State Allied and Healthcare Professionals Register and a registration application/certificate workflow. A PhysioBill “verified” badge therefore must never be represented as a substitute for entry in the applicable government register. Before a real professional profile is published, the submitted registration/credential facts must be checked against the current applicable authority or documentary evidence and any current transition instructions.
 
-As checked on 13 September 2026, GSAHC's public site lists Physiotherapist under Physiotherapy Professional (ISCO 2264) and publishes current Act/Rules and professional notices.
+As checked on 14 September 2026, GSAHC's public site lists Physiotherapist under Physiotherapy Professional (ISCO 2264) and publishes the Gujarat State Allied and Healthcare Council Rules, 2024. Its current notices include the 5 February 2026 NCAHP public notice for physiotherapy and occupational-therapy professionals, the 18 July 2026 notice concerning use of the term “Allied and Healthcare”, and the 10 September 2026 Autonomous Board notification.
+
+The 5 February 2026 NCAHP public notice confirms that Physiotherapist (ISCO 2264) may practise independently or as part of a multidisciplinary team within physiotherapy scope. It also expressly directs that physiotherapy professionals cannot prescribe medicines or provide allopathic treatment, drugs or medication outside that scope, and refers violations to section 59 of the NCAHP Act. PhysioBill therefore states this restriction explicitly in its Professional Standards instead of relying on a vague “scope of practice” reference.
 
 ## Conservative product rules
 
@@ -40,6 +42,7 @@ PhysioBill must not:
 
 - create or publish a physiotherapist listing from unverified professional credentials;
 - represent PhysioBill verification as government registration;
+- advertise or use PhysioBill to prescribe medicines, provide allopathic treatment, drugs or medication outside lawful physiotherapy scope;
 - publish a private home address merely for home-visit discovery;
 - promise a cure, guaranteed relief, permanent result, miracle result or fixed recovery time;
 - publish unsupported comparative claims such as best / No. 1;
@@ -75,7 +78,15 @@ Before a profile may be discoverable:
 
 ## Meta advertising guardrails
 
-Meta's advertising standards must be checked again immediately before campaign launch because platform policies can change.
+Meta's advertising standards were rechecked on 14 September 2026 against Meta's current Advertising Standards pages for Personal Attributes, Unacceptable Business Practices, Health and Wellness, and its Business Tools prohibited-information guidance. They must still be checked again immediately before campaign launch because platform policies can change.
+
+Current Meta controls relevant to PhysioBill:
+
+- an ad must not assert or imply a viewer's health condition, disability, pain or other personal attribute;
+- deceptive or exaggerated success claims are prohibited;
+- health/wellness creative must not generate negative self-perception or use prohibited outcome claims;
+- integrations must not send health information or provider/patient relationship information to Meta;
+- the ad and destination must describe the same real service, and the public landing page must work without authentication or deceptive navigation.
 
 Safe positioning:
 
@@ -93,9 +104,16 @@ Do not use:
 - fake reviews or testimonials;
 - sensitive patient data in Meta audiences, URL parameters, pixel events or conversion payloads.
 
-## PhysioDesk comparison review
+Official Meta sources checked:
 
-PhysioDesk is a commercial product, not a government regulator. Its public guidance is useful only as a market-practice comparison.
+- https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/
+- https://transparency.meta.com/policies/ad-standards/fraud-scams/unacceptable-business-practices/
+- https://transparency.meta.com/policies/ad-standards/restricted-goods-services/health-wellness/
+- https://www.facebook.com/business/help/361948878201809
+
+## Commercial comparison review
+
+The current public comparison located was MyPhysioDesk (`myphysiodesk.com`). It is a commercial product, not a government regulator or legal authority. Its public appointment, patient-record, SOAP-note, exercise and billing features are useful only as a market-practice comparison. No legal or compliance claim was adopted from it, and no distinct canonical source for a product named exactly “PhysioDesk” was treated as evidence.
 
 Useful patterns reviewed from PhysioDesk's India-facing public guidance include:
 

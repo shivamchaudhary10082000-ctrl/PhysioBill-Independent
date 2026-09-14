@@ -16,7 +16,7 @@ export type PatientPlatformIdentity = {
 };
 
 export const PASSWORD_RECOVERY_PATH = '/auth/reset-password';
-export const LEGAL_NOTICE_VERSION = '2026-09-13';
+export const LEGAL_NOTICE_VERSION = '2026-09-14';
 
 function normalizedCaptchaToken(captchaToken?: string | null) {
   const token = captchaToken?.trim();

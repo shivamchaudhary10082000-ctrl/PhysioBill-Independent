@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicFooter } from '@/Components/PublicFooter';
 
-const updated = '13 September 2026';
+const updated = '14 September 2026';
 const publicContactEmail = (import.meta.env.VITE_PUBLIC_CONTACT_EMAIL as string | undefined)?.trim() || null;
 const publicOperatorName = (import.meta.env.VITE_PUBLIC_OPERATOR_NAME as string | undefined)?.trim() || null;
 
@@ -146,6 +146,9 @@ export function ProfessionalStandardsPage() {
       </Section>
       <Section title="Clinical responsibility">
         <p>Advertising does not replace assessment, informed consent, red-flag screening, referral where appropriate, documentation or professional judgment. A booking is scheduling provenance only; it is not clinical authorization.</p>
+      </Section>
+      <Section title="Physiotherapy scope only">
+        <p>Professionals must provide only services that fall within their lawful physiotherapy scope. PhysioBill must not be used to prescribe medicines, provide allopathic treatment, drugs or medication, or advertise authority outside physiotherapy practice.</p>
       </Section>
       <Section title="Regulatory baseline">
         <p>PhysioBill is designed to support a conservative workflow around the National Commission for Allied and Healthcare Professions framework and the applicable Gujarat allied-health regulator. The platform does not certify that a user's practice is legally compliant; professionals remain responsible for checking current requirements applicable to them.</p>

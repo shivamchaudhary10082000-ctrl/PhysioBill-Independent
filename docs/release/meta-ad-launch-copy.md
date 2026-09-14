@@ -16,7 +16,7 @@ Headline:
 
 Description:
 
-> Verified professional profiles • Broad service areas • Appointment requests
+> Reviewed professional information • Broad service areas • Appointment requests
 
 CTA:
 
@@ -95,7 +95,8 @@ Before pressing Publish in Meta Ads Manager:
 
 1. compare the final ad copy and image/video against the current Meta Advertising Standards;
 2. verify the destination URL loads without authentication and has Privacy / Terms / Professional Standards links;
-3. confirm no Meta tracking code is present unless separately approved;
-4. confirm the landing page makes no guaranteed outcome or government-verification claim;
-5. confirm the first public professional profile has genuine, current credential/registration facts;
-6. take screenshots of the final submitted copy/creative and store them with the launch record.
+3. verify the production operator name and monitored privacy/grievance email are visible on the legal pages;
+4. confirm no Meta tracking code is present unless separately approved;
+5. confirm the landing page makes no guaranteed outcome or government-verification claim;
+6. confirm the first public professional profile has genuine, current credential/registration facts;
+7. take screenshots of the final submitted copy/creative and store them with the launch record.

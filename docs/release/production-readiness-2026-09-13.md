@@ -214,6 +214,8 @@ No server secret was found in repository search, so public visibility has not de
 
 **Do not promote to production until the final real-user journey passes and the SMS/auth delivery path needed for that test is available.**
 
+Part 2 external/operational status is tracked in `docs/release/part-2-external-operational-readiness-2026-09-14.md`.
+
 At the handoff into that journey, the remaining blockers are intentionally external/operational rather than untested application code:
 
 1. configure a real SMS delivery provider for patient OTP on staging, then production;

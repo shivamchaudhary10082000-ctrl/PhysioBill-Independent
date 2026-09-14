@@ -1,0 +1,165 @@
+name: Release Security Gate
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'config/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/release-security-gate.yml'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-security-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci --no-fund
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build release candidate
+        env:
+          VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: release-gate-build-placeholder
+          CF_PAGES_BRANCH: futureweb-production-backend
+        run: npm run build
+
+      - name: Assert generated security headers
+        run: |
+          grep -Fq "Content-Security-Policy:" dist/_headers
+          grep -Fq "default-src 'self'" dist/_headers
+          grep -Fq "frame-ancestors 'none'" dist/_headers
+          grep -Fq "img-src 'self' data: blob:;" dist/_headers
+          if grep -Eq "img-src[^;]*[[:space:]]https:[[:space:];]" dist/_headers; then
+            echo "Broad https: image source detected"
+            exit 1
+          fi
+          grep -Fq "Strict-Transport-Security: max-age=63072000" dist/_headers
+          grep -Fq "X-Frame-Options: DENY" dist/_headers
+          grep -Fq "X-Content-Type-Options: nosniff" dist/_headers
+          grep -Fq "Referrer-Policy: no-referrer" dist/_headers
+          grep -Fq "Cross-Origin-Opener-Policy: same-origin" dist/_headers
+          grep -Fq "Cross-Origin-Resource-Policy: same-origin" dist/_headers
+          grep -Fq "Permissions-Policy:" dist/_headers
+          grep -Fq "Cache-Control: private, no-store" dist/_headers
+          grep -Fq 'name="robots" content="noindex, nofollow, noarchive, nosnippet"' dist/index.html
+          grep -Fq 'Disallow: /' dist/robots.txt
+
+      - name: Verify production indexing switch
+        env:
+          VITE_SUPABASE_URL: https://nbsvrzypypmmuvlgdpln.supabase.co
+          CF_PAGES_BRANCH: main
+        run: |
+          npm run generate:csp
+          grep -Fq 'name="robots" content="index, follow"' dist/index.html
+          grep -Fq 'Allow: /' dist/robots.txt
+          ! grep -Fq 'Disallow: /' dist/robots.txt
+
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+  live-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-audit
+    steps:
+      - name: Wait for canonical staging deployment and capture headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in {1..18}; do
+            if curl -fsSIL --max-time 20 https://physiobill-independent-staging.pages.dev/ -o headers.txt; then
+              if grep -qi "^content-security-policy:.*img-src 'self' data: blob:;" headers.txt \
+                && grep -qi '^strict-transport-security: *max-age=63072000' headers.txt \
+                && grep -qi '^cross-origin-opener-policy: *same-origin' headers.txt \
+                && grep -qi '^cross-origin-resource-policy: *same-origin' headers.txt; then
+                ok=1
+                break
+              fi
+            fi
+            sleep 10
+          done
+          cat headers.txt || true
+          test "$ok" -eq 1
+          grep -qi '^x-frame-options: *DENY' headers.txt
+          grep -qi '^x-content-type-options: *nosniff' headers.txt
+          grep -qi '^referrer-policy: *no-referrer' headers.txt
+          grep -qi '^permissions-policy:' headers.txt
+          if grep -qi '^access-control-allow-origin: *\*$' headers.txt; then
+            echo "Unexpected wildcard CORS on HTML shell"
+            exit 1
+          fi
+
+      - name: Verify protected routes fail closed to browser cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for attempt in {1..18}; do
+            all_ok=1
+            for path in /app/dashboard /patient /admin/verifications /auth/reset-password; do
+              echo "Checking $path (attempt $attempt)"
+              curl -fsSIL --max-time 20 "https://physiobill-independent-staging.pages.dev$path" -o route-headers.txt || all_ok=0
+              grep -qi '^cache-control:.*private' route-headers.txt || all_ok=0
+              grep -qi '^cache-control:.*no-store' route-headers.txt || all_ok=0
+              grep -qi '^content-security-policy:' route-headers.txt || all_ok=0
+              if grep -qi '^access-control-allow-origin: *\*$' route-headers.txt; then
+                echo "Unexpected wildcard CORS on protected HTML route $path"
+                exit 1
+              fi
+              if [ "$all_ok" -ne 1 ]; then
+                break
+              fi
+            done
+            if [ "$all_ok" -eq 1 ]; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          test "$ready" -eq 1
+          curl -fsSIL --max-time 20 https://physiobill-independent-staging.pages.dev/sw.js -o sw-headers.txt
+          grep -qi '^cache-control:.*no-cache' sw-headers.txt
+
+      - name: MDN HTTP Observatory scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST 'https://observatory-api.mdn.mozilla.net/api/v2/scan?host=physiobill-independent-staging.pages.dev' -o observatory.json
+          cat observatory.json
+          node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync('observatory.json','utf8'));if(r.error)process.exit(1);if(!['A+','A','A-'].includes(r.grade)){console.error('Observatory grade below A-:',r.grade);process.exit(1)}"
+
+      - name: OWASP ZAP passive baseline
+        shell: bash
+        run: |
+          set -o pipefail
+          docker run --rm -t ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t https://physiobill-independent-staging.pages.dev \
+            -m 1 \
+            -I 2>&1 | tee zap-baseline.txt

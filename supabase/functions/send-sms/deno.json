@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "standardwebhooks": "npm:standardwebhooks@1.0.0"
+  },
+  "tasks": {
+    "check": "deno check index.ts handler.ts webhook.ts handler_test.ts",
+    "test": "deno test handler_test.ts"
+  }
+}

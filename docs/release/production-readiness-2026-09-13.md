@@ -21,11 +21,11 @@ Fresh final evidence:
 - MDN HTTP Observatory: **PASS — A+, 135, 12/12 tests**;
 - OWASP ZAP passive baseline on the canonical staging origin: **PASS — 0 FAIL alerts**;
 - the served bundle contains no Meta Pixel, `fbq`, `fbevents.js`, Meta collection endpoint, or Conversions API implementation; its only “Meta Conversions API” phrase is the Privacy Notice stating that no such integration exists;
-- staging migration ledger contains **73** applied migrations and exactly matches the **73** repository migration names, ending at `20260913183222_account_legal_acknowledgement_foundation`;
+- staging migration ledger now contains **74** applied migrations and exactly matches the **74** repository migration names, ending at `20260914064132_enforce_public_discovery_claim_guard`;
 - fresh Supabase catalog checks found **20** RPC-only RLS tables, **0** anonymous/authenticated direct CRUD grants on them, **0** invalid persona rows, **0** PAT/PHY dual-persona users, **0** malformed/missing PAT or PHY identifiers, **0** identifier collisions, and **0** invalid legal-acknowledgement rows;
 - the Security Advisor findings are intentional review items rather than a green-zero list: 20 RPC-only `RLS enabled, no policy` INFO notices, four bounded anonymous discovery/availability/reimbursement `SECURITY DEFINER` warnings, 57 authenticated self-authorizing RPC warnings, and one external leaked-password-protection warning. No warning was silenced by weakening or inventing database policy.
 
-No new staging migration was created during this closeout because no new database defect was demonstrated.
+One later release-hardening migration, `enforce_public_discovery_claim_guard`, now makes the obvious public marketing-claim validation server-authoritative as well as client-side. Human review remains required for claims outside the narrow deterministic rule set.
 
 ## Release invariants
 
@@ -76,7 +76,7 @@ The release candidate now also includes:
 - explicit patient Terms + Privacy acknowledgement before requesting the first SMS OTP;
 - versioned acknowledgement metadata on newly created Auth identities;
 - immutable server-side signup acknowledgement rows for new professional/patient accounts; the Auth provisioning trigger now rejects a new account that bypasses the required current legal acknowledgement;
-- public-profile guidance plus blocking of obvious guaranteed-cure / fixed-result / unsupported “best / No. 1” claims;
+- public-profile guidance plus browser and database-boundary blocking of obvious guaranteed-cure / fixed-result / unsupported “best / No. 1” claims;
 - a conservative public disclaimer explaining that PhysioBill verification is platform review and does not replace government/professional registration;
 - configurable production service-operator name and privacy/grievance email;
 - a fail-closed production launch gate if that operator identity/contact is absent;
@@ -125,7 +125,7 @@ Production Supabase project: `PhysioBill`.
 
 Production currently ends at migration name `verified_therapist_discovery_location_pairing`.
 
-Staging contains **47 later migrations** that must be promoted, in staging order, only after final real-user verification passes:
+Staging contains **48 later migrations** that remain in the post-verification promotion set:
 
 1. therapist_discovery_profile_verification_request_foundation
 2. admin_therapist_verification_authority
@@ -174,6 +174,7 @@ Staging contains **47 later migrations** that must be promoted, in staging order
 45. fix_communication_event_rpc_volatility
 46. fix_telephysiotherapy_read_rpc_volatility
 47. account_legal_acknowledgement_foundation
+48. enforce_public_discovery_claim_guard
 
 Production already contains equivalent early migrations named `phase2_initial_schema_fixed` and `phase4_invoice_authority`; they must not be re-applied as duplicate baseline migrations.
 
@@ -184,7 +185,7 @@ Production already contains application data. Promotion therefore requires a bac
 1. Freeze the accepted release-candidate commit.
 2. Record production row-count and health baseline.
 3. Obtain a production backup/export checkpoint.
-4. Apply only the 47 missing migration names above in order.
+4. Apply only the 48 listed migration names above in order.
 5. Run production migration-ledger and security-advisor checks.
 6. Verify production persona/ownership smoke probes.
 7. Confirm Cloudflare production environment points to the production Supabase project and production publishable key.
@@ -223,4 +224,4 @@ At the handoff into that journey, the remaining blockers are intentionally exter
 3. provide the real production operator name and monitored privacy/grievance email;
 4. verify the first real professional's current registration/credential facts using the applicable authority and an auditable review method/reference;
 5. run the two-device real-user journey, including the previously unexercised future reschedule path;
-6. only after that PASS, perform the production backup, 47 ordered migrations, production environment binding, merge/deploy and post-deploy security scans.
+6. only after that PASS, perform the production backup, 48 ordered migrations, environment binding, merge/deploy and post-deploy security scans.

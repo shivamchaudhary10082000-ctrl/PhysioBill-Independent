@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import {
+  Activity,
   ArrowLeft,
   ArrowRight,
+  CalendarDays,
+  FileText,
   LockKeyhole,
   LogIn,
   Mail,
+  ShieldCheck,
   UserPlus,
 } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
@@ -93,37 +97,69 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 sm:grid sm:place-items-center sm:py-10">
-      <section className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-border bg-card shadow-[0_24px_70px_hsl(var(--foreground)/.055)] lg:grid-cols-[.92fr_1.08fr]">
-        <div className="relative hidden border-r border-border bg-secondary/55 p-10 lg:flex lg:flex-col lg:justify-between">
-          <div>
-            <a href="/" aria-label="Back to PhysioBill"><PhysioBillBrand /></a>
-            <div className="mt-14 max-w-sm">
-              <p className="text-sm font-semibold text-primary">Professional workspace</p>
-              <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-[-.04em]">A calm, private place for clinical work.</h1>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">Professional access remains separate from the public patient-facing discovery experience.</p>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/.08),transparent_34%),hsl(var(--background))] px-4 py-5 sm:grid sm:place-items-center sm:py-10">
+      <section className="mx-auto grid w-full max-w-6xl overflow-hidden rounded-[30px] border border-border bg-card shadow-[0_24px_70px_hsl(var(--foreground)/.07)] lg:grid-cols-[.95fr_1.05fr]">
+        <div className="relative overflow-hidden border-b border-border bg-[linear-gradient(145deg,hsl(var(--primary)/.12),hsl(var(--secondary)/.8)_54%,hsl(var(--background)))] p-6 sm:p-8 lg:border-b-0 lg:border-r lg:p-10">
+          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full border-[34px] border-primary/5" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 size-60 rounded-full bg-primary/5 blur-2xl" />
+
+          <div className="relative">
+            <div className="flex items-center justify-between gap-4">
+              <a href="/" aria-label="Back to PhysioBill">
+                <PhysioBillBrand markClassName="h-12 w-12" />
+              </a>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-card/80 px-3 py-1.5 text-[11px] font-bold text-primary backdrop-blur">
+                <ShieldCheck size={14} /> Professional access
+              </span>
             </div>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <LockKeyhole size={15} className="text-primary" /> Secure physiotherapist access
+
+            <div className="mt-8 max-w-lg lg:mt-14">
+              <p className="text-xs font-extrabold uppercase tracking-[.16em] text-primary">Physiotherapy professional workspace</p>
+              <h1 className="mt-3 text-3xl font-extrabold leading-[1.08] tracking-[-.045em] sm:text-4xl">
+                Clinical work, patient records and billing in one private workspace.
+              </h1>
+              <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground sm:leading-7">
+                Built for physiotherapists to manage care workflows while keeping professional access separate from the public patient experience.
+              </p>
+            </div>
+
+            <div className="mt-7 grid gap-2.5 sm:grid-cols-3 lg:mt-10 lg:grid-cols-1">
+              <div className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/75 p-3 backdrop-blur">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><Activity size={18} /></span>
+                <div><p className="text-sm font-bold">Clinical workspace</p><p className="text-[11px] text-muted-foreground">Visits and treatment records</p></div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/75 p-3 backdrop-blur">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText size={18} /></span>
+                <div><p className="text-sm font-bold">Billing & receipts</p><p className="text-[11px] text-muted-foreground">Invoices and mediclaim printouts</p></div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/75 p-3 backdrop-blur">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><CalendarDays size={18} /></span>
+                <div><p className="text-sm font-bold">Practice workflow</p><p className="text-[11px] text-muted-foreground">Availability, requests and follow-up</p></div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-2 text-[11px] font-medium text-muted-foreground lg:mt-10">
+              <LockKeyhole size={14} className="text-primary" /> Secure physiotherapist-only account access
+            </div>
           </div>
         </div>
 
         <div className="p-6 sm:p-8 lg:p-10">
-          <div className="flex items-center justify-between gap-4 lg:hidden">
-            <a href="/" aria-label="Back to PhysioBill"><PhysioBillBrand /></a>
+          <div className="flex items-center justify-end lg:hidden">
             <a href="/" className="text-xs font-semibold text-muted-foreground hover:text-primary">Public site</a>
           </div>
 
-          <div className="mt-8 lg:mt-0">
-            <p className="text-sm font-semibold text-primary">Professional access</p>
+          <div className="mt-4 lg:mt-0">
+            <p className="text-sm font-semibold text-primary">Professional account</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em]">
-              {mode === 'recovery-request' ? 'Recover your password' : mode === 'signup' ? 'Create your physiotherapist account' : 'Sign in to PhysioBill'}
+              {mode === 'recovery-request' ? 'Recover your password' : mode === 'signup' ? 'Create your physiotherapist account' : 'Sign in to your workspace'}
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {mode === 'recovery-request'
                 ? 'Enter your physiotherapist account email. The result stays intentionally generic to protect account privacy.'
-                : 'Continue to your private professional workspace.'}
+                : mode === 'signup'
+                  ? 'Create a professional account. Public discovery stays off until credential verification and your explicit publish choice.'
+                  : 'Use the email and password linked to your professional PhysioBill account.'}
             </p>
           </div>
 
@@ -144,7 +180,7 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <label className="block space-y-2">
-              <span className="text-xs font-semibold text-muted-foreground">Email</span>
+              <span className="text-xs font-semibold text-muted-foreground">Professional email</span>
               <input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 w-full rounded-xl border bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />
             </label>
             {mode !== 'recovery-request' && (
@@ -192,6 +228,10 @@ export function AuthPage({ notice: initialNotice = null }: { notice?: string | n
               {!busy && <ArrowRight size={16} />}
             </button>
           </form>
+
+          <div className="mt-6 border-t border-border pt-5 text-xs leading-5 text-muted-foreground">
+            Patient access uses a separate patient sign-in route. Professional credentials and public discovery remain independently controlled.
+          </div>
         </div>
       </section>
     </main>

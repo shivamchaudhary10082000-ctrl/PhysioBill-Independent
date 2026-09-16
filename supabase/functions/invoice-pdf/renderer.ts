@@ -307,9 +307,33 @@ export async function renderMediclaimReceiptPdf(
   }
   y -= 17;
 
+  const addressLabel = 'Address:';
+  const addressX = left + 10;
+  const addressLabelWidth = bold.widthOfTextAtSize(addressLabel, 8.2);
+  const addressLineStart = addressX + addressLabelWidth + 8;
+  const addressLineEnd = right - 10;
+  page.drawText(addressLabel, { x: addressX, y, size: 8.2, font: bold, color: TEXT });
+  page.drawLine({
+    start: { x: addressLineStart, y: y - 2 },
+    end: { x: addressLineEnd, y: y - 2 },
+    thickness: 0.6,
+    color: BORDER,
+  });
   if (dto.patient.address.trim()) {
-    y = drawLabeledValue(page, regular, bold, 'Address', dto.patient.address, left + 10, y, right - left - 20, 8.2);
+    drawWrapped(
+      page,
+      regular,
+      dto.patient.address,
+      addressLineStart + 4,
+      y,
+      8.2,
+      addressLineEnd - addressLineStart - 8,
+      TEXT,
+      10,
+    );
   }
+  y -= 18;
+
   if (options.referredBy.trim()) {
     y = drawLabeledValue(page, regular, bold, 'Referred By Dr.', options.referredBy, left + 10, y - 2, right - left - 20, 8.2);
   }

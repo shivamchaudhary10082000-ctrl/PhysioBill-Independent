@@ -1024,11 +1024,127 @@ const verificationLabel: Record<ProductionProfessionalVerification['status'], st
   rejected: 'Verification unsuccessful',
 };
 
+function QualificationSelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const standardOptions = ['BPT', 'MPT', 'BPT + MPT'];
+  const selected = standardOptions.includes(value.trim()) ? value.trim() : value.trim() ? 'custom' : '';
+  const [customValue, setCustomValue] = useState(
+    standardOptions.includes(value.trim()) ? '' : value,
+  );
+
+  useEffect(() => {
+    if (!standardOptions.includes(value.trim())) setCustomValue(value);
+  }, [value]);
+
+  const changeSelection = (next: string) => {
+    if (next === 'custom') {
+      onChange(customValue);
+      return;
+    }
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      <SelectField
+        label="Qualification shown on profile / bill"
+        value={selected}
+        onChange={changeSelection}
+        options={[
+          { value: '', label: 'Select qualification' },
+          { value: 'BPT', label: 'BPT' },
+          { value: 'MPT', label: 'MPT' },
+          { value: 'BPT + MPT', label: 'BPT + MPT' },
+          { value: 'custom', label: 'Other / include specialization' },
+        ]}
+      />
+      {selected === 'custom' && (
+        <Field
+          label="Custom qualification"
+          value={customValue}
+          placeholder="e.g. MPT (Neurology)"
+          onChange={(event) => {
+            const next = event.target.value;
+            setCustomValue(next);
+            onChange(next);
+          }}
+        />
+      )}
+      <p className="text-xs leading-5 text-muted-foreground">
+        Choose only what you want displayed. BPT, MPT and BPT + MPT are separate choices; a specialization can be entered with the custom option.
+      </p>
+    </div>
+  );
+}
+
 function ProfilePage({ workspace }: { workspace: WorkspaceState }) {
   const [draft, setDraft] = useState(workspace.profile);
-  const set = <K extends keyof Profile>(field: K, value: Profile[K]) => setDraft((current) => ({ ...current, [field]: value }));
+  const set = <K extends keyof Profile>(field: K, value: Profile[K]) =>
+    setDraft((current) => ({ ...current, [field]: value }));
   const verification = workspace.verification;
-  return <div><PageHeader eyebrow="Provider profile" title="Your professional details" description="Keep your professional and billing identity up to date. Credential claims remain separate from verification." /><div className="mb-6 rounded-2xl border bg-card p-5"><p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">Professional verification</p><p className="mt-2 text-lg font-extrabold">{verificationLabel[verification.status]}</p>{verification.status === 'verified' ? <p className="mt-2 text-sm text-muted-foreground">Professional credentials verified by PhysioBill. This does not determine insurer or mediclaim reimbursement.</p> : <p className="mt-2 text-sm text-muted-foreground">Professional verification is system-managed. There is no self-verification control on this page.</p>}</div><div className="rounded-2xl border bg-card p-6"><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={draft.fullName} onChange={(e) => set('fullName', e.target.value)} /><Field label="Title" value={draft.title} onChange={(e) => set('title', e.target.value)} /><Field label="Qualification" value={draft.qualification} onChange={(e) => set('qualification', e.target.value)} /><Field label="Registration number" value={draft.registration} onChange={(e) => set('registration', e.target.value)} /><Field label="Registration authority / council" value={draft.registrationAuthority} onChange={(e) => set('registrationAuthority', e.target.value)} /><Field label="Registration jurisdiction" value={draft.registrationJurisdiction} onChange={(e) => set('registrationJurisdiction', e.target.value)} /><Field label="Country / region code (optional)" value={draft.registrationRegionCode} onChange={(e) => set('registrationRegionCode', e.target.value.toUpperCase())} /><Field label="Phone" value={draft.phone} onChange={(e) => set('phone', e.target.value)} /><Field label="Professional email" value={draft.email} onChange={(e) => set('email', e.target.value)} /><Field label="Professional / practice address" value={draft.address} onChange={(e) => set('address', e.target.value)} /><Field label="PAN" value={draft.pan} onChange={(e) => set('pan', e.target.value)} /><Field label="GSTIN (optional)" value={draft.gstin} onChange={(e) => set('gstin', e.target.value.toUpperCase())} /><Field label="Invoice prefix" value={draft.invoicePrefix} onChange={(e) => set('invoicePrefix', e.target.value.toUpperCase())} /></div><p className="mt-5 text-sm text-muted-foreground">Registration jurisdiction identifies the professional authority context; country or region code is recorded only where applicable. Logo upload and payment-destination settings remain separate.</p><div className="mt-6 flex justify-end"><Button onClick={() => workspace.setProfile(draft)}><Check size={16} /> Save profile</Button></div></div></div>;
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Provider profile"
+        title="Your professional details"
+        description="Each therapist controls their own professional and billing identity. Credential claims remain separate from verification."
+      />
+      <div className="mb-6 rounded-2xl border bg-card p-5">
+        <p className="text-xs font-bold uppercase tracking-[.12em] text-muted-foreground">
+          Professional verification
+        </p>
+        <p className="mt-2 text-lg font-extrabold">{verificationLabel[verification.status]}</p>
+        {verification.status === 'verified' ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Professional credentials verified by PhysioBill. This does not determine insurer or mediclaim reimbursement.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Professional verification is system-managed. There is no self-verification control on this page.
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border bg-card p-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Full name" value={draft.fullName} onChange={(e) => set('fullName', e.target.value)} />
+          <Field label="Title" value={draft.title} onChange={(e) => set('title', e.target.value)} />
+          <QualificationSelector value={draft.qualification} onChange={(value) => set('qualification', value)} />
+          <Field label="Registration number" value={draft.registration} onChange={(e) => set('registration', e.target.value)} />
+          <Field label="Registration authority / council" value={draft.registrationAuthority} onChange={(e) => set('registrationAuthority', e.target.value)} />
+          <Field label="Registration jurisdiction" value={draft.registrationJurisdiction} onChange={(e) => set('registrationJurisdiction', e.target.value)} />
+          <Field label="Country / region code (optional)" value={draft.registrationRegionCode} onChange={(e) => set('registrationRegionCode', e.target.value.toUpperCase())} />
+          <Field
+            label="Professional phone number"
+            type="tel"
+            inputMode="tel"
+            placeholder="+91 ..."
+            value={draft.phone}
+            onChange={(e) => set('phone', e.target.value)}
+          />
+          <Field label="Professional email" type="email" value={draft.email} onChange={(e) => set('email', e.target.value)} />
+          <Field label="Professional / practice address" value={draft.address} onChange={(e) => set('address', e.target.value)} />
+          <Field label="PAN" value={draft.pan} onChange={(e) => set('pan', e.target.value)} />
+          <Field label="GSTIN (optional)" value={draft.gstin} onChange={(e) => set('gstin', e.target.value.toUpperCase())} />
+          <Field label="Invoice prefix" value={draft.invoicePrefix} onChange={(e) => set('invoicePrefix', e.target.value.toUpperCase())} />
+        </div>
+        <p className="mt-5 text-sm text-muted-foreground">
+          The professional phone number and selected qualification are therapist-specific and are used on newly finalized invoice snapshots and printable bills. Registration jurisdiction identifies the professional authority context; country or region code is recorded only where applicable.
+        </p>
+        <div className="mt-6 flex justify-end">
+          <Button onClick={() => workspace.setProfile(draft)}>
+            <Check size={16} /> Save profile
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function SettingsPage({ workspace }: { workspace: WorkspaceState }) {

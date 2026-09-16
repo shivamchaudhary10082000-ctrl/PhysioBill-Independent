@@ -156,7 +156,12 @@ function IssuedInvoiceSheet({
           {patientAge.trim() && <p className="text-sm"><span className="font-bold">Age:</span> {patientAge.trim()}</p>}
           {patientGender.trim() && <p className="text-sm"><span className="font-bold">Gender:</span> {patientGender.trim()}</p>}
           <OptionalLine label="Contact Number" value={snapshot.patientPhone} />
-          <OptionalLine label="Address" value={snapshot.patientAddress} />
+          <div className="sm:col-span-2 flex min-h-7 items-end gap-2 text-sm">
+            <span className="shrink-0 font-bold">Address:</span>
+            <span className="min-h-6 flex-1 border-b border-slate-400 px-1 pb-1">
+              {snapshot.patientAddress.trim()}
+            </span>
+          </div>
           {referredBy.trim() && <p className="text-sm sm:col-span-2"><span className="font-bold">Referred By Dr.:</span> {referredBy.trim()}</p>}
           <p className="text-sm sm:col-span-2">
             <span className="font-bold">Chief Complaint / Service:</span>{' '}

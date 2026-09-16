@@ -44,7 +44,7 @@ function EventCard({ event, navigate }: { event: FinancialLedgerEvent; navigate:
       <div>
         <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide">Invoice</span><p className="font-bold">{event.invoiceNumber}</p></div>
         <p className="mt-1 text-xs text-muted-foreground">Finalized invoice · invoice record created {dateTime(event.occurredAt)} · {event.status}</p>
-        <button type="button" onClick={() => navigate(`/app/invoices/${encodeURIComponent(event.invoiceId)}`)} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">Open / print bill <ArrowRight size={13} /></button>
+        <button type="button" onClick={() => navigate(`/app/invoices/${encodeURIComponent(event.invoiceId)}/document`)} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">Open / print bill <ArrowRight size={13} /></button>
       </div>
       <div className="text-left sm:text-right"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Billed</p><p className="text-lg font-bold">{money(event.amount)}</p></div>
     </div>;

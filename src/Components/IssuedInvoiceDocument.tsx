@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Download, Printer, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Download, FileCheck2, Printer, Trash2, Upload } from 'lucide-react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import {
   loadInvoiceIssuanceSnapshot,
   type InvoiceIssuanceSnapshot,
 } from '@/lib/invoice-issuance-snapshots';
 import {
+  downloadMediclaimReceiptPdf,
   openPermanentInvoicePdfDownload,
+  requestMediclaimReceiptPdf,
   requestPermanentInvoicePdf,
 } from '@/lib/invoice-document-artifacts';
 import { loadInvoice, type ProductionInvoice } from '@/lib/invoices';
@@ -31,6 +33,12 @@ function servicePeriod(snapshot: InvoiceIssuanceSnapshot) {
   return `${start} – ${end}`;
 }
 
+function parseQuantity(sessions: string) {
+  const match = sessions.trim().match(/^(\d+(?:\.\d+)?)/);
+  const value = match ? Number(match[1]) : 1;
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
 function OptionalLine({ label, value }: { label: string; value: string }) {
   if (!value.trim()) return null;
   return (
@@ -46,6 +54,9 @@ function IssuedInvoiceSheet({
   homeVisitTimings,
   referredBy,
   chiefComplaint,
+  patientAge,
+  patientGender,
+  additionalNote,
   digitalStamp,
 }: {
   snapshot: InvoiceIssuanceSnapshot;
@@ -53,6 +64,9 @@ function IssuedInvoiceSheet({
   homeVisitTimings: string;
   referredBy: string;
   chiefComplaint: string;
+  patientAge: string;
+  patientGender: string;
+  additionalNote: string;
   digitalStamp: string | null;
 }) {
   const providerVisible = useMemo(
@@ -77,6 +91,8 @@ function IssuedInvoiceSheet({
   const paid = Math.max(0, invoice?.paid ?? 0);
   const balance = Math.max(0, snapshot.total - paid);
   const subtotal = Math.max(0, snapshot.fee + snapshot.additional);
+  const quantity = parseQuantity(snapshot.sessions);
+  const unitPrice = quantity > 1 ? snapshot.fee / quantity : snapshot.fee;
   const providerName = [snapshot.therapistTitle, snapshot.therapistFullName]
     .filter((value) => value.trim())
     .join(' ')
@@ -134,6 +150,8 @@ function IssuedInvoiceSheet({
         <div className="grid gap-x-5 gap-y-3 border-y border-slate-200 py-4 sm:grid-cols-2">
           <p className="text-sm"><span className="font-bold">Patient Name:</span> {snapshot.patientName}</p>
           <p className="text-sm"><span className="font-bold">Patient No.:</span> {snapshot.patientNumber}</p>
+          {patientAge.trim() && <p className="text-sm"><span className="font-bold">Age:</span> {patientAge.trim()}</p>}
+          {patientGender.trim() && <p className="text-sm"><span className="font-bold">Gender:</span> {patientGender.trim()}</p>}
           <OptionalLine label="Contact Number" value={snapshot.patientPhone} />
           <OptionalLine label="Address" value={snapshot.patientAddress} />
           {referredBy.trim() && <p className="text-sm sm:col-span-2"><span className="font-bold">Referred By Dr.:</span> {referredBy.trim()}</p>}
@@ -144,6 +162,11 @@ function IssuedInvoiceSheet({
           {period && (
             <p className="text-sm sm:col-span-2">
               <span className="font-bold">Service period:</span> {period}
+            </p>
+          )}
+          {additionalNote.trim() && (
+            <p className="text-sm sm:col-span-2">
+              <span className="font-bold">Additional note:</span> {additionalNote.trim()}
             </p>
           )}
         </div>
@@ -164,7 +187,7 @@ function IssuedInvoiceSheet({
                 <td className="border-r border-slate-300 px-2 py-3 text-center">1</td>
                 <td className="border-r border-slate-300 px-3 py-3 font-semibold">{snapshot.description || 'Physiotherapy treatment'}</td>
                 <td className="border-r border-slate-300 px-2 py-3 text-center">{snapshot.sessions || '1'}</td>
-                <td className="border-r border-slate-300 px-2 py-3 text-right">{money(snapshot.fee)}</td>
+                <td className="border-r border-slate-300 px-2 py-3 text-right">{money(unitPrice)}</td>
                 <td className="px-2 py-3 text-right">{money(snapshot.fee)}</td>
               </tr>
               {snapshot.additional > 0 && (
@@ -259,6 +282,12 @@ function PrintPreparation({
   setReferredBy,
   chiefComplaint,
   setChiefComplaint,
+  patientAge,
+  setPatientAge,
+  patientGender,
+  setPatientGender,
+  additionalNote,
+  setAdditionalNote,
   digitalStamp,
   stampFileName,
   setDigitalStamp,
@@ -270,6 +299,12 @@ function PrintPreparation({
   setReferredBy: (value: string) => void;
   chiefComplaint: string;
   setChiefComplaint: (value: string) => void;
+  patientAge: string;
+  setPatientAge: (value: string) => void;
+  patientGender: string;
+  setPatientGender: (value: string) => void;
+  additionalNote: string;
+  setAdditionalNote: (value: string) => void;
   digitalStamp: string | null;
   stampFileName: string;
   setDigitalStamp: (value: string | null) => void;
@@ -280,8 +315,8 @@ function PrintPreparation({
   const chooseStamp = (file: File | null) => {
     setStampError(null);
     if (!file) return;
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      setStampError('Use a PNG, JPG or WebP stamp image.');
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      setStampError('Use a PNG or JPG stamp image so the downloaded PDF can match the receipt.');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
@@ -306,7 +341,7 @@ function PrintPreparation({
       <p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Print preparation</p>
       <h2 className="mt-1 text-lg font-extrabold">Mediclaim / patient receipt details</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        These optional print details do not alter the finalized invoice record. The digital stamp stays in this browser tab and is not uploaded to PhysioBill.
+        These optional receipt details do not rewrite the finalized invoice. They are included in the mediclaim PDF you download. A digital stamp is sent only for that PDF generation and is not stored as the permanent invoice artifact.
       </p>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="block space-y-1.5">
@@ -326,11 +361,42 @@ function PrintPreparation({
             className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm"
           />
         </label>
+        <label className="block space-y-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Patient Age (optional)</span>
+          <input
+            inputMode="numeric"
+            value={patientAge}
+            onChange={(event) => setPatientAge(event.target.value)}
+            className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm"
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Gender (optional)</span>
+          <select
+            value={patientGender}
+            onChange={(event) => setPatientGender(event.target.value)}
+            className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm"
+          >
+            <option value="">Not shown</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
         <label className="block space-y-1.5 md:col-span-2">
           <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Chief complaint / service shown on receipt</span>
           <input
             value={chiefComplaint}
             onChange={(event) => setChiefComplaint(event.target.value)}
+            className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm"
+          />
+        </label>
+        <label className="block space-y-1.5 md:col-span-2">
+          <span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Additional receipt note (optional)</span>
+          <input
+            value={additionalNote}
+            onChange={(event) => setAdditionalNote(event.target.value)}
+            placeholder="Only if something extra must appear on this printed receipt"
             className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm"
           />
         </label>
@@ -342,7 +408,7 @@ function PrintPreparation({
           {digitalStamp ? 'Replace digital stamp' : 'Add digital stamp'}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg"
             className="sr-only"
             onChange={(event) => chooseStamp(event.target.files?.[0] ?? null)}
           />
@@ -371,11 +437,15 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
   const [invoice, setInvoice] = useState<ProductionInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pdfBusy, setPdfBusy] = useState(false);
+  const [receiptPdfBusy, setReceiptPdfBusy] = useState(false);
+  const [auditPdfBusy, setAuditPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [homeVisitTimings, setHomeVisitTimings] = useState('');
   const [referredBy, setReferredBy] = useState('');
   const [chiefComplaint, setChiefComplaint] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [patientGender, setPatientGender] = useState('');
+  const [additionalNote, setAdditionalNote] = useState('');
   const [digitalStamp, setDigitalStamp] = useState<string | null>(null);
   const [stampFileName, setStampFileName] = useState('');
 
@@ -413,16 +483,37 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
     };
   }, [invoiceId]);
 
+  const downloadReceiptPdf = async () => {
+    setReceiptPdfBusy(true);
+    setPdfError(null);
+    try {
+      const result = await requestMediclaimReceiptPdf(invoiceId, {
+        homeVisitTimings,
+        referredBy,
+        chiefComplaint,
+        patientAge,
+        patientGender,
+        additionalNote,
+        digitalStampDataUrl: digitalStamp,
+      });
+      downloadMediclaimReceiptPdf(result);
+    } catch {
+      setPdfError('Mediclaim PDF generation failed. Please try again.');
+    } finally {
+      setReceiptPdfBusy(false);
+    }
+  };
+
   const downloadPermanentPdf = async () => {
-    setPdfBusy(true);
+    setAuditPdfBusy(true);
     setPdfError(null);
     try {
       const result = await requestPermanentInvoicePdf(invoiceId);
       openPermanentInvoicePdfDownload(result);
     } catch {
-      setPdfError('PDF generation failed. Please try again.');
+      setPdfError('Preserved audit PDF generation failed. Please try again.');
     } finally {
-      setPdfBusy(false);
+      setAuditPdfBusy(false);
     }
   };
 
@@ -440,18 +531,26 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              disabled={pdfBusy}
-              onClick={() => void downloadPermanentPdf()}
-              className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-50"
+              disabled={receiptPdfBusy}
+              onClick={() => void downloadReceiptPdf()}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
-              <Download size={16} /> {pdfBusy ? 'Generating PDF…' : 'Download preserved invoice PDF'}
+              <Download size={16} /> {receiptPdfBusy ? 'Generating receipt…' : 'Download mediclaim PDF'}
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+              className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm font-semibold text-primary hover:bg-secondary"
             >
-              <Printer size={16} /> Print mediclaim receipt / Save PDF
+              <Printer size={16} /> Print / Save PDF
+            </button>
+            <button
+              type="button"
+              disabled={auditPdfBusy}
+              onClick={() => void downloadPermanentPdf()}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-secondary disabled:opacity-50"
+            >
+              <FileCheck2 size={15} /> {auditPdfBusy ? 'Generating audit copy…' : 'Preserved audit PDF'}
             </button>
           </div>
         )}
@@ -481,6 +580,12 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
             setReferredBy={setReferredBy}
             chiefComplaint={chiefComplaint}
             setChiefComplaint={setChiefComplaint}
+            patientAge={patientAge}
+            setPatientAge={setPatientAge}
+            patientGender={patientGender}
+            setPatientGender={setPatientGender}
+            additionalNote={additionalNote}
+            setAdditionalNote={setAdditionalNote}
             digitalStamp={digitalStamp}
             stampFileName={stampFileName}
             setDigitalStamp={setDigitalStamp}
@@ -492,6 +597,9 @@ export function IssuedInvoiceDocument({ invoiceId, onBack }: { invoiceId: string
             homeVisitTimings={homeVisitTimings}
             referredBy={referredBy}
             chiefComplaint={chiefComplaint}
+            patientAge={patientAge}
+            patientGender={patientGender}
+            additionalNote={additionalNote}
             digitalStamp={digitalStamp}
           />
           <div className="no-print">

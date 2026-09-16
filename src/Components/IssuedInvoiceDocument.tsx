@@ -177,8 +177,8 @@ function IssuedInvoiceSheet({
               <tr>
                 <th className="w-14 border-b border-r border-slate-300 px-2 py-2 text-center">Sr. No.</th>
                 <th className="border-b border-r border-slate-300 px-3 py-2 text-left">Description</th>
-                <th className="w-24 border-b border-r border-slate-300 px-2 py-2 text-center">Qty</th>
-                <th className="w-28 border-b border-r border-slate-300 px-2 py-2 text-right">Price</th>
+                <th className="w-24 border-b border-r border-slate-300 px-2 py-2 text-center">Days</th>
+                <th className="w-28 border-b border-r border-slate-300 px-2 py-2 text-right">Price / Day</th>
                 <th className="w-28 border-b border-slate-300 px-2 py-2 text-right">Amount</th>
               </tr>
             </thead>

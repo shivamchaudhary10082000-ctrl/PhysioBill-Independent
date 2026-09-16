@@ -283,8 +283,9 @@ export async function renderMediclaimReceiptPdf(
   let y = 724;
   page.drawText(`Date: ${dto.issuedAt ? dateLabel(dto.issuedAt) : '-'}`, { x: left + 10, y, size: 8.5, font: bold, color: TEXT });
   drawRightText(page, bold, `Receipt No.: ${dto.invoiceNumber}`, right - 10, y, 8.5);
-  y -= 20;
-  page.drawLine({ start: { x: left, y: y + 8 }, end: { x: right, y: y + 8 }, thickness: 0.7, color: BORDER });
+  y -= 16;
+  page.drawLine({ start: { x: left, y }, end: { x: right, y }, thickness: 0.7, color: BORDER });
+  y -= 18;
 
   page.drawText('Patient Name:', { x: left + 10, y, size: 8.2, font: bold, color: TEXT });
   page.drawText(safeText(dto.patient.name || '-'), { x: left + 82, y, size: 8.2, font: regular, color: TEXT });

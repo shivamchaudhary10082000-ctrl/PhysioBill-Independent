@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
 import type { InvoicePdfDto } from './document-dto.ts';
+import { decodePhysioBillMarkPng } from './brand-logo.ts';
 
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 48;
@@ -240,29 +241,31 @@ export async function renderMediclaimReceiptPdf(
   const left = 28;
   const right = width - 28;
 
-  // Header / brand.
-  page.drawCircle({ x: 54, y: 790, size: 23, borderColor: TEAL, borderWidth: 4 });
-  page.drawCircle({ x: 58, y: 808, size: 4.8, color: BLUE });
-  page.drawLine({ start: { x: 51, y: 795 }, end: { x: 61, y: 770 }, thickness: 4.5, color: BLUE });
-  page.drawLine({ start: { x: 61, y: 770 }, end: { x: 72, y: 788 }, thickness: 4.5, color: TEAL });
-  page.drawRectangle({ x: 67, y: 763, width: 20, height: 25, borderColor: BLUE, borderWidth: 2.2, color: rgb(1,1,1) });
-  page.drawLine({ start: { x: 72, y: 780 }, end: { x: 82, y: 780 }, thickness: 1.8, color: TEAL });
-  page.drawLine({ start: { x: 77, y: 775 }, end: { x: 77, y: 785 }, thickness: 1.8, color: TEAL });
+  // Header / brand. The mark is generated from the same SVG geometry used by the web app.
+  const brandMark = await pdf.embedPng(decodePhysioBillMarkPng());
+  page.drawImage(brandMark, { x: 34, y: 766, width: 58, height: 58 });
 
-  page.drawText('Physio', { x: 98, y: 799, size: 22, font: bold, color: BLUE });
-  page.drawText('Bill', { x: 160, y: 799, size: 22, font: bold, color: TEAL });
-  page.drawText('PHYSIOTHERAPY | RECOVERY | BETTER LIVING', { x: 99, y: 784, size: 5.8, font: bold, color: MUTED });
+  const wordX = 101;
+  const wordY = 799;
+  const wordSize = 22;
+  const physioWord = 'Physio';
+  page.drawText(physioWord, { x: wordX, y: wordY, size: wordSize, font: bold, color: BLUE });
+  const billX = wordX + bold.widthOfTextAtSize(physioWord, wordSize) + 2.5;
+  page.drawText('Bill', { x: billX, y: wordY, size: wordSize, font: bold, color: TEAL });
+  page.drawText('PHYSIOTHERAPY | RECOVERY | BETTER LIVING', { x: wordX, y: 783, size: 5.6, font: bold, color: MUTED });
 
-  const providerX = 308;
+  const providerX = 318;
   const providerWidth = right - providerX;
-  page.drawLine({ start: { x: 292, y: 817 }, end: { x: 292, y: 758 }, thickness: 0.9, color: BORDER });
-  const providerName = [dto.provider.title, dto.provider.fullName].filter(Boolean).join(' ').trim();
+  page.drawLine({ start: { x: 302, y: 818 }, end: { x: 302, y: 757 }, thickness: 0.9, color: BORDER });
   let py = 809;
-  if (providerName) {
-    py = drawWrapped(page, bold, providerName, providerX, py, 10.5, providerWidth, BLUE, 12.5) - 1;
+  if (dto.provider.fullName) {
+    py = drawWrapped(page, bold, dto.provider.fullName, providerX, py, 10.2, providerWidth, BLUE, 12) - 1;
   }
-  if (dto.provider.qualification) {
-    py = drawWrapped(page, bold, dto.provider.qualification, providerX, py, 8.2, providerWidth, TEXT, 10.2);
+  const professionalLine = [dto.provider.title, dto.provider.qualification]
+    .filter((value) => value.trim())
+    .join(' | ');
+  if (professionalLine) {
+    py = drawWrapped(page, bold, professionalLine, providerX, py, 7.8, providerWidth, TEXT, 9.7);
   }
   py = drawLabeledValue(page, regular, bold, 'Registration No.', dto.provider.registration, providerX, py, providerWidth, 7.6);
   py = drawLabeledValue(page, regular, bold, 'Phone', dto.provider.phone, providerX, py, providerWidth, 7.6);
@@ -331,14 +334,14 @@ export async function renderMediclaimReceiptPdf(
   const tableW = right - left - 20;
   const cols = [40, 265, 55, 72, tableW - 432];
   const headerH = 24;
-  const rowH = 25;
+  const rowH = 28;
   page.drawRectangle({ x: tableX, y: y - headerH, width: tableW, height: headerH, color: PALE_BLUE, borderColor: BORDER, borderWidth: 0.8 });
   let cx = tableX;
   for (let i = 0; i < cols.length - 1; i += 1) {
     cx += cols[i];
     page.drawLine({ start: { x: cx, y }, end: { x: cx, y: y - headerH - rowH * 5 }, thickness: 0.6, color: BORDER });
   }
-  const headers = ['Sr. No.', 'Description', 'Qty', 'Price', 'Amount'];
+  const headers = ['Sr. No.', 'Description', 'Days', 'Price / Day', 'Amount'];
   cx = tableX;
   headers.forEach((header, index) => {
     const colW = cols[index];
@@ -347,12 +350,12 @@ export async function renderMediclaimReceiptPdf(
     cx += colW;
   });
 
-  const qty = parseQuantity(dto.service.sessions);
-  const unitPrice = qty > 1 ? dto.service.fee / qty : dto.service.fee;
-  const rows: Array<{ description: string; qty: string; price: number; amount: number }> = [
+  const days = parseQuantity(dto.service.sessions);
+  const unitPrice = days > 1 ? dto.service.fee / days : dto.service.fee;
+  const rows: Array<{ description: string; days: string; price: number; amount: number }> = [
     {
       description: dto.service.description || 'Physiotherapy treatment',
-      qty: dto.service.sessions || '1',
+      days: dto.service.sessions || '1',
       price: unitPrice,
       amount: dto.service.fee,
     },
@@ -360,13 +363,14 @@ export async function renderMediclaimReceiptPdf(
   if (dto.service.additional > 0) {
     rows.push({
       description: dto.service.additionalDescription || 'Additional service / charge',
-      qty: '1',
+      days: '1',
       price: dto.service.additional,
       amount: dto.service.additional,
     });
   }
 
-  for (let rowIndex = 0; rowIndex < 5; rowIndex += 1) {
+  const visibleRows = Math.max(5, Math.min(9, Math.floor((y - 245 - headerH) / rowH)));
+  for (let rowIndex = 0; rowIndex < visibleRows; rowIndex += 1) {
     const top = y - headerH - rowH * rowIndex;
     const bottom = top - rowH;
     page.drawLine({ start: { x: tableX, y: bottom }, end: { x: tableX + tableW, y: bottom }, thickness: 0.6, color: BORDER });
@@ -374,15 +378,15 @@ export async function renderMediclaimReceiptPdf(
     if (!row) continue;
     page.drawText(String(rowIndex + 1), { x: tableX + 17, y: bottom + 9, size: 8, font: regular, color: TEXT });
     drawWrapped(page, regular, row.description, tableX + cols[0] + 7, bottom + 10, 8, cols[1] - 14, TEXT, 9.5);
-    const qtyText = safeText(row.qty);
-    const qtyX = tableX + cols[0] + cols[1] + (cols[2] - regular.widthOfTextAtSize(qtyText, 8)) / 2;
-    page.drawText(qtyText, { x: qtyX, y: bottom + 9, size: 8, font: regular, color: TEXT });
+    const daysText = safeText(row.days);
+    const daysX = tableX + cols[0] + cols[1] + (cols[2] - regular.widthOfTextAtSize(daysText, 8)) / 2;
+    page.drawText(daysText, { x: daysX, y: bottom + 9, size: 8, font: regular, color: TEXT });
     drawRightText(page, regular, amountText(row.price), tableX + cols[0] + cols[1] + cols[2] + cols[3] - 6, bottom + 9, 8);
     drawRightText(page, regular, amountText(row.amount), tableX + tableW - 6, bottom + 9, 8);
   }
-  page.drawRectangle({ x: tableX, y: y - headerH - rowH * 5, width: tableW, height: headerH + rowH * 5, borderColor: BORDER, borderWidth: 0.8 });
+  page.drawRectangle({ x: tableX, y: y - headerH - rowH * visibleRows, width: tableW, height: headerH + rowH * visibleRows, borderColor: BORDER, borderWidth: 0.8 });
 
-  y = y - headerH - rowH * 5 - 12;
+  y = y - headerH - rowH * visibleRows - 12;
 
   // Stamp and totals.
   const stampW = 240;

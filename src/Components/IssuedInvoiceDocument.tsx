@@ -93,10 +93,13 @@ function IssuedInvoiceSheet({
   const subtotal = Math.max(0, snapshot.fee + snapshot.additional);
   const quantity = parseQuantity(snapshot.sessions);
   const unitPrice = quantity > 1 ? snapshot.fee / quantity : snapshot.fee;
-  const providerName = [snapshot.therapistTitle, snapshot.therapistFullName]
+  const providerName = snapshot.therapistFullName.trim();
+  const providerCredentialLine = [
+    snapshot.therapistTitle,
+    snapshot.therapistQualification,
+  ]
     .filter((value) => value.trim())
-    .join(' ')
-    .trim();
+    .join(' · ');
 
   return (
     <article className="print-sheet mediclaim-receipt mx-auto max-w-[900px] overflow-hidden rounded-2xl border bg-white text-slate-900 shadow-sm">
@@ -117,8 +120,8 @@ function IssuedInvoiceSheet({
         {providerVisible && (
           <div className="border-t border-slate-200 pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
             {providerName && <h1 className="text-lg font-extrabold text-[#0b5cad]">{providerName}</h1>}
-            {snapshot.therapistQualification && (
-              <p className="mt-1 text-sm font-bold">{snapshot.therapistQualification}</p>
+            {providerCredentialLine && (
+              <p className="mt-1 text-sm font-bold">{providerCredentialLine}</p>
             )}
             <OptionalLine label="Registration No." value={snapshot.therapistRegistration} />
             <OptionalLine

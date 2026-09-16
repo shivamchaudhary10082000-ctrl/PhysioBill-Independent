@@ -254,22 +254,22 @@ export async function renderMediclaimReceiptPdf(
   page.drawText('Bill', { x: billX, y: wordY, size: wordSize, font: bold, color: TEAL });
   page.drawText('PHYSIOTHERAPY | RECOVERY | BETTER LIVING', { x: wordX, y: 783, size: 5.6, font: bold, color: MUTED });
 
-  const providerX = 318;
+  const providerX = 312;
   const providerWidth = right - providerX;
-  page.drawLine({ start: { x: 302, y: 818 }, end: { x: 302, y: 757 }, thickness: 0.9, color: BORDER });
+  page.drawLine({ start: { x: 298, y: 818 }, end: { x: 298, y: 757 }, thickness: 0.9, color: BORDER });
   let py = 809;
   if (dto.provider.fullName) {
-    py = drawWrapped(page, bold, dto.provider.fullName, providerX, py, 10.2, providerWidth, BLUE, 12) - 1;
+    py = drawWrapped(page, bold, dto.provider.fullName, providerX, py, 10.2, providerWidth, BLUE, 12.4) - 1;
   }
   const professionalLine = [dto.provider.title, dto.provider.qualification]
     .filter((value) => value.trim())
     .join(' | ');
   if (professionalLine) {
-    py = drawWrapped(page, bold, professionalLine, providerX, py, 7.8, providerWidth, TEXT, 9.7);
+    py = drawWrapped(page, bold, professionalLine, providerX, py, 7.8, providerWidth, TEXT, 10);
   }
   py = drawLabeledValue(page, regular, bold, 'Registration No.', dto.provider.registration, providerX, py, providerWidth, 7.6);
   py = drawLabeledValue(page, regular, bold, 'Phone', dto.provider.phone, providerX, py, providerWidth, 7.6);
-  py = drawLabeledValue(page, regular, bold, 'Email', dto.provider.email, providerX, py, providerWidth, 7.2);
+  py = drawLabeledValue(page, regular, bold, 'Email', dto.provider.email, providerX, py, providerWidth, 6.9);
   py = drawLabeledValue(page, regular, bold, 'Address', dto.provider.address, providerX, py, providerWidth, 7.2);
   py = drawLabeledValue(page, regular, bold, 'Home Visit Timings', options.homeVisitTimings, providerX, py, providerWidth, 7.2);
   if (dto.provider.gstin.trim()) {
@@ -335,11 +335,12 @@ export async function renderMediclaimReceiptPdf(
   const cols = [40, 265, 55, 72, tableW - 432];
   const headerH = 24;
   const rowH = 28;
+  const visibleRows = Math.max(8, Math.min(11, Math.floor((y - 225 - headerH) / rowH)));
   page.drawRectangle({ x: tableX, y: y - headerH, width: tableW, height: headerH, color: PALE_BLUE, borderColor: BORDER, borderWidth: 0.8 });
   let cx = tableX;
   for (let i = 0; i < cols.length - 1; i += 1) {
     cx += cols[i];
-    page.drawLine({ start: { x: cx, y }, end: { x: cx, y: y - headerH - rowH * 5 }, thickness: 0.6, color: BORDER });
+    page.drawLine({ start: { x: cx, y }, end: { x: cx, y: y - headerH - rowH * visibleRows }, thickness: 0.6, color: BORDER });
   }
   const headers = ['Sr. No.', 'Description', 'Days', 'Price / Day', 'Amount'];
   cx = tableX;
@@ -369,7 +370,6 @@ export async function renderMediclaimReceiptPdf(
     });
   }
 
-  const visibleRows = Math.max(5, Math.min(9, Math.floor((y - 245 - headerH) / rowH)));
   for (let rowIndex = 0; rowIndex < visibleRows; rowIndex += 1) {
     const top = y - headerH - rowH * rowIndex;
     const bottom = top - rowH;
@@ -390,7 +390,7 @@ export async function renderMediclaimReceiptPdf(
 
   // Stamp and totals.
   const stampW = 240;
-  const stampH = 112;
+  const stampH = 140;
   page.drawRectangle({ x: tableX, y: y - stampH, width: stampW, height: stampH, borderColor: BORDER, borderWidth: 0.8 });
   page.drawText(options.digitalStamp ? 'DIGITAL STAMP' : 'STAMP AREA · DIGITAL OR PHYSICAL', { x: tableX + 8, y: y - 14, size: 6.5, font: bold, color: MUTED });
 
@@ -415,7 +415,7 @@ export async function renderMediclaimReceiptPdf(
       throw new Error('UNSUPPORTED_STAMP_IMAGE');
     }
   } else {
-    page.drawText('Leave blank to apply a physical stamp after printing.', { x: tableX + 27, y: y - 66, size: 7, font: regular, color: MUTED });
+    page.drawText('Leave blank to apply a physical stamp after printing.', { x: tableX + 27, y: y - 78, size: 7, font: regular, color: MUTED });
   }
 
   const totalsX = tableX + stampW + 16;
@@ -453,10 +453,10 @@ export async function renderMediclaimReceiptPdf(
     ty -= lineH;
   });
 
-  const signatureY = y - stampH + 7;
-  page.drawLine({ start: { x: totalsX + 16, y: signatureY + 20 }, end: { x: totalsX + totalsW - 16, y: signatureY + 20 }, thickness: 0.8, color: TEXT });
+  const signatureLineY = Math.max(y - stampH + 30, ty - 18);
+  page.drawLine({ start: { x: totalsX + 16, y: signatureLineY }, end: { x: totalsX + totalsW - 16, y: signatureLineY }, thickness: 0.8, color: TEXT });
   const signature = 'Signature';
-  page.drawText(signature, { x: totalsX + (totalsW - regular.widthOfTextAtSize(signature, 7)) / 2, y: signatureY + 8, size: 7, font: regular, color: TEXT });
+  page.drawText(signature, { x: totalsX + (totalsW - regular.widthOfTextAtSize(signature, 7)) / 2, y: signatureLineY - 12, size: 7, font: regular, color: TEXT });
 
   page.drawLine({ start: { x: left, y: 57 }, end: { x: right, y: 57 }, thickness: 0.6, color: BORDER });
   page.drawText('This receipt is generated from the finalized PhysioBill invoice record.', { x: left, y: 42, size: 6.3, font: regular, color: MUTED });

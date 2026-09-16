@@ -97,6 +97,65 @@ export async function signInPhysiotherapist(
   return data;
 }
 
+
+export async function requestPhysiotherapistEmailOtp(
+  email: string,
+  captchaToken?: string | null,
+) {
+  const supabase = getSupabaseClient();
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) throw new Error('Enter your professional email.');
+
+  const token = normalizedCaptchaToken(captchaToken);
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: false,
+      ...(token ? { captchaToken: token } : {}),
+    },
+  });
+
+  if (error) throw error;
+  return { data, email: normalizedEmail };
+}
+
+export async function verifyPhysiotherapistEmailOtp(
+  email: string,
+  otp: string,
+) {
+  const supabase = getSupabaseClient();
+  const normalizedEmail = email.trim().toLowerCase();
+  const token = otp.trim();
+
+  if (!normalizedEmail) throw new Error('Enter your professional email again.');
+  if (!/^\d{6}$/.test(token)) {
+    throw new Error('Enter the six-digit verification code.');
+  }
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: normalizedEmail,
+    token,
+    type: 'email',
+  });
+
+  if (error) throw error;
+  if (!data.user || !data.session) {
+    throw new Error('Email verification did not establish an authenticated session.');
+  }
+
+  const persona = await resolveAuthenticatedSessionPersona().catch(async (caught) => {
+    await signOutCurrentSession().catch(() => undefined);
+    throw caught;
+  });
+
+  if (persona !== 'physio') {
+    await signOutCurrentSession().catch(() => undefined);
+    throw new Error('This verified identity is not provisioned as a physiotherapist account.');
+  }
+
+  return data;
+}
+
 export async function signInAdmin(
   email: string,
   password: string,

@@ -1032,16 +1032,18 @@ function QualificationSelector({
   onChange: (value: string) => void;
 }) {
   const standardOptions = ['BPT', 'MPT', 'BPT + MPT'];
-  const selected = standardOptions.includes(value.trim()) ? value.trim() : value.trim() ? 'custom' : '';
+  const initialMode = standardOptions.includes(value.trim())
+    ? value.trim()
+    : value.trim()
+      ? 'custom'
+      : '';
+  const [mode, setMode] = useState(initialMode);
   const [customValue, setCustomValue] = useState(
     standardOptions.includes(value.trim()) ? '' : value,
   );
 
-  useEffect(() => {
-    if (!standardOptions.includes(value.trim())) setCustomValue(value);
-  }, [value]);
-
   const changeSelection = (next: string) => {
+    setMode(next);
     if (next === 'custom') {
       onChange(customValue);
       return;
@@ -1053,7 +1055,7 @@ function QualificationSelector({
     <div className="space-y-2">
       <SelectField
         label="Qualification shown on profile / bill"
-        value={selected}
+        value={mode}
         onChange={changeSelection}
         options={[
           { value: '', label: 'Select qualification' },
@@ -1063,7 +1065,7 @@ function QualificationSelector({
           { value: 'custom', label: 'Other / include specialization' },
         ]}
       />
-      {selected === 'custom' && (
+      {mode === 'custom' && (
         <Field
           label="Custom qualification"
           value={customValue}

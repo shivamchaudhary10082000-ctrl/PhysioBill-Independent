@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { normalizeSnapshot, SNAPSHOT_COLUMNS } from './document-dto.ts';
-import { renderInvoicePdf } from './renderer.ts';
+import { renderInvoicePdf, renderMediclaimReceiptPdf, type MediclaimReceiptOptions } from './renderer.ts';
 
 const BUCKET = 'invoice-pdf-artifacts';
 const DOCUMENT_VERSION = 1;
@@ -47,6 +47,30 @@ const errorCode = (caught: unknown) => {
   return 'generation_failed';
 };
 
+
+const cleanReceiptText = (value: unknown, maxLength: number) =>
+  typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+
+const decodeStamp = (value: unknown): MediclaimReceiptOptions['digitalStamp'] => {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const match = /^data:(image\/png|image\/jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(value.trim());
+  if (!match) throw new Error('UNSUPPORTED_STAMP_IMAGE');
+  const binary = atob(match[2]);
+  if (binary.length > 2 * 1024 * 1024) throw new Error('STAMP_IMAGE_TOO_LARGE');
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return { mimeType: match[1] as 'image/png' | 'image/jpeg', bytes };
+};
+
+const bytesToBase64 = (bytes: Uint8Array) => {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+  }
+  return btoa(binary);
+};
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('Origin');
   if (origin && !allowedOrigins.has(origin)) {
@@ -63,9 +87,15 @@ Deno.serve(async (req) => {
   if (!authorization?.startsWith('Bearer ')) return json(req, 401, { error: 'Authentication required.' });
 
   let invoiceId = '';
+  let mode = 'preserved';
+  let receiptInput: Record<string, unknown> = {};
   try {
     const body = await req.json();
     invoiceId = typeof body?.invoiceId === 'string' ? body.invoiceId : '';
+    mode = body?.mode === 'mediclaim_receipt' ? 'mediclaim_receipt' : 'preserved';
+    receiptInput = body?.receipt && typeof body.receipt === 'object'
+      ? body.receipt as Record<string, unknown>
+      : {};
   } catch {
     return json(req, 400, { error: 'Invalid request.' });
   }
@@ -103,6 +133,56 @@ Deno.serve(async (req) => {
   if (rate.allowed !== true) {
     const retryAfter = Math.max(1, Number(rate.retry_after_seconds ?? RATE_LIMIT_WINDOW_SECONDS));
     return json(req, 429, { error: 'Too many PDF requests. Please retry shortly.' }, { 'Retry-After': String(retryAfter) });
+  }
+
+  if (mode === 'mediclaim_receipt') {
+    try {
+      const { data: invoiceRow, error: invoiceError } = await userClient
+        .from('invoices')
+        .select('paid')
+        .eq('id', dto.invoiceId)
+        .eq('physio_id', dto.physioId)
+        .maybeSingle();
+      if (invoiceError || !invoiceRow) {
+        return json(req, 404, { error: 'Invoice payment details are unavailable.' });
+      }
+
+      const paid = Number((invoiceRow as Record<string, unknown>).paid ?? 0);
+      if (!Number.isFinite(paid) || paid < 0) {
+        return json(req, 422, { error: 'Invoice payment details are invalid.' });
+      }
+
+      const receipt: MediclaimReceiptOptions = {
+        homeVisitTimings: cleanReceiptText(receiptInput.homeVisitTimings, 160),
+        referredBy: cleanReceiptText(receiptInput.referredBy, 160),
+        chiefComplaint: cleanReceiptText(receiptInput.chiefComplaint, 240),
+        patientAge: cleanReceiptText(receiptInput.patientAge, 32),
+        patientGender: cleanReceiptText(receiptInput.patientGender, 64),
+        additionalNote: cleanReceiptText(receiptInput.additionalNote, 300),
+        paid,
+        digitalStamp: decodeStamp(receiptInput.digitalStampDataUrl),
+      };
+
+      const bytes = await renderMediclaimReceiptPdf(dto, receipt);
+      const filename = `receipt-${dto.invoiceNumber.replace(/[^A-Za-z0-9._-]+/g, '-')}.pdf`;
+      return json(req, 200, {
+        filename,
+        pdfBase64: bytesToBase64(bytes),
+        byteSize: bytes.byteLength,
+      });
+    } catch (caught) {
+      const code = errorCode(caught);
+      if (code === 'unsupported_stamp_image') {
+        return json(req, 422, { error: 'Use a valid PNG or JPG digital stamp image.' });
+      }
+      if (code === 'stamp_image_too_large') {
+        return json(req, 413, { error: 'Digital stamp image must be 2 MB or smaller.' });
+      }
+      if (code === 'unsupported_pdf_text') {
+        return json(req, 422, { error: 'This receipt contains text the current PDF renderer cannot safely encode.' });
+      }
+      return json(req, 500, { error: 'Mediclaim receipt PDF generation failed.' });
+    }
   }
 
   const path = objectPath(dto.physioId, dto.invoiceId);

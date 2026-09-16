@@ -969,6 +969,7 @@ function PatientForm({ initialPatient, onSave, onCancel }: { initialPatient?: Pa
   const [name, setName] = useState(initialPatient?.name ?? '');
   const [phone, setPhone] = useState(initialPatient?.phone ?? '');
   const [email, setEmail] = useState(initialPatient?.email ?? '');
+  const [address, setAddress] = useState(initialPatient?.address ?? '');
   const [condition, setCondition] = useState(initialPatient?.condition ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -977,14 +978,53 @@ function PatientForm({ initialPatient, onSave, onCancel }: { initialPatient?: Pa
     setBusy(true);
     setError(null);
     try {
-      await onSave({ ...base, name: name.trim(), phone: phone.trim(), email: email.trim(), condition: condition.trim() });
+      await onSave({
+        ...base,
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        address: address.trim(),
+        condition: condition.trim(),
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to save patient.');
     } finally {
       setBusy(false);
     }
   };
-  return <div className="rounded-2xl border bg-card p-6"><PageHeader eyebrow={initialPatient ? 'Patient record' : 'New record'} title={initialPatient ? 'Edit patient' : 'Add patient'} /><div className="grid gap-4 md:grid-cols-2"><Field label="Full name" value={name} onChange={(e) => setName(e.target.value)} /><Field label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} /><Field label="Email" value={email} onChange={(e) => setEmail(e.target.value)} /><Field label="Condition" value={condition} onChange={(e) => setCondition(e.target.value)} /></div>{error && <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}<div className="mt-6 flex justify-end gap-2"><Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button><Button disabled={busy || !name.trim()} onClick={() => void save()}><Check size={16} /> {busy ? 'Saving…' : 'Save'}</Button></div></div>;
+  return (
+    <div className="rounded-2xl border bg-card p-6">
+      <PageHeader
+        eyebrow={initialPatient ? 'Patient record' : 'New record'}
+        title={initialPatient ? 'Edit patient' : 'Add patient'}
+        description="Demographic details saved here flow into future invoices and mediclaim receipts."
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label="Phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Field label="Condition" value={condition} onChange={(e) => setCondition(e.target.value)} />
+        <div className="md:col-span-2">
+          <Field
+            label="Patient address"
+            value={address}
+            placeholder="House / street / area / city / PIN code"
+            onChange={(e) => setAddress(e.target.value)}
+          />
+        </div>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+        Address is optional for the patient record. When present, it is printed automatically on newly finalized invoice snapshots and mediclaim receipts.
+      </p>
+      {error && <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button>
+        <Button disabled={busy || !name.trim()} onClick={() => void save()}>
+          <Check size={16} /> {busy ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function VisitsPage({ visits, patients, loading, onAdd, onEdit, onDelete }: { visits: Visit[]; patients: Patient[]; loading: boolean; onAdd: () => void; onEdit: (visit: Visit) => void; onDelete: (visit: Visit) => Promise<void> }) {

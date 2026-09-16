@@ -26,7 +26,14 @@ export type MediclaimReceiptOptions = {
 };
 
 function safeText(value: string) {
-  const normalized = value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+  const normalized = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2010-\u2015]/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u00A0]/g, ' ')
+    .replace(/[\u00B7\u2022]/g, '-');
   if (/[^\x20-\x7E]/.test(normalized)) throw new Error('UNSUPPORTED_PDF_TEXT');
   return normalized;
 }
@@ -244,7 +251,7 @@ export async function renderMediclaimReceiptPdf(
 
   page.drawText('Physio', { x: 98, y: 799, size: 22, font: bold, color: BLUE });
   page.drawText('Bill', { x: 160, y: 799, size: 22, font: bold, color: TEAL });
-  page.drawText('PHYSIOTHERAPY · RECOVERY · BETTER LIVING', { x: 99, y: 784, size: 5.8, font: bold, color: MUTED });
+  page.drawText('PHYSIOTHERAPY | RECOVERY | BETTER LIVING', { x: 99, y: 784, size: 5.8, font: bold, color: MUTED });
 
   const providerX = 308;
   const providerWidth = right - providerX;

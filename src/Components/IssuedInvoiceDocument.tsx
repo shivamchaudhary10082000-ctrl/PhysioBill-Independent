@@ -227,16 +227,12 @@ function IssuedInvoiceSheet({
             <p className="text-xs font-bold uppercase tracking-[.12em] text-slate-500">
               {digitalStamp ? 'Digital stamp' : 'Stamp area · digital or physical'}
             </p>
-            {digitalStamp ? (
+            {digitalStamp && (
               <img
                 src={digitalStamp}
                 alt="Therapist digital stamp"
                 className="mt-3 max-h-28 max-w-full object-contain"
               />
-            ) : (
-              <p className="mt-10 text-center text-xs text-slate-400">
-                Leave blank to apply a physical stamp after printing.
-              </p>
             )}
           </div>
 

@@ -439,8 +439,6 @@ export async function renderMediclaimReceiptPdf(
     } catch {
       throw new Error('UNSUPPORTED_STAMP_IMAGE');
     }
-  } else {
-    page.drawText('Leave blank to apply a physical stamp after printing.', { x: tableX + 27, y: y - 78, size: 7, font: regular, color: MUTED });
   }
 
   const totalsX = tableX + stampW + 16;

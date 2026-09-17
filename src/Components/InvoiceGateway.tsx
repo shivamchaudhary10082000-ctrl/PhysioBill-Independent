@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileText, Plus, RotateCcw, Search, ShieldCheck, WalletCards } from 'lucide-react';
+import { Archive, ArrowLeft, FileText, Plus, RotateCcw, Search, ShieldCheck, Trash2, WalletCards } from 'lucide-react';
 import { IssuedInvoiceDocument } from '@/Components/IssuedInvoiceDocument';
 import { GatewaySessionControls } from '@/Components/WorkspaceSessionControls';
 import { loadPatients, type ProductionPatient } from '@/lib/patients';
@@ -11,6 +11,12 @@ import {
   type ProductionInvoice,
   type ProductionInvoiceInput,
 } from '@/lib/invoices';
+import {
+  archiveFinalizedInvoice,
+  deleteDraftInvoice,
+  loadArchivedInvoiceIds,
+  restoreArchivedInvoice,
+} from '@/lib/invoice-lifecycle';
 import {
   loadPaymentsForInvoice,
   recordPayment,
@@ -248,7 +254,7 @@ function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInv
   </div>;
 }
 
-function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onViewIssuedInvoice }: { invoice: ProductionInvoice | null; patients: ProductionPatient[]; defaultPayment: string; onSaved: (invoice: ProductionInvoice) => void; onBack: () => void; onViewIssuedInvoice: (invoiceId: string) => void }) {
+function InvoiceEditor({ invoice, patients, defaultPayment, archived, onSaved, onBack, onViewIssuedInvoice, onDeleted, onArchiveChanged }: { invoice: ProductionInvoice | null; patients: ProductionPatient[]; defaultPayment: string; archived: boolean; onSaved: (invoice: ProductionInvoice) => void; onBack: () => void; onViewIssuedInvoice: (invoiceId: string) => void; onDeleted: (invoiceId: string) => void; onArchiveChanged: (invoiceId: string, archived: boolean) => void }) {
   const initialDraft = invoice ? toDraft(invoice) : emptyDraft(patients[0]?.id ?? '', defaultPayment);
   const [draft, setDraft] = useState<Draft>(() => initialDraft);
   const [numericEditing, setNumericEditing] = useState<NumericEditingState>(() => numericEditingFromDraft(initialDraft));
@@ -289,11 +295,42 @@ function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onV
     finally { setBusy(false); }
   };
 
+  const deleteDraft = async () => {
+    if (!invoice || invoice.finalized) return;
+    if (!window.confirm(`Delete draft ${invoice.number}? This permanently removes the unfinalized draft and cannot be undone.`)) return;
+    setBusy(true); setError(null); setMessage(null);
+    try {
+      await deleteDraftInvoice(invoice.id);
+      onDeleted(invoice.id);
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Unable to delete draft invoice.');
+    } finally { setBusy(false); }
+  };
+
+  const toggleArchive = async () => {
+    if (!invoice?.finalized) return;
+    const nextArchived = !archived;
+    const confirmed = window.confirm(nextArchived
+      ? `Remove ${invoice.number} from the active invoice list? The finalized invoice and its receipt will be preserved and can be restored from Archived invoices.`
+      : `Restore ${invoice.number} to the active invoice list?`);
+    if (!confirmed) return;
+    setBusy(true); setError(null); setMessage(null);
+    try {
+      if (nextArchived) await archiveFinalizedInvoice(invoice.id);
+      else await restoreArchivedInvoice(invoice.id);
+      onArchiveChanged(invoice.id, nextArchived);
+      onBack();
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : 'Unable to update invoice archive status.');
+    } finally { setBusy(false); }
+  };
+
   const previewTotal = calculatePreview(normalizedDraft);
   return <div className="space-y-5">
     <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary"><ArrowLeft size={16} /> Back to invoices</button>
     <div className="rounded-2xl border bg-card p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Invoice details</p><h2 className="mt-1 text-xl font-extrabold">{invoice?.number ?? 'New invoice'}</h2><p className="text-sm text-muted-foreground">{invoice?.status ?? 'Not saved yet'}</p></div>{invoice?.finalized && <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">Finalized · read-only</span><button type="button" onClick={() => onViewIssuedInvoice(invoice.id)} className="inline-flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary"><FileText size={16} /> View issued invoice</button></div>}</div>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Invoice details</p><h2 className="mt-1 text-xl font-extrabold">{invoice?.number ?? 'New invoice'}</h2><p className="text-sm text-muted-foreground">{archived ? 'Archived' : invoice?.status ?? 'Not saved yet'}</p></div>{invoice?.finalized && <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">Finalized · read-only</span>{archived && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">Archived</span>}<button type="button" onClick={() => onViewIssuedInvoice(invoice.id)} className="inline-flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary"><FileText size={16} /> View issued invoice</button><button disabled={busy} type="button" onClick={() => void toggleArchive()} className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50">{archived ? <RotateCcw size={16} /> : <Archive size={16} />} {archived ? 'Restore invoice' : 'Remove from list'}</button></div>}</div>
+      {invoice?.finalized && !archived && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><span className="font-bold">Finalized invoices are preserved for billing/audit integrity.</span> Use “Remove from list” to archive an incorrect or test invoice without destroying its issued record.</div>}
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Patient</span><select disabled={Boolean(invoice) || readOnly} value={draft.patientId} onChange={(event) => update('patientId', event.target.value)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:bg-muted/40 disabled:opacity-100">{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} · {patient.patientNumber}</option>)}</select></label>
         <Field disabled label="Invoice number" value={invoice?.number ?? 'Assigned when saved'} onChange={() => undefined} />
@@ -312,10 +349,10 @@ function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onV
           ? <><span className="font-bold">Service calculation:</span> {sessionCount(normalizedDraft.sessions)} × {money(normalizedDraft.fee)} = <span className="font-extrabold">{money(baseServiceAmount)}</span> before additional charges, discount and GST.</>
           : 'Enter Sessions / days as a positive whole number before finalizing.'}
       </div>}
-      <div className="mt-5 grid gap-3 sm:grid-cols-4"><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Total</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.total ?? previewTotal)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Paid</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.paid ?? 0)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Balance</p><p className="mt-1 text-lg font-extrabold">{money(Math.max(0, (invoice?.total ?? previewTotal) - (invoice?.paid ?? 0)))}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Status</p><p className="mt-1 text-lg font-extrabold">{invoice?.status ?? 'Draft'}</p></div></div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-4"><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Total</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.total ?? previewTotal)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Paid</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.paid ?? 0)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Balance</p><p className="mt-1 text-lg font-extrabold">{money(Math.max(0, (invoice?.total ?? previewTotal) - (invoice?.paid ?? 0)))}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Status</p><p className="mt-1 text-lg font-extrabold">{archived ? 'Archived' : invoice?.status ?? 'Draft'}</p></div></div>
       {error && <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
       {message && <div className="mt-4 rounded-xl bg-secondary p-3 text-sm font-semibold">{message}</div>}
-      {!readOnly && <div className="mt-6 flex flex-wrap justify-end gap-2"><button disabled={busy || !draft.patientId} onClick={() => void persist(false)} className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? 'Saving…' : 'Save draft'}</button><button disabled={busy || !draft.patientId || !sessionsValid} onClick={() => void persist(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><ShieldCheck size={16} /> {busy ? 'Saving…' : 'Finalize invoice'}</button></div>}
+      {!readOnly && <div className="mt-6 flex flex-wrap items-center justify-between gap-2"><div>{invoice && <button disabled={busy} onClick={() => void deleteDraft()} className="inline-flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"><Trash2 size={16} /> Delete draft</button>}</div><div className="flex flex-wrap justify-end gap-2"><button disabled={busy || !draft.patientId} onClick={() => void persist(false)} className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? 'Saving…' : 'Save draft'}</button><button disabled={busy || !draft.patientId || !sessionsValid} onClick={() => void persist(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><ShieldCheck size={16} /> {busy ? 'Saving…' : 'Finalize invoice'}</button></div></div>}
     </div>
     {invoice?.finalized && <PaymentPanel invoice={invoice} onInvoiceReconciled={onSaved} />}
   </div>;
@@ -325,6 +362,8 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   const [path, setPath] = useState(() => window.location.pathname);
   const [patients, setPatients] = useState<ProductionPatient[]>([]);
   const [invoices, setInvoices] = useState<ProductionInvoice[]>([]);
+  const [archivedInvoiceIds, setArchivedInvoiceIds] = useState<Set<string>>(() => new Set());
+  const [showArchived, setShowArchived] = useState(false);
   const [defaultPayment, setDefaultPayment] = useState('Select payment method');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -349,11 +388,12 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isInvoiceRoute) return;
     let active = true; setSelected(null); setLoading(true); setError(null);
-    resolveAuthenticatedPhysiotherapist().then(async (bootstrap) => Promise.all([loadPatients(), loadInvoices(), loadPhysiotherapistSettings(bootstrap.physioId)])).then(([loadedPatients, loadedInvoices, settings]) => { if (!active) return; const routedInvoiceId = invoiceDetailId(window.location.pathname); setPatients(loadedPatients); setInvoices(loadedInvoices); setDefaultPayment(settings.default_payment); setSelected(routedInvoiceId ? loadedInvoices.find((invoice) => invoice.id === routedInvoiceId) ?? null : null); }).catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : 'Unable to load invoices.'); }).finally(() => { if (active) setLoading(false); });
+    resolveAuthenticatedPhysiotherapist().then(async (bootstrap) => Promise.all([loadPatients(), loadInvoices(), loadArchivedInvoiceIds(), loadPhysiotherapistSettings(bootstrap.physioId)])).then(([loadedPatients, loadedInvoices, loadedArchivedIds, settings]) => { if (!active) return; const routedInvoiceId = invoiceDetailId(window.location.pathname); setPatients(loadedPatients); setInvoices(loadedInvoices); setArchivedInvoiceIds(loadedArchivedIds); setDefaultPayment(settings.default_payment); setSelected(routedInvoiceId ? loadedInvoices.find((invoice) => invoice.id === routedInvoiceId) ?? null : null); }).catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : 'Unable to load invoices.'); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [isInvoiceRoute]);
 
-  const filtered = useMemo(() => invoices.filter((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return [invoice.number, invoice.description, invoice.status, patient?.name ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()); }), [invoices, patients, search]);
+  const archivedCount = archivedInvoiceIds.size;
+  const filtered = useMemo(() => invoices.filter((invoice) => showArchived ? archivedInvoiceIds.has(invoice.id) : !archivedInvoiceIds.has(invoice.id)).filter((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return [invoice.number, invoice.description, invoice.status, patient?.name ?? ''].join(' ').toLowerCase().includes(search.toLowerCase()); }), [archivedInvoiceIds, invoices, patients, search, showArchived]);
   const detailInvoice = detailInvoiceId ? invoices.find((invoice) => invoice.id === detailInvoiceId) ?? null : null;
 
   useEffect(() => {
@@ -368,11 +408,11 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   if (error) return <InvoiceGatewayFrame><div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error}</div></InvoiceGatewayFrame>;
   if (detailInvoiceId && !detailInvoice) return <InvoiceGatewayFrame><div className="rounded-2xl border bg-card p-6"><p className="text-sm font-semibold">Invoice details are unavailable.</p><button type="button" onClick={() => navigate(canonicalInvoicePath)} className="mt-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary"><ArrowLeft size={16} /> Back to invoices</button></div></InvoiceGatewayFrame>;
 
-  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <InvoiceGatewayFrame><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} onBack={() => { setSelected(null); if (detailInvoiceId) navigate(canonicalInvoicePath); }} onViewIssuedInvoice={(invoiceId) => navigate(issuedDocumentPath(invoiceId))} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} /></InvoiceGatewayFrame>; }
+  if (selected) { const invoice = selected === 'new' ? null : invoices.find((item) => item.id === selected.id) ?? selected; return <InvoiceGatewayFrame><InvoiceEditor invoice={invoice} patients={patients} defaultPayment={defaultPayment} archived={Boolean(invoice && archivedInvoiceIds.has(invoice.id))} onBack={() => { setSelected(null); if (detailInvoiceId) navigate(canonicalInvoicePath); }} onViewIssuedInvoice={(invoiceId) => navigate(issuedDocumentPath(invoiceId))} onSaved={(saved) => { setInvoices((current) => [saved, ...current.filter((item) => item.id !== saved.id)]); setSelected(saved); }} onDeleted={(invoiceId) => { setInvoices((current) => current.filter((item) => item.id !== invoiceId)); setArchivedInvoiceIds((current) => { const next = new Set(current); next.delete(invoiceId); return next; }); setSelected(null); navigate(canonicalInvoicePath); }} onArchiveChanged={(invoiceId, archived) => { setArchivedInvoiceIds((current) => { const next = new Set(current); if (archived) next.add(invoiceId); else next.delete(invoiceId); return next; }); }} /></InvoiceGatewayFrame>; }
 
   return <InvoiceGatewayFrame>
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Billing</p><h1 className="mt-1 text-3xl font-extrabold">Invoices</h1><p className="mt-2 text-sm text-muted-foreground">Create invoices, track payments and keep your billing organized.</p></div><button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button></div>
-    <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search invoices…" className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" /></div>
-    <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return <button key={invoice.id} onClick={() => navigate(invoiceDetailPath(invoice.id))} className="grid w-full gap-3 p-5 text-left hover:bg-secondary/40 md:grid-cols-[1fr_1.3fr_.8fr_.8fr_auto] md:items-center"><div><p className="font-extrabold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.description}</p></div><p>{patient?.name ?? 'Patient'}</p><p className="font-bold">{money(invoice.total)}</p><p className="text-sm">{invoice.status}</p><span className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><FileText size={15} /> Open</span></button>; })}{!filtered.length && <div className="p-6 text-sm text-muted-foreground">{patients.length ? 'No invoices yet.' : 'Create a Patient before creating an invoice.'}</div>}</div>
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Billing</p><h1 className="mt-1 text-3xl font-extrabold">{showArchived ? 'Archived invoices' : 'Invoices'}</h1><p className="mt-2 text-sm text-muted-foreground">{showArchived ? 'Finalized invoices removed from the active list remain preserved and can be restored.' : 'Create invoices, track payments and keep your billing organized.'}</p></div><div className="flex flex-wrap items-center gap-2">{archivedCount > 0 && <button type="button" onClick={() => setShowArchived((current) => !current)} className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary"><Archive size={16} /> {showArchived ? 'Back to active invoices' : `Archived (${archivedCount})`}</button>} {!showArchived && <button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button>}</div></div>
+    <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={showArchived ? 'Search archived invoices…' : 'Search invoices…'} className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" /></div>
+    <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return <button key={invoice.id} onClick={() => navigate(invoiceDetailPath(invoice.id))} className="grid w-full gap-3 p-5 text-left hover:bg-secondary/40 md:grid-cols-[1fr_1.3fr_.8fr_.8fr_auto] md:items-center"><div><p className="font-extrabold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.description}</p></div><p>{patient?.name ?? 'Patient'}</p><p className="font-bold">{money(invoice.total)}</p><p className="text-sm">{showArchived ? 'Archived' : invoice.status}</p><span className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><FileText size={15} /> Open</span></button>; })}{!filtered.length && <div className="p-6 text-sm text-muted-foreground">{showArchived ? 'No archived invoices.' : patients.length ? 'No invoices yet.' : 'Create a Patient before creating an invoice.'}</div>}</div>
   </InvoiceGatewayFrame>;
 }

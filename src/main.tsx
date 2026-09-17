@@ -5,6 +5,7 @@ import { ErrorBoundary } from '@/Components/error-boundary';
 import { PublicRouteBoundary } from '@/pages/PublicRouteBoundary';
 
 import './index.css';
+import './premium.css';
 
 const LEGACY_SENSITIVE_STORAGE_KEYS = new Set([
   'physiobill-demo-session',

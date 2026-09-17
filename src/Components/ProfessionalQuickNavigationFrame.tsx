@@ -60,10 +60,10 @@ export function ProfessionalQuickNavigationFrame({ children }: { children: React
 
   return (
     <>
-      <div className="border-b border-border bg-background">
+      <div className="professional-nav-rail border-b border-border/70 bg-background">
         <nav
           aria-label={message(locale, professionalNavigationMessageKeys.ariaLabel)}
-          className="mx-auto flex max-w-[1420px] touch-pan-x gap-2 overflow-x-auto overscroll-x-contain px-4 py-2 [scrollbar-width:thin] sm:px-7 lg:px-10"
+          className="professional-nav mx-auto flex h-14 max-w-[1420px] touch-pan-x items-stretch gap-7 overflow-x-auto overscroll-x-contain px-4 sm:px-7 lg:px-10"
         >
           {professionalLinks.map(({ href, key }) => {
             const active = path === href || path.startsWith(`${href}/`);
@@ -72,11 +72,7 @@ export function ProfessionalQuickNavigationFrame({ children }: { children: React
                 key={href}
                 href={href}
                 aria-current={active ? 'page' : undefined}
-                className={`inline-flex min-h-11 shrink-0 items-center rounded-xl border px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                  active
-                    ? 'border-primary/30 bg-primary/10 text-primary'
-                    : 'bg-card text-muted-foreground hover:bg-secondary hover:text-foreground'
-                }`}
+                className="professional-nav-link inline-flex min-h-14 shrink-0 items-center px-0 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {message(locale, key)}
               </a>

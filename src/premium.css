@@ -1,0 +1,453 @@
+/*
+ * PhysioBill premium visual layer
+ * Calm clinical workspace: low-noise surfaces, depth, adaptive dark mode,
+ * and consistent visual rhythm across professional, patient, admin and public UI.
+ * Imported after index.css so this file can refine the existing design tokens
+ * without changing application behavior or data flows.
+ */
+
+:root {
+  --background: 218 38% 97%;
+  --foreground: 220 38% 18%;
+  --border: 217 26% 89%;
+  --input: 217 24% 85%;
+  --ring: 230 64% 56%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 38% 18%;
+  --card-border: 217 26% 89%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 38% 18%;
+  --popover-border: 217 26% 89%;
+  --primary: 230 62% 55%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 230 58% 49%;
+  --primary-soft: 230 78% 96%;
+  --secondary: 211 42% 95%;
+  --secondary-foreground: 220 34% 23%;
+  --muted: 216 29% 95%;
+  --muted-foreground: 218 14% 44%;
+  --accent: 188 42% 94%;
+  --accent-foreground: 213 34% 22%;
+  --sidebar: 216 43% 98%;
+  --sidebar-foreground: 220 38% 18%;
+  --sidebar-border: 217 27% 90%;
+  --sidebar-primary: 230 76% 96%;
+  --sidebar-primary-foreground: 230 62% 51%;
+  --sidebar-accent: 230 76% 96%;
+  --sidebar-accent-foreground: 220 38% 18%;
+  --sidebar-ring: 230 64% 56%;
+
+  --premium-canvas-top: 214 48% 98%;
+  --premium-canvas-bottom: 222 35% 96%;
+  --premium-glow-a: 230 82% 93%;
+  --premium-glow-b: 188 54% 92%;
+  --premium-surface: 0 0% 100%;
+  --premium-surface-soft: 217 43% 98%;
+  --premium-line: 219 31% 88%;
+  --premium-shadow: 221 43% 18%;
+  --premium-shadow-soft: 221 43% 18%;
+}
+
+.dark {
+  --background: 222 32% 10%;
+  --foreground: 218 31% 93%;
+  --border: 221 21% 21%;
+  --input: 221 19% 25%;
+  --ring: 231 78% 72%;
+  --card: 222 26% 14%;
+  --card-foreground: 218 31% 93%;
+  --card-border: 221 21% 21%;
+  --popover: 222 26% 14%;
+  --popover-foreground: 218 31% 93%;
+  --popover-border: 221 21% 21%;
+  --primary: 231 74% 70%;
+  --primary-foreground: 224 34% 11%;
+  --primary-hover: 231 77% 76%;
+  --primary-soft: 229 28% 20%;
+  --secondary: 219 22% 18%;
+  --secondary-foreground: 218 31% 93%;
+  --muted: 220 18% 18%;
+  --muted-foreground: 217 15% 67%;
+  --accent: 189 20% 19%;
+  --accent-foreground: 214 28% 93%;
+  --sidebar: 222 29% 12%;
+  --sidebar-foreground: 218 31% 93%;
+  --sidebar-border: 221 21% 21%;
+  --sidebar-primary: 229 28% 20%;
+  --sidebar-primary-foreground: 231 77% 75%;
+  --sidebar-accent: 229 28% 20%;
+  --sidebar-accent-foreground: 218 31% 93%;
+  --sidebar-ring: 231 78% 72%;
+
+  --premium-canvas-top: 222 34% 11%;
+  --premium-canvas-bottom: 224 35% 8%;
+  --premium-glow-a: 231 38% 20%;
+  --premium-glow-b: 187 26% 17%;
+  --premium-surface: 222 26% 14%;
+  --premium-surface-soft: 221 23% 16%;
+  --premium-line: 221 21% 22%;
+  --premium-shadow: 225 55% 4%;
+  --premium-shadow-soft: 225 55% 4%;
+}
+
+html {
+  color-scheme: light;
+  background: hsl(var(--background));
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --background: 222 32% 10%;
+    --foreground: 218 31% 93%;
+    --border: 221 21% 21%;
+    --input: 221 19% 25%;
+    --ring: 231 78% 72%;
+    --card: 222 26% 14%;
+    --card-foreground: 218 31% 93%;
+    --card-border: 221 21% 21%;
+    --popover: 222 26% 14%;
+    --popover-foreground: 218 31% 93%;
+    --popover-border: 221 21% 21%;
+    --primary: 231 74% 70%;
+    --primary-foreground: 224 34% 11%;
+    --primary-hover: 231 77% 76%;
+    --primary-soft: 229 28% 20%;
+    --secondary: 219 22% 18%;
+    --secondary-foreground: 218 31% 93%;
+    --muted: 220 18% 18%;
+    --muted-foreground: 217 15% 67%;
+    --accent: 189 20% 19%;
+    --accent-foreground: 214 28% 93%;
+    --sidebar: 222 29% 12%;
+    --sidebar-foreground: 218 31% 93%;
+    --sidebar-border: 221 21% 21%;
+    --sidebar-primary: 229 28% 20%;
+    --sidebar-primary-foreground: 231 77% 75%;
+    --sidebar-accent: 229 28% 20%;
+    --sidebar-accent-foreground: 218 31% 93%;
+    --sidebar-ring: 231 78% 72%;
+    --premium-canvas-top: 222 34% 11%;
+    --premium-canvas-bottom: 224 35% 8%;
+    --premium-glow-a: 231 38% 20%;
+    --premium-glow-b: 187 26% 17%;
+    --premium-surface: 222 26% 14%;
+    --premium-surface-soft: 221 23% 16%;
+    --premium-line: 221 21% 22%;
+    --premium-shadow: 225 55% 4%;
+    --premium-shadow-soft: 225 55% 4%;
+  }
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(900px 520px at 8% -8%, hsl(var(--premium-glow-a) / .72), transparent 64%),
+    radial-gradient(760px 440px at 94% 4%, hsl(var(--premium-glow-b) / .58), transparent 62%),
+    linear-gradient(180deg, hsl(var(--premium-canvas-top)) 0%, hsl(var(--background)) 42%, hsl(var(--premium-canvas-bottom)) 100%);
+  background-repeat: no-repeat;
+  color: hsl(var(--foreground));
+}
+
+#root,
+.app-shell,
+.min-h-screen.bg-background {
+  background: transparent !important;
+}
+
+/* Quiet, glass-like chrome keeps long work sessions visually light. */
+header.sticky {
+  border-bottom-color: hsl(var(--border) / .72) !important;
+  background: hsl(var(--premium-surface) / .76) !important;
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  backdrop-filter: saturate(140%) blur(18px);
+  box-shadow: 0 1px 0 hsl(0 0% 100% / .3), 0 12px 38px hsl(var(--premium-shadow) / .045);
+}
+
+nav.touch-pan-x {
+  scrollbar-color: hsl(var(--primary) / .22) transparent;
+  scrollbar-width: thin;
+}
+
+nav.touch-pan-x::-webkit-scrollbar {
+  height: 4px;
+}
+
+nav.touch-pan-x::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: hsl(var(--primary) / .24);
+}
+
+nav.touch-pan-x > a {
+  border-color: hsl(var(--border) / .84) !important;
+  background: hsl(var(--card) / .72) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px hsl(var(--premium-shadow) / .035), inset 0 1px 0 hsl(0 0% 100% / .35);
+  transition: transform .16s ease, background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+nav.touch-pan-x > a[aria-current='page'] {
+  border-color: hsl(var(--primary) / .28) !important;
+  background: linear-gradient(135deg, hsl(var(--primary) / .14), hsl(var(--accent) / .76)) !important;
+  color: hsl(var(--primary)) !important;
+  box-shadow: 0 8px 24px hsl(var(--primary) / .1), inset 0 1px 0 hsl(0 0% 100% / .36);
+}
+
+/* Desktop navigation becomes a calm control rail instead of a flat white panel. */
+aside.bg-sidebar {
+  background:
+    linear-gradient(180deg, hsl(var(--sidebar) / .96) 0%, hsl(var(--premium-surface-soft) / .92) 100%) !important;
+  border-right-color: hsl(var(--sidebar-border) / .8) !important;
+  box-shadow: 18px 0 46px hsl(var(--premium-shadow) / .04) !important;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+aside.bg-sidebar nav a,
+.fixed.inset-0 aside nav a {
+  border: 1px solid transparent;
+  border-radius: .9rem;
+}
+
+aside.bg-sidebar nav a:hover,
+.fixed.inset-0 aside nav a:hover {
+  border-color: hsl(var(--border) / .72);
+  background: hsl(var(--card) / .62);
+}
+
+aside.bg-sidebar nav a.bg-sidebar-accent,
+nav a[data-workspace-active='true'] {
+  border-color: hsl(var(--primary) / .16) !important;
+  background: linear-gradient(135deg, hsl(var(--primary-soft)), hsl(var(--accent) / .72)) !important;
+  box-shadow: 0 8px 24px hsl(var(--primary) / .07), inset 0 1px 0 hsl(0 0% 100% / .34) !important;
+}
+
+aside.bg-sidebar > div:last-child {
+  border-color: hsl(var(--border) / .76) !important;
+  background: hsl(var(--card) / .68) !important;
+  box-shadow: 0 10px 26px hsl(var(--premium-shadow) / .035);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Main cards: less white-on-white, more hierarchy and depth. */
+main .rounded-2xl.border.bg-card,
+main .rounded-\[24px\].border.bg-card,
+main .rounded-\[26px\].border.bg-card,
+main .rounded-\[28px\].border.bg-card,
+main .rounded-\[30px\].border.bg-card,
+main .overflow-hidden.rounded-2xl.border.bg-card {
+  border-color: hsl(var(--premium-line) / .9) !important;
+  background: linear-gradient(180deg, hsl(var(--card) / .91), hsl(var(--premium-surface-soft) / .78)) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 1px 0 hsl(0 0% 100% / .4) inset,
+    0 16px 42px hsl(var(--premium-shadow) / .055) !important;
+}
+
+main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary {
+  isolation: isolate;
+  border: 1px solid hsl(var(--primary) / .16) !important;
+  background:
+    radial-gradient(440px 180px at 84% 0%, hsl(var(--accent) / .92), transparent 70%),
+    linear-gradient(135deg, hsl(var(--primary-soft)) 0%, hsl(var(--secondary)) 56%, hsl(var(--accent)) 100%) !important;
+  box-shadow: 0 22px 58px hsl(var(--primary) / .1), inset 0 1px 0 hsl(0 0% 100% / .5) !important;
+}
+
+main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 11rem;
+  height: 11rem;
+  right: -3.2rem;
+  bottom: -6.5rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--primary) / .13);
+  box-shadow: 0 0 0 2.6rem hsl(var(--primary) / .035), 0 0 0 5.2rem hsl(var(--primary) / .022);
+}
+
+/* Soft inner rows separate information without visual clutter. */
+main [class*='bg-secondary/50'],
+main [class*='bg-secondary/40'],
+main [class*='bg-secondary/55'],
+main [class*='bg-secondary/60'] {
+  border: 1px solid hsl(var(--border) / .62);
+  background: linear-gradient(135deg, hsl(var(--secondary) / .7), hsl(var(--card) / .68)) !important;
+}
+
+main a[class*='bg-secondary/']:hover,
+main button[class*='bg-secondary/']:hover {
+  border-color: hsl(var(--primary) / .16);
+  background: hsl(var(--secondary) / .92) !important;
+}
+
+/* Inputs feel intentional and remain comfortable during long clinical entry. */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  border-color: hsl(var(--input) / .9) !important;
+  background: hsl(var(--card) / .82) !important;
+  box-shadow: inset 0 1px 1px hsl(var(--premium-shadow) / .025), 0 1px 0 hsl(0 0% 100% / .28);
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+input:not([type='checkbox']):not([type='radio']):focus,
+select:focus,
+textarea:focus {
+  border-color: hsl(var(--primary) / .48) !important;
+  background: hsl(var(--card) / .96) !important;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / .09), 0 8px 24px hsl(var(--premium-shadow) / .035) !important;
+}
+
+input:not([type='checkbox']):not([type='radio']):disabled,
+select:disabled,
+textarea:disabled {
+  border-color: hsl(var(--border) / .7) !important;
+  background: hsl(var(--muted) / .82) !important;
+  opacity: .86;
+}
+
+/* Primary actions get confidence, not glare. */
+button.bg-primary,
+a.bg-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(230 64% 49%)) !important;
+  box-shadow: 0 12px 28px hsl(var(--primary) / .2), inset 0 1px 0 hsl(0 0% 100% / .2) !important;
+}
+
+button.bg-primary:hover:not(:disabled),
+a.bg-primary:hover {
+  box-shadow: 0 16px 34px hsl(var(--primary) / .24), inset 0 1px 0 hsl(0 0% 100% / .22) !important;
+}
+
+/* Badges, avatars and small utility controls gain a refined edge. */
+.physiobill-mark,
+aside .bg-sidebar-primary {
+  border-color: hsl(var(--primary) / .2) !important;
+  background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--primary-soft))) !important;
+  box-shadow: 0 10px 26px hsl(var(--premium-shadow) / .07), inset 0 1px 0 hsl(0 0% 100% / .52) !important;
+}
+
+header a[aria-label='Open profile'] {
+  border: 1px solid hsl(var(--primary) / .22);
+  background: linear-gradient(145deg, hsl(var(--primary)), hsl(230 62% 48%));
+  box-shadow: 0 8px 20px hsl(var(--primary) / .2);
+}
+
+/* Tables/lists stay readable at the end of a long day. */
+main .divide-y > * + * {
+  border-color: hsl(var(--border) / .62);
+}
+
+main table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+main thead {
+  background: hsl(var(--secondary) / .55);
+}
+
+main tbody tr {
+  transition: background-color .14s ease;
+}
+
+main tbody tr:hover {
+  background: hsl(var(--secondary) / .34);
+}
+
+/* Dialogs and mobile drawers belong to the same visual system. */
+[role='dialog'],
+.fixed.inset-0 aside {
+  border-color: hsl(var(--border) / .8) !important;
+}
+
+.fixed.inset-0 aside {
+  background: linear-gradient(180deg, hsl(var(--card) / .98), hsl(var(--premium-surface-soft) / .96)) !important;
+}
+
+/* Deliberately modest motion: polished without making clinical work feel busy. */
+@media (hover: hover) and (pointer: fine) {
+  main .rounded-2xl.border.bg-card,
+  main .rounded-\[26px\].border.bg-card,
+  main .rounded-\[28px\].border.bg-card,
+  main .rounded-\[30px\].border.bg-card {
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+
+  main .rounded-2xl.border.bg-card:hover,
+  main .rounded-\[26px\].border.bg-card:hover,
+  main .rounded-\[28px\].border.bg-card:hover,
+  main .rounded-\[30px\].border.bg-card:hover {
+    border-color: hsl(var(--primary) / .15) !important;
+    box-shadow: 0 20px 50px hsl(var(--premium-shadow) / .075) !important;
+  }
+
+  nav.touch-pan-x > a:hover {
+    transform: translateY(-1px);
+    border-color: hsl(var(--primary) / .16) !important;
+    box-shadow: 0 9px 22px hsl(var(--premium-shadow) / .055);
+  }
+}
+
+@media (max-width: 767px) {
+  body {
+    background:
+      radial-gradient(620px 330px at 15% -5%, hsl(var(--premium-glow-a) / .62), transparent 66%),
+      linear-gradient(180deg, hsl(var(--premium-canvas-top)) 0%, hsl(var(--background)) 48%, hsl(var(--premium-canvas-bottom)) 100%);
+  }
+
+  header.sticky {
+    -webkit-backdrop-filter: saturate(130%) blur(14px);
+    backdrop-filter: saturate(130%) blur(14px);
+  }
+
+  main .rounded-2xl.border.bg-card,
+  main .rounded-\[24px\].border.bg-card,
+  main .rounded-\[26px\].border.bg-card,
+  main .rounded-\[28px\].border.bg-card,
+  main .rounded-\[30px\].border.bg-card {
+    box-shadow: 0 12px 30px hsl(var(--premium-shadow) / .05) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main .rounded-2xl.border.bg-card,
+  main .rounded-\[26px\].border.bg-card,
+  main .rounded-\[28px\].border.bg-card,
+  main .rounded-\[30px\].border.bg-card,
+  nav.touch-pan-x > a {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Printed invoices/receipts must remain neutral and ink-safe regardless of theme. */
+@media print {
+  html {
+    color-scheme: light !important;
+    background: #fff !important;
+  }
+
+  body,
+  #root,
+  .app-shell,
+  main,
+  .min-h-screen.bg-background {
+    background: #fff !important;
+    background-image: none !important;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    text-shadow: none !important;
+  }
+}

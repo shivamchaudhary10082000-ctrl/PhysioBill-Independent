@@ -1,0 +1,67 @@
+import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
+
+type PublicFooterProps = {
+  className?: string;
+};
+
+export function PublicFooter({ className = '' }: PublicFooterProps) {
+  return (
+    <footer className={`public-footer ${className}`.trim()}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-9 border-b border-white/10 py-11 sm:gap-10 sm:py-14 lg:grid-cols-[1.42fr_.78fr_.85fr_1fr] lg:gap-12 lg:py-16">
+          <div className="max-w-md lg:pr-8">
+            <a href="/" aria-label="PhysioBill home" className="inline-flex rounded-xl focus-visible:outline-none">
+              <PhysioBillBrand inverse />
+            </a>
+            <p className="mt-5 text-[11px] font-bold uppercase tracking-[.13em] text-[hsl(232_76%_82%)]">
+              PhysioBill Care
+            </p>
+            <p className="display-serif mt-2 max-w-sm text-[1.75rem] leading-[1.08] tracking-[-.025em] text-[hsl(225_40%_98%)] sm:text-[2rem]">
+              Physiotherapy care, closer to people.
+            </p>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-[hsl(219_18%_72%)]">
+              Thoughtful physiotherapy discovery and professional tools, built around care.
+            </p>
+          </div>
+
+          <nav aria-label="Explore PhysioBill">
+            <p className="public-footer-heading">Explore</p>
+            <div className="mt-4 space-y-3 text-sm">
+              <a href="/find-physio" className="public-footer-link">Find a physiotherapist</a>
+              <p className="public-footer-note">Home visit care</p>
+              <p className="public-footer-note">Clinic visit care</p>
+              <p className="public-footer-note">Telephysiotherapy</p>
+            </div>
+          </nav>
+
+          <nav aria-label="Professional access">
+            <p className="public-footer-heading">Professional access</p>
+            <div className="mt-4 space-y-3 text-sm">
+              <a href="/professional/sign-in" className="public-footer-link">Professional sign in</a>
+              <a href="/app/dashboard" className="public-footer-link">Clinical workspace</a>
+              <a href="/app/discovery-profile" className="public-footer-link">Discovery profile</a>
+            </div>
+          </nav>
+
+          <section aria-labelledby="footer-trust-heading">
+            <p id="footer-trust-heading" className="public-footer-heading">Trust by design</p>
+            <div className="mt-4 space-y-3 text-sm">
+              <p className="public-footer-note">Verified-professional discovery</p>
+              <p className="public-footer-note">Patient-safe public profiles</p>
+              <p className="public-footer-note">Clear professional access</p>
+            </div>
+          </section>
+        </div>
+
+        <div className="flex flex-col gap-3 py-6 text-xs text-[hsl(219_18%_68%)] sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 PhysioBill</p>
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2">
+            <a href="/privacy" className="public-footer-link">Privacy</a>
+            <a href="/terms" className="public-footer-link">Terms</a>
+            <a href="/professional-standards" className="public-footer-link">Professional standards</a>
+          </nav>
+        </div>
+      </div>
+    </footer>
+  );
+}

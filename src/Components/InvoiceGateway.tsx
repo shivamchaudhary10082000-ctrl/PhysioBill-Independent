@@ -104,8 +104,15 @@ const normalizeEditingNumber = (value: string) => {
   return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
 };
 
+const sessionCount = (sessions: string) => {
+  const trimmed = sessions.trim();
+  if (!/^[1-9]\d*$/.test(trimmed)) return 0;
+  const value = Number(trimmed);
+  return Number.isSafeInteger(value) ? value : 0;
+};
+
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
-const calculatePreview = (draft: Draft) => Math.max(0, Math.round((draft.fee + draft.additional - draft.discount) * (1 + draft.gstRate / 100) * 100) / 100);
+const calculatePreview = (draft: Draft) => Math.max(0, Math.round((((draft.fee * sessionCount(draft.sessions)) + draft.additional - draft.discount) * (1 + draft.gstRate / 100)) * 100) / 100);
 const dateTimeLabel = (value: string) => new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
 function InvoiceGatewayFrame({ children }: { children: ReactNode }) {
@@ -215,7 +222,7 @@ function PaymentPanel({ invoice, onInvoiceReconciled }: { invoice: ProductionInv
 
     {balance > 0 && <div className="mt-5 grid gap-4 md:grid-cols-2">
       <Field type="number" label="Payment amount" value={amount} onChange={setAmount} />
-      <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Method</span><select value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm">{(['Cash', 'UPI', 'Bank Transfer', 'Other'] as PaymentMethod[]).map((value) => <option key={value}>{value}</option>)}</select></label>
+      <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em]">Method</span><select value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm">{(['Cash', 'UPI', 'Bank Transfer', 'Other'] as PaymentMethod[]).map((value) => <option key={value}>{value}</option>)}</select></label>
       <Field type="datetime-local" label="Payment date/time" value={recordedAt} onChange={setRecordedAt} />
       <Field label="Notes (optional)" value={notes} onChange={setNotes} />
       <div className="md:col-span-2 flex justify-end"><button disabled={busy || !(Number(amount) > 0) || Number(amount) > balance} onClick={() => void submit()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><WalletCards size={16} /> {busy ? 'Recording…' : 'Record payment'}</button></div>
@@ -266,6 +273,8 @@ function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onV
     discount: normalizeEditingNumber(numericEditing.discount),
     gstRate: normalizeEditingNumber(numericEditing.gstRate),
   };
+  const sessionsValid = sessionCount(normalizedDraft.sessions) > 0;
+  const baseServiceAmount = normalizedDraft.fee * sessionCount(normalizedDraft.sessions);
   const persist = async (finalize: boolean) => {
     setBusy(true); setError(null); setMessage(null);
     try {
@@ -289,19 +298,24 @@ function InvoiceEditor({ invoice, patients, defaultPayment, onSaved, onBack, onV
         <label className="block space-y-1.5"><span className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Patient</span><select disabled={Boolean(invoice) || readOnly} value={draft.patientId} onChange={(event) => update('patientId', event.target.value)} className="h-11 w-full rounded-xl border bg-card px-3.5 text-sm disabled:bg-muted/40 disabled:opacity-100">{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.name} · {patient.patientNumber}</option>)}</select></label>
         <Field disabled label="Invoice number" value={invoice?.number ?? 'Assigned when saved'} onChange={() => undefined} />
         <Field disabled={readOnly} label="Description" value={draft.description} onChange={(value) => update('description', value)} />
-        <Field disabled={readOnly} label="Sessions" value={draft.sessions} onChange={(value) => update('sessions', value)} />
+        <Field disabled={readOnly} type="number" label="Sessions / days" value={draft.sessions} onChange={(value) => update('sessions', value)} />
         <Field disabled={readOnly} type="date" label="Start date" value={draft.startDate} onChange={(value) => update('startDate', value)} />
         <Field disabled={readOnly} type="date" label="End date" value={draft.endDate} onChange={(value) => update('endDate', value)} />
-        <Field disabled={readOnly} type="number" label="Fee" value={numericEditing.fee} onChange={(value) => setNumericEditing((current) => ({ ...current, fee: value }))} />
+        <Field disabled={readOnly} type="number" label="Fee per day / session" value={numericEditing.fee} onChange={(value) => setNumericEditing((current) => ({ ...current, fee: value }))} />
         <Field disabled={readOnly} type="number" label="Additional" value={numericEditing.additional} onChange={(value) => setNumericEditing((current) => ({ ...current, additional: value }))} />
         <Field disabled={readOnly} label="Additional description" value={draft.additionalDescription} onChange={(value) => update('additionalDescription', value)} />
         <Field disabled={readOnly} type="number" label="Discount" value={numericEditing.discount} onChange={(value) => setNumericEditing((current) => ({ ...current, discount: value }))} />
         <Field disabled={readOnly} type="number" label="GST rate" value={numericEditing.gstRate} onChange={(value) => setNumericEditing((current) => ({ ...current, gstRate: value }))} />
       </div>
+      {!readOnly && <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${sessionsValid ? 'border-primary/15 bg-primary/5' : 'border-amber-200 bg-amber-50 text-amber-950'}`}>
+        {sessionsValid
+          ? <><span className="font-bold">Service calculation:</span> {sessionCount(normalizedDraft.sessions)} × {money(normalizedDraft.fee)} = <span className="font-extrabold">{money(baseServiceAmount)}</span> before additional charges, discount and GST.</>
+          : 'Enter Sessions / days as a positive whole number before finalizing.'}
+      </div>}
       <div className="mt-5 grid gap-3 sm:grid-cols-4"><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Total</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.total ?? previewTotal)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Paid</p><p className="mt-1 text-lg font-extrabold">{money(invoice?.paid ?? 0)}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Balance</p><p className="mt-1 text-lg font-extrabold">{money(Math.max(0, (invoice?.total ?? previewTotal) - (invoice?.paid ?? 0)))}</p></div><div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs text-muted-foreground">Status</p><p className="mt-1 text-lg font-extrabold">{invoice?.status ?? 'Draft'}</p></div></div>
       {error && <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
       {message && <div className="mt-4 rounded-xl bg-secondary p-3 text-sm font-semibold">{message}</div>}
-      {!readOnly && <div className="mt-6 flex flex-wrap justify-end gap-2"><button disabled={busy || !draft.patientId} onClick={() => void persist(false)} className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? 'Saving…' : 'Save draft'}</button><button disabled={busy || !draft.patientId} onClick={() => void persist(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><ShieldCheck size={16} /> {busy ? 'Saving…' : 'Finalize invoice'}</button></div>}
+      {!readOnly && <div className="mt-6 flex flex-wrap justify-end gap-2"><button disabled={busy || !draft.patientId} onClick={() => void persist(false)} className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{busy ? 'Saving…' : 'Save draft'}</button><button disabled={busy || !draft.patientId || !sessionsValid} onClick={() => void persist(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><ShieldCheck size={16} /> {busy ? 'Saving…' : 'Finalize invoice'}</button></div>}
     </div>
     {invoice?.finalized && <PaymentPanel invoice={invoice} onInvoiceReconciled={onSaved} />}
   </div>;
@@ -359,6 +373,6 @@ export function InvoiceGateway({ children }: { children: ReactNode }) {
   return <InvoiceGatewayFrame>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[.16em] text-primary">Billing</p><h1 className="mt-1 text-3xl font-extrabold">Invoices</h1><p className="mt-2 text-sm text-muted-foreground">Create invoices, track payments and keep your billing organized.</p></div><button disabled={!patients.length} onClick={() => setSelected('new')} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Plus size={16} /> New invoice</button></div>
     <div className="relative mb-4"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search invoices…" className="h-11 w-full rounded-xl border bg-card pl-10 pr-4 text-sm" /></div>
-    <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return <button key={invoice.id} onClick={() => navigate(invoiceDetailPath(invoice.id))} className="grid w-full gap-3 p-5 text-left hover:bg-secondary/40 md:grid-cols-[1fr_1.3fr_.8fr_.8fr_auto] md:items-center"><div><p className="font-extrabold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.description}</p></div><p>{patient?.name ?? 'Patient'}</p><p className="font-bold">{money(invoice.total)}</p><p className="text-sm">{invoice.status}</p><span className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><FileText size={15} /> Open</span></button>; })}{!filtered.length && <div className="p-6 text-sm text-muted-foreground">{patients.length ? 'No invoices yet.' : 'Create a Patient before creating an invoice.'}</div>}</div>
+    <div className="overflow-hidden rounded-2xl border bg-card divide-y">{filtered.map((invoice) => { const patient = patients.find((item) => item.id === invoice.patientId); return <button key={invoice.id} onClick={() => navigate(invoiceDetailPath(invoice.id))} className="grid w-full gap-3 p-5 text-left hover:bg-secondary/40 md:grid-cols-[1fr_1.3fr_.8fr_.8fr_auto] md:items-center"><div><p className="font-extrabold">{invoice.number}</p><p className="text-xs text-muted-foreground">{invoice.description}</p></div><p>{patient?.name ?? 'Patient'}</p><p className="font-bold">{money(invoice.total)}</p><p className="text-sm">{invoice.status}</p><span className="inline-flex items-center gap-2 text-sm font-semibold text-primary"><FileText size={15} /> Open</span></button>; })}{!filtered.length && <div className="p-6 text-sm text-muted-foreground">{patients.length ? 'No invoices yet.' : 'Create a Patient before creating an invoice.'}</div>}
   </InvoiceGatewayFrame>;
 }

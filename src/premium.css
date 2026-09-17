@@ -1,93 +1,94 @@
 /*
- * PhysioBill premium visual layer
- * Calm clinical workspace: low-noise surfaces, depth, adaptive dark mode,
- * and consistent visual rhythm across professional, patient, admin and public UI.
- * Imported after index.css so this file can refine the existing design tokens
- * without changing application behavior or data flows.
+ * PhysioBill quiet-luxury visual layer
+ *
+ * Direction: editorial, calm, deliberate. Inspired by the restraint common to
+ * premium fashion retail: generous whitespace, strong typography, monochrome
+ * surfaces, very little decoration, and one clear action at a time.
+ *
+ * This file is visual only. It does not change routes, auth, billing, data,
+ * clinical logic, or permissions.
  */
 
 :root {
-  --background: 218 38% 97%;
-  --foreground: 220 38% 18%;
-  --border: 217 26% 89%;
-  --input: 217 24% 85%;
-  --ring: 230 64% 56%;
+  --background: 42 22% 97%;
+  --foreground: 220 10% 10%;
+  --border: 36 12% 87%;
+  --input: 36 12% 82%;
+  --ring: 220 9% 18%;
   --card: 0 0% 100%;
-  --card-foreground: 220 38% 18%;
-  --card-border: 217 26% 89%;
+  --card-foreground: 220 10% 10%;
+  --card-border: 36 12% 87%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 38% 18%;
-  --popover-border: 217 26% 89%;
-  --primary: 230 62% 55%;
+  --popover-foreground: 220 10% 10%;
+  --popover-border: 36 12% 87%;
+  --primary: 220 9% 12%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 230 58% 49%;
-  --primary-soft: 230 78% 96%;
-  --secondary: 211 42% 95%;
-  --secondary-foreground: 220 34% 23%;
-  --muted: 216 29% 95%;
-  --muted-foreground: 218 14% 44%;
-  --accent: 188 42% 94%;
-  --accent-foreground: 213 34% 22%;
-  --sidebar: 216 43% 98%;
-  --sidebar-foreground: 220 38% 18%;
-  --sidebar-border: 217 27% 90%;
-  --sidebar-primary: 230 76% 96%;
-  --sidebar-primary-foreground: 230 62% 51%;
-  --sidebar-accent: 230 76% 96%;
-  --sidebar-accent-foreground: 220 38% 18%;
-  --sidebar-ring: 230 64% 56%;
+  --primary-hover: 220 9% 6%;
+  --primary-soft: 40 16% 94%;
+  --secondary: 40 12% 95%;
+  --secondary-foreground: 220 8% 18%;
+  --muted: 40 11% 94%;
+  --muted-foreground: 220 5% 44%;
+  --accent: 205 21% 93%;
+  --accent-foreground: 220 9% 14%;
+  --sidebar: 42 22% 98%;
+  --sidebar-foreground: 220 10% 10%;
+  --sidebar-border: 36 12% 88%;
+  --sidebar-primary: 220 9% 12%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 40 12% 94%;
+  --sidebar-accent-foreground: 220 10% 10%;
+  --sidebar-ring: 220 9% 18%;
 
-  --premium-canvas-top: 214 48% 98%;
-  --premium-canvas-bottom: 222 35% 96%;
-  --premium-glow-a: 230 82% 93%;
-  --premium-glow-b: 188 54% 92%;
-  --premium-surface: 0 0% 100%;
-  --premium-surface-soft: 217 43% 98%;
-  --premium-line: 219 31% 88%;
-  --premium-shadow: 221 43% 18%;
-  --premium-shadow-soft: 221 43% 18%;
+  --lux-canvas: 42 22% 97%;
+  --lux-surface: 0 0% 100%;
+  --lux-surface-alt: 40 15% 96%;
+  --lux-line: 36 12% 87%;
+  --lux-ink: 220 10% 10%;
+  --lux-muted: 220 5% 44%;
+  --lux-shadow: 220 20% 12%;
+  --lux-brand: 211 69% 42%;
 }
 
 .dark {
-  --background: 222 32% 10%;
-  --foreground: 218 31% 93%;
-  --border: 221 21% 21%;
-  --input: 221 19% 25%;
-  --ring: 231 78% 72%;
-  --card: 222 26% 14%;
-  --card-foreground: 218 31% 93%;
-  --card-border: 221 21% 21%;
-  --popover: 222 26% 14%;
-  --popover-foreground: 218 31% 93%;
-  --popover-border: 221 21% 21%;
-  --primary: 231 74% 70%;
-  --primary-foreground: 224 34% 11%;
-  --primary-hover: 231 77% 76%;
-  --primary-soft: 229 28% 20%;
-  --secondary: 219 22% 18%;
-  --secondary-foreground: 218 31% 93%;
-  --muted: 220 18% 18%;
-  --muted-foreground: 217 15% 67%;
-  --accent: 189 20% 19%;
-  --accent-foreground: 214 28% 93%;
-  --sidebar: 222 29% 12%;
-  --sidebar-foreground: 218 31% 93%;
-  --sidebar-border: 221 21% 21%;
-  --sidebar-primary: 229 28% 20%;
-  --sidebar-primary-foreground: 231 77% 75%;
-  --sidebar-accent: 229 28% 20%;
-  --sidebar-accent-foreground: 218 31% 93%;
-  --sidebar-ring: 231 78% 72%;
+  --background: 40 5% 7%;
+  --foreground: 40 15% 94%;
+  --border: 35 6% 20%;
+  --input: 35 6% 25%;
+  --ring: 40 15% 88%;
+  --card: 40 5% 9%;
+  --card-foreground: 40 15% 94%;
+  --card-border: 35 6% 20%;
+  --popover: 40 5% 9%;
+  --popover-foreground: 40 15% 94%;
+  --popover-border: 35 6% 20%;
+  --primary: 40 15% 92%;
+  --primary-foreground: 40 5% 7%;
+  --primary-hover: 0 0% 100%;
+  --primary-soft: 40 5% 14%;
+  --secondary: 40 5% 13%;
+  --secondary-foreground: 40 15% 94%;
+  --muted: 40 5% 13%;
+  --muted-foreground: 38 7% 67%;
+  --accent: 205 10% 16%;
+  --accent-foreground: 40 15% 94%;
+  --sidebar: 40 5% 8%;
+  --sidebar-foreground: 40 15% 94%;
+  --sidebar-border: 35 6% 20%;
+  --sidebar-primary: 40 15% 92%;
+  --sidebar-primary-foreground: 40 5% 7%;
+  --sidebar-accent: 40 5% 14%;
+  --sidebar-accent-foreground: 40 15% 94%;
+  --sidebar-ring: 40 15% 88%;
 
-  --premium-canvas-top: 222 34% 11%;
-  --premium-canvas-bottom: 224 35% 8%;
-  --premium-glow-a: 231 38% 20%;
-  --premium-glow-b: 187 26% 17%;
-  --premium-surface: 222 26% 14%;
-  --premium-surface-soft: 221 23% 16%;
-  --premium-line: 221 21% 22%;
-  --premium-shadow: 225 55% 4%;
-  --premium-shadow-soft: 225 55% 4%;
+  --lux-canvas: 40 5% 7%;
+  --lux-surface: 40 5% 9%;
+  --lux-surface-alt: 40 5% 12%;
+  --lux-line: 35 6% 20%;
+  --lux-ink: 40 15% 94%;
+  --lux-muted: 38 7% 67%;
+  --lux-shadow: 0 0% 0%;
+  --lux-brand: 210 72% 66%;
 }
 
 html {
@@ -102,55 +103,52 @@ html {
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;
-    --background: 222 32% 10%;
-    --foreground: 218 31% 93%;
-    --border: 221 21% 21%;
-    --input: 221 19% 25%;
-    --ring: 231 78% 72%;
-    --card: 222 26% 14%;
-    --card-foreground: 218 31% 93%;
-    --card-border: 221 21% 21%;
-    --popover: 222 26% 14%;
-    --popover-foreground: 218 31% 93%;
-    --popover-border: 221 21% 21%;
-    --primary: 231 74% 70%;
-    --primary-foreground: 224 34% 11%;
-    --primary-hover: 231 77% 76%;
-    --primary-soft: 229 28% 20%;
-    --secondary: 219 22% 18%;
-    --secondary-foreground: 218 31% 93%;
-    --muted: 220 18% 18%;
-    --muted-foreground: 217 15% 67%;
-    --accent: 189 20% 19%;
-    --accent-foreground: 214 28% 93%;
-    --sidebar: 222 29% 12%;
-    --sidebar-foreground: 218 31% 93%;
-    --sidebar-border: 221 21% 21%;
-    --sidebar-primary: 229 28% 20%;
-    --sidebar-primary-foreground: 231 77% 75%;
-    --sidebar-accent: 229 28% 20%;
-    --sidebar-accent-foreground: 218 31% 93%;
-    --sidebar-ring: 231 78% 72%;
-    --premium-canvas-top: 222 34% 11%;
-    --premium-canvas-bottom: 224 35% 8%;
-    --premium-glow-a: 231 38% 20%;
-    --premium-glow-b: 187 26% 17%;
-    --premium-surface: 222 26% 14%;
-    --premium-surface-soft: 221 23% 16%;
-    --premium-line: 221 21% 22%;
-    --premium-shadow: 225 55% 4%;
-    --premium-shadow-soft: 225 55% 4%;
+    --background: 40 5% 7%;
+    --foreground: 40 15% 94%;
+    --border: 35 6% 20%;
+    --input: 35 6% 25%;
+    --ring: 40 15% 88%;
+    --card: 40 5% 9%;
+    --card-foreground: 40 15% 94%;
+    --card-border: 35 6% 20%;
+    --popover: 40 5% 9%;
+    --popover-foreground: 40 15% 94%;
+    --popover-border: 35 6% 20%;
+    --primary: 40 15% 92%;
+    --primary-foreground: 40 5% 7%;
+    --primary-hover: 0 0% 100%;
+    --primary-soft: 40 5% 14%;
+    --secondary: 40 5% 13%;
+    --secondary-foreground: 40 15% 94%;
+    --muted: 40 5% 13%;
+    --muted-foreground: 38 7% 67%;
+    --accent: 205 10% 16%;
+    --accent-foreground: 40 15% 94%;
+    --sidebar: 40 5% 8%;
+    --sidebar-foreground: 40 15% 94%;
+    --sidebar-border: 35 6% 20%;
+    --sidebar-primary: 40 15% 92%;
+    --sidebar-primary-foreground: 40 5% 7%;
+    --sidebar-accent: 40 5% 14%;
+    --sidebar-accent-foreground: 40 15% 94%;
+    --sidebar-ring: 40 15% 88%;
+    --lux-canvas: 40 5% 7%;
+    --lux-surface: 40 5% 9%;
+    --lux-surface-alt: 40 5% 12%;
+    --lux-line: 35 6% 20%;
+    --lux-ink: 40 15% 94%;
+    --lux-muted: 38 7% 67%;
+    --lux-shadow: 0 0% 0%;
+    --lux-brand: 210 72% 66%;
   }
 }
 
 body {
   min-height: 100dvh;
-  background:
-    radial-gradient(900px 520px at 8% -8%, hsl(var(--premium-glow-a) / .72), transparent 64%),
-    radial-gradient(760px 440px at 94% 4%, hsl(var(--premium-glow-b) / .58), transparent 62%),
-    linear-gradient(180deg, hsl(var(--premium-canvas-top)) 0%, hsl(var(--background)) 42%, hsl(var(--premium-canvas-bottom)) 100%);
-  background-repeat: no-repeat;
+  background: hsl(var(--lux-canvas));
   color: hsl(var(--foreground));
+  letter-spacing: -0.012em;
+  text-rendering: optimizeLegibility;
 }
 
 #root,
@@ -159,190 +157,239 @@ body {
   background: transparent !important;
 }
 
-/* Quiet, glass-like chrome keeps long work sessions visually light. */
-header.sticky {
-  border-bottom-color: hsl(var(--border) / .72) !important;
-  background: hsl(var(--premium-surface) / .76) !important;
-  -webkit-backdrop-filter: saturate(140%) blur(18px);
-  backdrop-filter: saturate(140%) blur(18px);
-  box-shadow: 0 1px 0 hsl(0 0% 100% / .3), 0 12px 38px hsl(var(--premium-shadow) / .045);
+h1,
+h2,
+h3,
+.font-display {
+  letter-spacing: -0.035em;
 }
 
+/* Editorial labels: small, precise, restrained. */
+main [class*='uppercase'][class*='tracking'],
+main .tracking-\[0\.18em\],
+main .tracking-\[0\.2em\] {
+  letter-spacing: .13em !important;
+}
+
+/* Header: flat, architectural, no glass or decorative haze. */
+header.sticky {
+  border-bottom: 1px solid hsl(var(--lux-line)) !important;
+  background: hsl(var(--lux-surface) / .96) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: none !important;
+}
+
+/* Top workspace navigation: text rail, not a row of pills. */
 nav.touch-pan-x {
-  scrollbar-color: hsl(var(--primary) / .22) transparent;
-  scrollbar-width: thin;
+  gap: 0 !important;
+  padding-inline: .45rem;
+  border-bottom: 1px solid hsl(var(--lux-line) / .78);
+  scrollbar-width: none;
 }
 
 nav.touch-pan-x::-webkit-scrollbar {
-  height: 4px;
-}
-
-nav.touch-pan-x::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: hsl(var(--primary) / .24);
+  display: none;
 }
 
 nav.touch-pan-x > a {
-  border-color: hsl(var(--border) / .84) !important;
-  background: hsl(var(--card) / .72) !important;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 14px hsl(var(--premium-shadow) / .035), inset 0 1px 0 hsl(0 0% 100% / .35);
-  transition: transform .16s ease, background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+  position: relative;
+  min-height: 2.85rem;
+  padding: .85rem .8rem .72rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: hsl(var(--muted-foreground)) !important;
+  font-weight: 500 !important;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+
+nav.touch-pan-x > a::after {
+  content: '';
+  position: absolute;
+  left: .8rem;
+  right: .8rem;
+  bottom: -1px;
+  height: 1px;
+  background: transparent;
 }
 
 nav.touch-pan-x > a[aria-current='page'] {
-  border-color: hsl(var(--primary) / .28) !important;
-  background: linear-gradient(135deg, hsl(var(--primary) / .14), hsl(var(--accent) / .76)) !important;
-  color: hsl(var(--primary)) !important;
-  box-shadow: 0 8px 24px hsl(var(--primary) / .1), inset 0 1px 0 hsl(0 0% 100% / .36);
+  color: hsl(var(--foreground)) !important;
+  background: transparent !important;
 }
 
-/* Desktop navigation becomes a calm control rail instead of a flat white panel. */
-aside.bg-sidebar {
-  background:
-    linear-gradient(180deg, hsl(var(--sidebar) / .96) 0%, hsl(var(--premium-surface-soft) / .92) 100%) !important;
-  border-right-color: hsl(var(--sidebar-border) / .8) !important;
-  box-shadow: 18px 0 46px hsl(var(--premium-shadow) / .04) !important;
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+nav.touch-pan-x > a[aria-current='page']::after {
+  background: hsl(var(--foreground));
+}
+
+/* Sidebar: quiet editorial rail. */
+aside.bg-sidebar,
+.fixed.inset-0 aside {
+  background: hsl(var(--sidebar)) !important;
+  border-color: hsl(var(--sidebar-border)) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 aside.bg-sidebar nav a,
 .fixed.inset-0 aside nav a {
-  border: 1px solid transparent;
-  border-radius: .9rem;
+  border: 0 !important;
+  border-radius: .55rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 aside.bg-sidebar nav a:hover,
 .fixed.inset-0 aside nav a:hover {
-  border-color: hsl(var(--border) / .72);
-  background: hsl(var(--card) / .62);
+  background: hsl(var(--sidebar-accent)) !important;
 }
 
 aside.bg-sidebar nav a.bg-sidebar-accent,
 nav a[data-workspace-active='true'] {
-  border-color: hsl(var(--primary) / .16) !important;
-  background: linear-gradient(135deg, hsl(var(--primary-soft)), hsl(var(--accent) / .72)) !important;
-  box-shadow: 0 8px 24px hsl(var(--primary) / .07), inset 0 1px 0 hsl(0 0% 100% / .34) !important;
+  background: hsl(var(--sidebar-accent)) !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: inset 2px 0 0 hsl(var(--foreground)) !important;
 }
 
 aside.bg-sidebar > div:last-child {
-  border-color: hsl(var(--border) / .76) !important;
-  background: hsl(var(--card) / .68) !important;
-  box-shadow: 0 10px 26px hsl(var(--premium-shadow) / .035);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  border-color: hsl(var(--sidebar-border)) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-/* Main cards: less white-on-white, more hierarchy and depth. */
+/* Main sections: premium through proportion and whitespace, not decoration. */
 main .rounded-2xl.border.bg-card,
 main .rounded-\[24px\].border.bg-card,
 main .rounded-\[26px\].border.bg-card,
 main .rounded-\[28px\].border.bg-card,
 main .rounded-\[30px\].border.bg-card,
 main .overflow-hidden.rounded-2xl.border.bg-card {
-  border-color: hsl(var(--premium-line) / .9) !important;
-  background: linear-gradient(180deg, hsl(var(--card) / .91), hsl(var(--premium-surface-soft) / .78)) !important;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow:
-    0 1px 0 hsl(0 0% 100% / .4) inset,
-    0 16px 42px hsl(var(--premium-shadow) / .055) !important;
+  border-color: hsl(var(--lux-line)) !important;
+  border-radius: .9rem !important;
+  background: hsl(var(--lux-surface)) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: 0 10px 30px hsl(var(--lux-shadow) / .035) !important;
 }
 
+/* Dashboard greeting: a clean editorial opening, not a decorative hero card. */
 main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary {
-  isolation: isolate;
-  border: 1px solid hsl(var(--primary) / .16) !important;
-  background:
-    radial-gradient(440px 180px at 84% 0%, hsl(var(--accent) / .92), transparent 70%),
-    linear-gradient(135deg, hsl(var(--primary-soft)) 0%, hsl(var(--secondary)) 56%, hsl(var(--accent)) 100%) !important;
-  box-shadow: 0 22px 58px hsl(var(--primary) / .1), inset 0 1px 0 hsl(0 0% 100% / .5) !important;
+  isolation: auto;
+  border: 1px solid hsl(var(--lux-line)) !important;
+  border-radius: .9rem !important;
+  background: hsl(var(--lux-surface)) !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: none !important;
 }
 
 main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  width: 11rem;
-  height: 11rem;
-  right: -3.2rem;
-  bottom: -6.5rem;
-  border-radius: 999px;
-  border: 1px solid hsl(var(--primary) / .13);
-  box-shadow: 0 0 0 2.6rem hsl(var(--primary) / .035), 0 0 0 5.2rem hsl(var(--primary) / .022);
+  content: none !important;
 }
 
-/* Soft inner rows separate information without visual clutter. */
+main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary * {
+  color: inherit;
+}
+
+main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary h1,
+main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary h2 {
+  font-size: clamp(1.7rem, 4vw, 2.8rem) !important;
+  line-height: .98 !important;
+  font-weight: 650 !important;
+  letter-spacing: -.045em !important;
+}
+
+/* Inner rows: nearly flat, with just enough boundary to scan quickly. */
 main [class*='bg-secondary/50'],
 main [class*='bg-secondary/40'],
 main [class*='bg-secondary/55'],
 main [class*='bg-secondary/60'] {
-  border: 1px solid hsl(var(--border) / .62);
-  background: linear-gradient(135deg, hsl(var(--secondary) / .7), hsl(var(--card) / .68)) !important;
+  border: 1px solid hsl(var(--lux-line) / .78) !important;
+  border-radius: .72rem !important;
+  background: hsl(var(--lux-surface)) !important;
+  box-shadow: none !important;
 }
 
 main a[class*='bg-secondary/']:hover,
 main button[class*='bg-secondary/']:hover {
-  border-color: hsl(var(--primary) / .16);
-  background: hsl(var(--secondary) / .92) !important;
+  background: hsl(var(--lux-surface-alt)) !important;
+  border-color: hsl(var(--foreground) / .16) !important;
 }
 
-/* Inputs feel intentional and remain comfortable during long clinical entry. */
+/* Forms: plain, tactile, calm. */
 input:not([type='checkbox']):not([type='radio']),
 select,
 textarea {
-  border-color: hsl(var(--input) / .9) !important;
-  background: hsl(var(--card) / .82) !important;
-  box-shadow: inset 0 1px 1px hsl(var(--premium-shadow) / .025), 0 1px 0 hsl(0 0% 100% / .28);
-  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+  border-color: hsl(var(--input)) !important;
+  border-radius: .72rem !important;
+  background: hsl(var(--lux-surface)) !important;
+  box-shadow: none !important;
+  transition: border-color .14s ease, background-color .14s ease;
 }
 
 input:not([type='checkbox']):not([type='radio']):focus,
 select:focus,
 textarea:focus {
-  border-color: hsl(var(--primary) / .48) !important;
-  background: hsl(var(--card) / .96) !important;
-  box-shadow: 0 0 0 4px hsl(var(--primary) / .09), 0 8px 24px hsl(var(--premium-shadow) / .035) !important;
+  border-color: hsl(var(--foreground) / .68) !important;
+  background: hsl(var(--lux-surface)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / .12) !important;
 }
 
 input:not([type='checkbox']):not([type='radio']):disabled,
 select:disabled,
 textarea:disabled {
-  border-color: hsl(var(--border) / .7) !important;
-  background: hsl(var(--muted) / .82) !important;
-  opacity: .86;
+  border-color: hsl(var(--lux-line)) !important;
+  background: hsl(var(--lux-surface-alt)) !important;
+  opacity: .9;
 }
 
-/* Primary actions get confidence, not glare. */
+/* Buttons: fashion-retail restraint — solid, confident, no gradients. */
 button.bg-primary,
 a.bg-primary {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(230 64% 49%)) !important;
-  box-shadow: 0 12px 28px hsl(var(--primary) / .2), inset 0 1px 0 hsl(0 0% 100% / .2) !important;
+  border-radius: .68rem !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
 }
 
 button.bg-primary:hover:not(:disabled),
 a.bg-primary:hover {
-  box-shadow: 0 16px 34px hsl(var(--primary) / .24), inset 0 1px 0 hsl(0 0% 100% / .22) !important;
+  background: hsl(var(--primary-hover)) !important;
+  box-shadow: none !important;
 }
 
-/* Badges, avatars and small utility controls gain a refined edge. */
-.physiobill-mark,
+button:not(.bg-primary),
+a:not(.bg-primary) {
+  box-shadow: none;
+}
+
+/* Small identity elements retain brand color, while the workspace stays neutral. */
+.physiobill-mark {
+  border-color: hsl(var(--lux-line)) !important;
+  background: hsl(var(--lux-surface)) !important;
+  box-shadow: none !important;
+}
+
 aside .bg-sidebar-primary {
-  border-color: hsl(var(--primary) / .2) !important;
-  background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--primary-soft))) !important;
-  box-shadow: 0 10px 26px hsl(var(--premium-shadow) / .07), inset 0 1px 0 hsl(0 0% 100% / .52) !important;
+  border: 0 !important;
+  background: hsl(var(--sidebar-accent)) !important;
+  box-shadow: none !important;
 }
 
 header a[aria-label='Open profile'] {
-  border: 1px solid hsl(var(--primary) / .22);
-  background: linear-gradient(145deg, hsl(var(--primary)), hsl(230 62% 48%));
-  box-shadow: 0 8px 20px hsl(var(--primary) / .2);
+  border: 1px solid hsl(var(--lux-line));
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  box-shadow: none;
 }
 
-/* Tables/lists stay readable at the end of a long day. */
+/* Lists and tables: editorial rules rather than boxed marketplace UI. */
 main .divide-y > * + * {
-  border-color: hsl(var(--border) / .62);
+  border-color: hsl(var(--lux-line));
 }
 
 main table {
@@ -351,61 +398,94 @@ main table {
 }
 
 main thead {
-  background: hsl(var(--secondary) / .55);
+  background: hsl(var(--lux-surface-alt));
 }
 
 main tbody tr {
-  transition: background-color .14s ease;
+  transition: background-color .12s ease;
 }
 
 main tbody tr:hover {
-  background: hsl(var(--secondary) / .34);
+  background: hsl(var(--lux-surface-alt));
 }
 
-/* Dialogs and mobile drawers belong to the same visual system. */
+/* Status banners remain readable without taking over the page. */
+main [class*='border-amber'],
+main [class*='bg-amber'] {
+  border-color: hsl(39 42% 75%) !important;
+  background: hsl(42 52% 96%) !important;
+  color: hsl(34 28% 24%) !important;
+}
+
+.dark main [class*='border-amber'],
+.dark main [class*='bg-amber'] {
+  border-color: hsl(38 18% 28%) !important;
+  background: hsl(35 12% 13%) !important;
+  color: hsl(40 24% 82%) !important;
+}
+
+/* Dialogs and drawers remain part of the same minimal system. */
 [role='dialog'],
 .fixed.inset-0 aside {
-  border-color: hsl(var(--border) / .8) !important;
+  border-color: hsl(var(--lux-line)) !important;
 }
 
-.fixed.inset-0 aside {
-  background: linear-gradient(180deg, hsl(var(--card) / .98), hsl(var(--premium-surface-soft) / .96)) !important;
+/* Sparse/empty pages should feel deliberate rather than unfinished. */
+main .min-h-\[120px\],
+main .min-h-\[140px\],
+main .min-h-\[160px\] {
+  background: transparent !important;
 }
 
-/* Deliberately modest motion: polished without making clinical work feel busy. */
 @media (hover: hover) and (pointer: fine) {
   main .rounded-2xl.border.bg-card,
+  main .rounded-\[24px\].border.bg-card,
   main .rounded-\[26px\].border.bg-card,
   main .rounded-\[28px\].border.bg-card,
   main .rounded-\[30px\].border.bg-card {
-    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    transition: border-color .14s ease, background-color .14s ease;
   }
 
   main .rounded-2xl.border.bg-card:hover,
+  main .rounded-\[24px\].border.bg-card:hover,
   main .rounded-\[26px\].border.bg-card:hover,
   main .rounded-\[28px\].border.bg-card:hover,
   main .rounded-\[30px\].border.bg-card:hover {
-    border-color: hsl(var(--primary) / .15) !important;
-    box-shadow: 0 20px 50px hsl(var(--premium-shadow) / .075) !important;
+    border-color: hsl(var(--foreground) / .17) !important;
+    box-shadow: 0 12px 34px hsl(var(--lux-shadow) / .045) !important;
   }
 
   nav.touch-pan-x > a:hover {
-    transform: translateY(-1px);
-    border-color: hsl(var(--primary) / .16) !important;
-    box-shadow: 0 9px 22px hsl(var(--premium-shadow) / .055);
+    color: hsl(var(--foreground)) !important;
   }
 }
 
+/* Mobile: keep all functionality, remove the visual feeling of 'many pills'. */
 @media (max-width: 767px) {
   body {
-    background:
-      radial-gradient(620px 330px at 15% -5%, hsl(var(--premium-glow-a) / .62), transparent 66%),
-      linear-gradient(180deg, hsl(var(--premium-canvas-top)) 0%, hsl(var(--background)) 48%, hsl(var(--premium-canvas-bottom)) 100%);
+    background: hsl(var(--lux-canvas));
   }
 
   header.sticky {
-    -webkit-backdrop-filter: saturate(130%) blur(14px);
-    backdrop-filter: saturate(130%) blur(14px);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  nav.touch-pan-x {
+    padding-inline: .25rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 22px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 22px), transparent 100%);
+  }
+
+  nav.touch-pan-x > a {
+    min-height: 2.6rem;
+    padding: .72rem .72rem .64rem !important;
+    font-size: .78rem !important;
+  }
+
+  nav.touch-pan-x > a::after {
+    left: .72rem;
+    right: .72rem;
   }
 
   main .rounded-2xl.border.bg-card,
@@ -413,22 +493,36 @@ main tbody tr:hover {
   main .rounded-\[26px\].border.bg-card,
   main .rounded-\[28px\].border.bg-card,
   main .rounded-\[30px\].border.bg-card {
-    box-shadow: 0 12px 30px hsl(var(--premium-shadow) / .05) !important;
+    border-radius: .8rem !important;
+    box-shadow: 0 8px 24px hsl(var(--lux-shadow) / .025) !important;
+  }
+
+  main > .space-y-7 > .relative.overflow-hidden.rounded-\[24px\].bg-primary {
+    border-radius: .8rem !important;
+  }
+
+  /* Stronger vertical rhythm makes dense work screens feel calmer. */
+  main .space-y-7 {
+    row-gap: 1.55rem !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+
   main .rounded-2xl.border.bg-card,
+  main .rounded-\[24px\].border.bg-card,
   main .rounded-\[26px\].border.bg-card,
   main .rounded-\[28px\].border.bg-card,
   main .rounded-\[30px\].border.bg-card,
   nav.touch-pan-x > a {
     transition: none !important;
-    transform: none !important;
   }
 }
 
-/* Printed invoices/receipts must remain neutral and ink-safe regardless of theme. */
+/* Printed invoices/receipts stay neutral and ink-safe regardless of UI theme. */
 @media print {
   html {
     color-scheme: light !important;
@@ -448,6 +542,7 @@ main tbody tr:hover {
   .print-sheet * {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+    box-shadow: none !important;
     text-shadow: none !important;
   }
 }

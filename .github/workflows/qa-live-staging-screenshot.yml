@@ -1,0 +1,60 @@
+name: QA Live Staging Screenshot
+
+on:
+  push:
+    branches:
+      - qa/live-staging-screenshots
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install browser runner
+        run: |
+          npm ci --no-fund
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture live staging landing
+        env:
+          STAGING_URL: https://physiobill-independent-staging.pages.dev
+        run: |
+          mkdir -p screenshots
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({
+              viewport: { width: 360, height: 800 },
+              deviceScaleFactor: 1,
+              isMobile: true,
+              hasTouch: true,
+            });
+            const page = await context.newPage();
+            await page.goto(process.env.STAGING_URL, { waitUntil: 'networkidle', timeout: 60000 });
+            await page.screenshot({ path: 'screenshots/landing-live-staging-360x800.png', fullPage: true });
+            await browser.close();
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-staging-landing-current
+          path: screenshots/landing-live-staging-360x800.png
+          if-no-files-found: error
+          retention-days: 7

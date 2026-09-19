@@ -1,0 +1,83 @@
+name: Staging Visual Review
+
+on:
+  push:
+    branches:
+      - futureweb-production-backend
+    paths:
+      - '.github/workflows/staging-visual-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install browser runner
+        run: |
+          npm ci --no-fund
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture 360x800 staging review screens
+        env:
+          STAGING_URL: https://physiobill-independent-staging.pages.dev
+        run: |
+          mkdir -p staging-screenshots
+          node <<'NODE'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({
+              viewport: { width: 360, height: 800 },
+              deviceScaleFactor: 1,
+              isMobile: true,
+              hasTouch: true,
+            });
+
+            const targets = [
+              ['01-landing', '/'],
+              ['02-discovery-surat', '/find-physio?city=Surat&mode=home_visit'],
+              ['03-patient-sign-in', '/patient/sign-in'],
+              ['04-professional-sign-in', '/professional/sign-in'],
+              ['05-admin-sign-in', '/admin/sign-in'],
+            ];
+
+            for (const [name, path] of targets) {
+              const page = await context.newPage();
+              await page.goto(process.env.STAGING_URL + path, {
+                waitUntil: 'domcontentloaded',
+                timeout: 45000,
+              });
+              await page.waitForTimeout(2500);
+              await page.screenshot({
+                path: `staging-screenshots/${name}.png`,
+                fullPage: true,
+              });
+              await page.close();
+            }
+
+            await browser.close();
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Upload staging screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: physiobill-staging-mobile-screenshots
+          path: staging-screenshots/*.png
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,49 @@
+name: QA Baseline Tag and Diff Proof
+
+on:
+  push:
+    branches:
+      - qa/live-staging-screenshots
+    paths:
+      - '.github/workflows/qa-baseline-tag-and-diff.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prove-and-tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch working branch
+        run: git fetch origin futureweb-production-backend
+
+      - name: Raw premium baseline diff stat
+        run: |
+          git diff --stat 95a6c54fc887ccfa90bb70bcefa8eb7efc618b45 origin/futureweb-production-backend | tee diff-stat.txt
+
+      - name: Assert file tree is identical
+        run: test -z "$(cat diff-stat.txt)"
+
+      - name: Create premium baseline tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "refs/tags/premium-baseline-v1" >/dev/null 2>&1; then
+            test "$(git rev-parse refs/tags/premium-baseline-v1^{})" = "95a6c54fc887ccfa90bb70bcefa8eb7efc618b45"
+          else
+            git tag -a premium-baseline-v1 95a6c54fc887ccfa90bb70bcefa8eb7efc618b45 -m "PhysioBill premium baseline v1"
+            git push origin refs/tags/premium-baseline-v1
+          fi
+
+      - name: Upload raw diff proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: premium-baseline-diff-stat
+          path: diff-stat.txt
+          retention-days: 30

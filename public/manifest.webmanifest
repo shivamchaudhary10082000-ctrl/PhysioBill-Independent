@@ -2,12 +2,12 @@
   "id": "/",
   "name": "PhysioBill",
   "short_name": "PhysioBill",
-  "description": "Verified physiotherapy discovery, appointments, clinical workspace and professional billing.",
+  "description": "Credential-checked physiotherapy discovery, appointments, clinical workspace and professional billing.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f5f8fc",
-  "theme_color": "#f5f8fc",
+  "background_color": "#F7F8F6",
+  "theme_color": "#F7F8F6",
   "icons": [
     {
       "src": "/physiobill-app-icon.svg",

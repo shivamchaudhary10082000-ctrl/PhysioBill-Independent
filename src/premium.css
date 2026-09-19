@@ -8,95 +8,93 @@
  */
 
 :root {
-  --app-font-sans: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Gujarati', system-ui, sans-serif;
+  --app-font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 
-  --background: 90 12% 97%;
-  --foreground: 147 16% 11%;
-  --border: 132 8% 88%;
-  --input: 135 8% 80%;
-  --ring: 160 54% 20%;
-  --card: 0 0% 100%;
-  --card-foreground: 147 16% 11%;
-  --card-border: 132 8% 88%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 147 16% 11%;
-  --popover-border: 132 8% 88%;
-  --primary: 160 54% 20%;
-  --primary-foreground: 0 0% 100%;
-  --primary-hover: 162 54% 15%;
-  --primary-soft: 147 23% 92%;
-  --secondary: 120 8% 95%;
-  --secondary-foreground: 147 16% 11%;
-  --muted: 120 8% 95%;
-  --muted-foreground: 140 7% 36%;
-  --accent: 147 23% 92%;
-  --accent-foreground: 160 54% 20%;
-  --sidebar: 0 0% 100%;
-  --sidebar-foreground: 147 16% 11%;
-  --sidebar-border: 132 8% 88%;
-  --sidebar-primary: 147 23% 92%;
-  --sidebar-primary-foreground: 160 54% 20%;
-  --sidebar-accent: 120 8% 95%;
-  --sidebar-accent-foreground: 147 16% 11%;
-  --sidebar-ring: 160 54% 20%;
+  --background: 42 18% 97%;
+  --foreground: 220 8% 11%;
+  --border: 40 8% 87%;
+  --input: 40 7% 81%;
+  --ring: 220 8% 18%;
+  --card: 45 24% 99%;
+  --card-foreground: 220 8% 11%;
+  --card-border: 40 8% 87%;
+  --popover: 45 24% 99%;
+  --popover-foreground: 220 8% 11%;
+  --popover-border: 40 8% 87%;
+  --primary: 220 7% 13%;
+  --primary-foreground: 45 18% 98%;
+  --primary-hover: 220 7% 8%;
+  --primary-soft: 42 11% 93%;
+  --secondary: 42 10% 94%;
+  --secondary-foreground: 220 7% 16%;
+  --muted: 42 9% 94%;
+  --muted-foreground: 220 5% 43%;
+  --accent: 188 22% 93%;
+  --accent-foreground: 195 24% 20%;
+  --sidebar: 45 22% 98%;
+  --sidebar-foreground: 220 8% 12%;
+  --sidebar-border: 40 8% 87%;
+  --sidebar-primary: 42 11% 92%;
+  --sidebar-primary-foreground: 220 7% 12%;
+  --sidebar-accent: 42 11% 93%;
+  --sidebar-accent-foreground: 220 7% 12%;
+  --sidebar-ring: 220 8% 18%;
 
-  --lux-canvas-top: 90 12% 97%;
-  --lux-canvas-bottom: 120 8% 95%;
-  --lux-surface: 0 0% 100%;
-  --lux-surface-raised: 60 14% 99%;
-  --lux-surface-soft: 120 8% 95%;
-  --lux-line: 132 8% 88%;
-  --lux-line-soft: 132 8% 91%;
-  --lux-ink-soft: 140 7% 36%;
-  --lux-brand: 160 54% 20%;
-  --lux-brand-blue: 202 41% 33%;
-  --lux-shadow: 147 16% 11%;
-  --lux-accent-gold: 34 40% 52%;
+  --lux-canvas-top: 45 24% 98%;
+  --lux-canvas-bottom: 40 14% 96%;
+  --lux-surface: 45 24% 99%;
+  --lux-surface-raised: 0 0% 100%;
+  --lux-surface-soft: 42 10% 95%;
+  --lux-line: 40 8% 86%;
+  --lux-line-soft: 40 8% 90%;
+  --lux-ink-soft: 220 5% 43%;
+  --lux-brand: 190 62% 34%;
+  --lux-brand-blue: 209 73% 42%;
+  --lux-shadow: 220 12% 10%;
 }
 
 .dark {
-  --background: 144 14% 7%;
-  --foreground: 120 13% 95%;
-  --border: 138 9% 21%;
-  --input: 131 7% 29%;
-  --ring: 152 24% 61%;
-  --card: 140 12% 10%;
-  --card-foreground: 120 13% 95%;
-  --card-border: 138 9% 21%;
-  --popover: 140 12% 10%;
-  --popover-foreground: 120 13% 95%;
-  --popover-border: 138 9% 21%;
-  --primary: 152 24% 61%;
-  --primary-foreground: 144 14% 7%;
-  --primary-hover: 152 26% 69%;
-  --primary-soft: 154 25% 17%;
-  --secondary: 142 12% 13%;
-  --secondary-foreground: 120 13% 95%;
-  --muted: 143 11% 15%;
-  --muted-foreground: 133 7% 74%;
-  --accent: 154 25% 17%;
-  --accent-foreground: 120 13% 95%;
-  --sidebar: 140 12% 10%;
-  --sidebar-foreground: 120 13% 95%;
-  --sidebar-border: 138 9% 21%;
-  --sidebar-primary: 154 25% 17%;
-  --sidebar-primary-foreground: 152 24% 61%;
-  --sidebar-accent: 142 12% 13%;
-  --sidebar-accent-foreground: 120 13% 95%;
-  --sidebar-ring: 152 24% 61%;
+  --background: 36 5% 7%;
+  --foreground: 40 14% 93%;
+  --border: 36 5% 20%;
+  --input: 36 5% 27%;
+  --ring: 40 12% 82%;
+  --card: 36 5% 9%;
+  --card-foreground: 40 14% 93%;
+  --card-border: 36 5% 20%;
+  --popover: 36 5% 10%;
+  --popover-foreground: 40 14% 93%;
+  --popover-border: 36 5% 20%;
+  --primary: 40 16% 91%;
+  --primary-foreground: 36 5% 8%;
+  --primary-hover: 40 18% 97%;
+  --primary-soft: 36 5% 14%;
+  --secondary: 36 5% 13%;
+  --secondary-foreground: 40 14% 91%;
+  --muted: 36 4% 14%;
+  --muted-foreground: 40 6% 64%;
+  --accent: 188 12% 15%;
+  --accent-foreground: 40 13% 91%;
+  --sidebar: 36 5% 8%;
+  --sidebar-foreground: 40 14% 93%;
+  --sidebar-border: 36 5% 19%;
+  --sidebar-primary: 36 5% 15%;
+  --sidebar-primary-foreground: 40 15% 92%;
+  --sidebar-accent: 36 5% 14%;
+  --sidebar-accent-foreground: 40 14% 93%;
+  --sidebar-ring: 40 12% 82%;
 
-  --lux-canvas-top: 144 14% 7%;
-  --lux-canvas-bottom: 144 14% 6%;
-  --lux-surface: 140 12% 10%;
-  --lux-surface-raised: 143 11% 15%;
-  --lux-surface-soft: 142 12% 13%;
-  --lux-line: 138 9% 21%;
-  --lux-line-soft: 138 9% 17%;
-  --lux-ink-soft: 133 7% 74%;
-  --lux-brand: 152 24% 61%;
-  --lux-brand-blue: 201 47% 69%;
+  --lux-canvas-top: 36 5% 8%;
+  --lux-canvas-bottom: 36 6% 6%;
+  --lux-surface: 36 5% 9%;
+  --lux-surface-raised: 36 5% 11%;
+  --lux-surface-soft: 36 5% 13%;
+  --lux-line: 36 5% 21%;
+  --lux-line-soft: 36 5% 17%;
+  --lux-ink-soft: 40 6% 64%;
+  --lux-brand: 188 42% 58%;
+  --lux-brand-blue: 209 62% 65%;
   --lux-shadow: 0 0% 0%;
-  --lux-accent-gold: 35 45% 60%;
 }
 
 html {
@@ -111,45 +109,45 @@ html {
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;
-    --background: 144 14% 7%;
-    --foreground: 120 13% 95%;
-    --border: 138 9% 21%;
-    --input: 131 7% 29%;
-    --ring: 152 24% 61%;
-    --card: 140 12% 10%;
-    --card-foreground: 120 13% 95%;
-    --card-border: 138 9% 21%;
-    --popover: 140 12% 10%;
-    --popover-foreground: 120 13% 95%;
-    --popover-border: 138 9% 21%;
-    --primary: 152 24% 61%;
-    --primary-foreground: 144 14% 7%;
-    --primary-hover: 152 26% 69%;
-    --primary-soft: 154 25% 17%;
-    --secondary: 142 12% 13%;
-    --secondary-foreground: 120 13% 95%;
-    --muted: 143 11% 15%;
-    --muted-foreground: 133 7% 74%;
-    --accent: 154 25% 17%;
-    --accent-foreground: 120 13% 95%;
-    --sidebar: 140 12% 10%;
-    --sidebar-foreground: 120 13% 95%;
-    --sidebar-border: 138 9% 21%;
-    --sidebar-primary: 154 25% 17%;
-    --sidebar-primary-foreground: 152 24% 61%;
-    --sidebar-accent: 142 12% 13%;
-    --sidebar-accent-foreground: 120 13% 95%;
-    --sidebar-ring: 152 24% 61%;
-    --lux-canvas-top: 144 14% 7%;
-    --lux-canvas-bottom: 144 14% 6%;
-    --lux-surface: 140 12% 10%;
-    --lux-surface-raised: 143 11% 15%;
-    --lux-surface-soft: 142 12% 13%;
-    --lux-line: 138 9% 21%;
-    --lux-line-soft: 138 9% 17%;
-    --lux-ink-soft: 133 7% 74%;
-    --lux-brand: 152 24% 61%;
-    --lux-brand-blue: 201 47% 69%;
+    --background: 36 5% 7%;
+    --foreground: 40 14% 93%;
+    --border: 36 5% 20%;
+    --input: 36 5% 27%;
+    --ring: 40 12% 82%;
+    --card: 36 5% 9%;
+    --card-foreground: 40 14% 93%;
+    --card-border: 36 5% 20%;
+    --popover: 36 5% 10%;
+    --popover-foreground: 40 14% 93%;
+    --popover-border: 36 5% 20%;
+    --primary: 40 16% 91%;
+    --primary-foreground: 36 5% 8%;
+    --primary-hover: 40 18% 97%;
+    --primary-soft: 36 5% 14%;
+    --secondary: 36 5% 13%;
+    --secondary-foreground: 40 14% 91%;
+    --muted: 36 4% 14%;
+    --muted-foreground: 40 6% 64%;
+    --accent: 188 12% 15%;
+    --accent-foreground: 40 13% 91%;
+    --sidebar: 36 5% 8%;
+    --sidebar-foreground: 40 14% 93%;
+    --sidebar-border: 36 5% 19%;
+    --sidebar-primary: 36 5% 15%;
+    --sidebar-primary-foreground: 40 15% 92%;
+    --sidebar-accent: 36 5% 14%;
+    --sidebar-accent-foreground: 40 14% 93%;
+    --sidebar-ring: 40 12% 82%;
+    --lux-canvas-top: 36 5% 8%;
+    --lux-canvas-bottom: 36 6% 6%;
+    --lux-surface: 36 5% 9%;
+    --lux-surface-raised: 36 5% 11%;
+    --lux-surface-soft: 36 5% 13%;
+    --lux-line: 36 5% 21%;
+    --lux-line-soft: 36 5% 17%;
+    --lux-ink-soft: 40 6% 64%;
+    --lux-brand: 188 42% 58%;
+    --lux-brand-blue: 209 62% 65%;
     --lux-shadow: 0 0% 0%;
   }
 }
@@ -786,35 +784,5 @@ main > section.max-w-4xl nav a:not(.bg-primary):hover {
     backdrop-filter: none !important;
     text-shadow: none !important;
     box-shadow: none !important;
-  }
-}
-
-
-/* Approved mobile accessibility baseline */
-@media (pointer: coarse) {
-  button,
-  input:not([type='checkbox']):not([type='radio']),
-  select {
-    min-height: 44px;
-  }
-}
-
-:where(button, a, input, select, textarea):focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 3px;
-}
-
-:where(.text-muted-foreground) {
-  color: hsl(var(--muted-foreground));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
   }
 }

@@ -222,6 +222,11 @@ function IssuedInvoiceSheet({
           </table>
         </div>
 
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-900/10 bg-emerald-50/55 px-4 py-3 text-sm text-slate-800">
+          <span className="font-semibold">Rate × sessions</span>
+          <strong className="tabular-nums">{money(unitPrice)} × {quantity.toLocaleString('en-IN')} = {money(snapshot.fee)}</strong>
+        </div>
+
         <div className="grid gap-5 sm:grid-cols-[1fr_1.05fr]">
           <div className="min-h-36 rounded-xl border border-slate-300 p-3">
             <p className="text-xs font-bold uppercase tracking-[.12em] text-slate-500">

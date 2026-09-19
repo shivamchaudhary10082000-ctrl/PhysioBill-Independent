@@ -413,6 +413,28 @@ export async function renderMediclaimReceiptPdf(
 
   y = y - headerH - rowH * visibleRows - 12;
 
+  const primaryDays = parseQuantity(dto.service.sessions);
+  const primaryRate = primaryDays > 1 ? dto.service.fee / primaryDays : dto.service.fee;
+  page.drawRectangle({
+    x: tableX,
+    y: y - 24,
+    width: tableW,
+    height: 24,
+    color: rgb(0.95, 0.98, 0.96),
+    borderColor: BORDER,
+    borderWidth: 0.6,
+  });
+  page.drawText('Rate x sessions', { x: tableX + 9, y: y - 15, size: 8, font: bold, color: TEXT });
+  drawRightText(
+    page,
+    bold,
+    `Rs ${moneyNumber(primaryRate)} x ${moneyNumber(primaryDays)} = Rs ${moneyNumber(dto.service.fee)}`,
+    tableX + tableW - 8,
+    y - 15,
+    8,
+  );
+  y -= 36;
+
   // Stamp and totals.
   const stampW = 240;
   const stampH = 140;

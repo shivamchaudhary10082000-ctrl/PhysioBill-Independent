@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -75,8 +75,8 @@
   --sidebar-accent: 233 100% 97%;
   --sidebar-accent-foreground: 221 35% 22%;
   --sidebar-ring: 232 53% 57%;
-  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
-  --app-font-serif: 'Instrument Serif', Georgia, serif;
+  --app-font-sans: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Gujarati', system-ui, sans-serif;
+  --app-font-serif: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Gujarati', system-ui, sans-serif;
   --app-font-mono: 'DM Mono', monospace;
   --radius: 0.95rem;
 }
@@ -124,6 +124,8 @@
   html { background: hsl(var(--background)); }
   body { @apply font-sans antialiased bg-background text-foreground; margin: 0; }
   button, input, select, textarea { font: inherit; }
+  :lang(hi), [lang='hi'] { font-family: 'Noto Sans Devanagari', 'Inter', system-ui, sans-serif; }
+  :lang(gu), [lang='gu'] { font-family: 'Noto Sans Gujarati', 'Inter', system-ui, sans-serif; }
   button { cursor: pointer; }
   ::selection { background: hsl(var(--primary) / .16); color: hsl(var(--foreground)); }
 }

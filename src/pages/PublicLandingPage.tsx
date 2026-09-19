@@ -35,11 +35,11 @@ export function PublicLandingPage() {
                 <span className="display-serif font-normal italic text-primary">closer to you.</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                Search verified professionals for home visits, clinic care, or telephysiotherapy.
+                Search credential-checked professionals for home visits, clinic care, or telephysiotherapy.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-muted-foreground">
-                <span className="inline-flex items-center gap-2"><ShieldCheck size={17} className="text-success" /> Verified professionals</span>
+                <span className="inline-flex items-center gap-2"><ShieldCheck size={17} className="text-success" /> Credential checked</span>
                 <span className="inline-flex items-center gap-2"><MapPin size={17} className="text-primary" /> Broad service areas</span>
               </div>
             </div>
@@ -58,7 +58,7 @@ export function PublicLandingPage() {
         <section className="bg-card/65">
           <div className="mx-auto grid max-w-7xl gap-3 px-4 py-9 sm:grid-cols-3 sm:px-6 lg:px-8">
             {[
-              ['01', 'Verified first', 'Only profiles returned by PhysioBill’s verified discovery service can appear.'],
+              ['01', 'Credential checks first', 'Only profiles that pass PhysioBill’s credential-check workflow can appear in public discovery.'],
               ['02', 'Location-aware', 'Search by city and optionally narrow the result to your area.'],
               ['03', 'Simple by design', 'No ratings, fake profiles, or unsupported availability claims.'],
             ].map(([number, title, copy]) => (
@@ -70,7 +70,7 @@ export function PublicLandingPage() {
             ))}
           </div>
           <div className="mx-auto max-w-7xl px-4 pb-10 text-xs leading-5 text-muted-foreground sm:px-6 lg:px-8">
-            PhysioBill supports professional discovery and scheduling. It is not an emergency service and does not guarantee a clinical result. “Verified” means PhysioBill reviewed the professional information submitted to the platform; it does not replace registration with the applicable government/professional council. Public professional information remains subject to our <a href="/professional-standards" className="font-semibold text-primary hover:underline">Professional Standards</a>.
+            PhysioBill supports professional discovery and scheduling. It is not an emergency service and does not guarantee a clinical result. “Credential checked” means PhysioBill reviewed the professional information shown on the profile against the stated credential or registration source. It is not government registration, approval or endorsement. Public professional information remains subject to our <a href="/professional-standards" className="font-semibold text-primary hover:underline">Professional Standards</a>.
           </div>
         </section>
       </main>

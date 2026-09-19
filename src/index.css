@@ -352,14 +352,14 @@ main .rounded-\[30px\].border.bg-card {
 }
 
 .public-footer {
-  border-top: 1px solid hsl(228 30% 28%);
-  background: hsl(222 39% 15%);
-  color: hsl(225 40% 98%);
+  border-top: 1px solid hsl(138 9% 21%);
+  background: hsl(144 14% 7%);
+  color: hsl(120 13% 95%);
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / .025);
 }
 
 .public-footer-heading {
-  color: hsl(232 76% 82%);
+  color: hsl(152 24% 61%);
   font-size: .72rem;
   font-weight: 700;
   letter-spacing: .09em;
@@ -370,24 +370,24 @@ main .rounded-\[30px\].border.bg-card {
   display: block;
   width: fit-content;
   border-radius: .45rem;
-  color: hsl(225 32% 93%);
+  color: hsl(120 13% 93%);
   font-weight: 600;
   text-decoration: none;
   transition: color .16s ease, transform .16s ease;
 }
 
 .public-footer-link:hover {
-  color: hsl(232 76% 82%);
+  color: hsl(152 24% 61%);
   transform: translateX(2px);
 }
 
 .public-footer-link:focus-visible {
-  outline-color: hsl(232 76% 82%);
+  outline-color: hsl(152 24% 61%);
   outline-offset: 4px;
 }
 
 .public-footer-note {
-  color: hsl(219 18% 72%);
+  color: hsl(133 7% 74%);
   line-height: 1.55;
 }
 

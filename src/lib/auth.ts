@@ -173,6 +173,72 @@ export async function signInAdmin(
   return data;
 }
 
+
+export type AdminAccessState = {
+  capability: string;
+  adminRole: 'owner' | 'reviewer';
+  currentAal: 'aal1' | 'aal2' | null;
+  mfaRequired: boolean;
+  verifiedTotpFactorId: string | null;
+};
+
+export async function loadAdminSecurityState(): Promise<AdminAccessState | null> {
+  const supabase = getSupabaseClient();
+
+  const { data: accessRows, error: accessError } = await supabase.rpc('get_my_admin_access');
+  if (accessError) throw accessError;
+
+  const access = Array.isArray(accessRows) ? accessRows[0] : null;
+  if (!access) return null;
+
+  const { data: aal, error: aalError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalError) throw aalError;
+
+  const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+  if (factorsError) throw factorsError;
+
+  const verifiedTotp = factors.totp.find((factor) => factor.status === 'verified') ?? null;
+
+  return {
+    capability: String(access.capability ?? ''),
+    adminRole: access.admin_role === 'owner' ? 'owner' : 'reviewer',
+    currentAal: aal.currentLevel === 'aal2' ? 'aal2' : aal.currentLevel === 'aal1' ? 'aal1' : null,
+    mfaRequired: Boolean(access.mfa_required),
+    verifiedTotpFactorId: verifiedTotp?.id ?? null,
+  };
+}
+
+export async function enrollAdminTotp() {
+  const { data, error } = await getSupabaseClient().auth.mfa.enroll({
+    factorType: 'totp',
+    friendlyName: 'PhysioBill Admin',
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function verifyAdminTotp(factorId: string, code: string) {
+  const token = code.trim();
+  if (!/^\d{6}$/.test(token)) {
+    throw new Error('Enter the six-digit authenticator code.');
+  }
+
+  const supabase = getSupabaseClient();
+  const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+    factorId,
+  });
+  if (challengeError) throw challengeError;
+
+  const { data, error } = await supabase.auth.mfa.verify({
+    factorId,
+    challengeId: challenge.id,
+    code: token,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function signOutCurrentSession() {
   const supabase = getSupabaseClient();
 

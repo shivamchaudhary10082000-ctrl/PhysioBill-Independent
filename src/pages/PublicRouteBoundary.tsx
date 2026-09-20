@@ -28,6 +28,7 @@ function ProductionConfigurationRequired() {
   );
 }
 import {
+  AdminMfaRoute,
   AdminSignInRoute,
   AdminVerificationRoute,
 } from '@/pages/route-boundary/AdminRoutes';
@@ -108,6 +109,7 @@ export function PublicRouteBoundary() {
   if (path === '/patient') return <PatientGatewayRoute />;
   if (path === '/professional/sign-in') return <ProfessionalSignInRoute />;
   if (path === '/admin/sign-in') return <AdminSignInRoute />;
+  if (path === '/admin/mfa') return <AdminMfaRoute />;
   if (path === '/admin/verifications') return <AdminVerificationRoute />;
   if (path.startsWith('/admin/verifications/')) {
     const requestId = path.slice('/admin/verifications/'.length);

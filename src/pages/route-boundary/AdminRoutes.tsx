@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
 import { AdminSignInPage } from '@/pages/AdminSignInPage';
+import { AdminMfaPage } from '@/pages/AdminMfaPage';
 import { AdminVerificationsPage } from '@/pages/AdminVerificationsPage';
 import { AdminVerificationReviewPage } from '@/pages/AdminVerificationReviewPage';
 import { useAuthSession } from '@/hooks/use-auth-session';
+import { loadAdminSecurityState } from '@/lib/auth';
 import {
   NotFoundPage,
   PersonaDeniedPage,
@@ -17,7 +19,7 @@ export function AdminSignInRoute() {
 
   useEffect(() => {
     if (!auth.error && auth.user && auth.role === 'physio' && !auth.passwordRecovery) {
-      window.location.replace('/admin/verifications');
+      window.location.replace('/admin/mfa');
     }
   }, [auth.error, auth.passwordRecovery, auth.role, auth.user?.id]);
 
@@ -38,7 +40,7 @@ export function AdminSignInRoute() {
   return <AdminSignInPage />;
 }
 
-export function AdminVerificationRoute({ requestId }: { requestId?: string }) {
+export function AdminMfaRoute() {
   const auth = useAuthSession();
 
   useEffect(() => {
@@ -48,16 +50,71 @@ export function AdminVerificationRoute({ requestId }: { requestId?: string }) {
   }, [auth.error, auth.loading, auth.user?.id]);
 
   if (!auth.configured || auth.passwordRecovery) return <NotFoundPage />;
-  if (auth.loading) return <RouteLoading message="Checking reviewer authority…" />;
+  if (auth.loading) return <RouteLoading message="Checking Admin session…" />;
   if (auth.error) return <SessionResolutionError />;
   if (!auth.user) return <RouteLoading message="Opening Admin sign-in…" />;
   if (auth.role !== 'physio') {
     return (
       <PersonaDeniedPage
         title="Administration access denied."
-        message="Patient sessions cannot enter the Admin review surface. Reviewer authority remains database-controlled."
+        message="Patient sessions cannot enter the Admin security surface."
         primaryHref="/patient"
         primaryLabel="Open patient gateway"
+      />
+    );
+  }
+
+  return <AdminMfaPage />;
+}
+
+export function AdminVerificationRoute({ requestId }: { requestId?: string }) {
+  const auth = useAuthSession();
+  const [adminGate, setAdminGate] = useState<'checking' | 'ready' | 'denied' | 'error'>('checking');
+
+  useEffect(() => {
+    if (!auth.loading && !auth.error && !auth.user) {
+      window.location.replace('/admin/sign-in');
+    }
+  }, [auth.error, auth.loading, auth.user?.id]);
+
+  useEffect(() => {
+    if (auth.loading || auth.error || !auth.user || auth.role !== 'physio') return;
+
+    let active = true;
+    setAdminGate('checking');
+    loadAdminSecurityState()
+      .then((state) => {
+        if (!active) return;
+        if (!state) {
+          setAdminGate('denied');
+          return;
+        }
+        if (state.currentAal !== 'aal2') {
+          window.location.replace('/admin/mfa');
+          return;
+        }
+        setAdminGate('ready');
+      })
+      .catch(() => {
+        if (active) setAdminGate('error');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [auth.error, auth.loading, auth.role, auth.user?.id]);
+
+  if (!auth.configured || auth.passwordRecovery) return <NotFoundPage />;
+  if (auth.loading || adminGate === 'checking') return <RouteLoading message="Checking reviewer authority and MFA…" />;
+  if (auth.error || adminGate === 'error') return <SessionResolutionError />;
+  if (!auth.user) return <RouteLoading message="Opening Admin sign-in…" />;
+  if (auth.role !== 'physio' || adminGate === 'denied') {
+    return (
+      <PersonaDeniedPage
+        title="Administration access denied."
+        message="This account does not have active Admin reviewer authority."
+        primaryHref="/app"
+        primaryLabel="Open professional workspace"
       />
     );
   }

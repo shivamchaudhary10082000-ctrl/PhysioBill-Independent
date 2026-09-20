@@ -26,7 +26,7 @@ export function AdminSignInPage() {
     setError(null);
     try {
       await signInAdmin(email, password, captchaToken);
-      window.location.replace('/admin/verifications');
+      window.location.replace('/admin/mfa');
     } catch {
       setError('Admin sign-in could not be completed. Check the credentials and try again.');
     } finally {

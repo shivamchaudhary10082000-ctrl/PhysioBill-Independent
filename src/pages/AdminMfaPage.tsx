@@ -1,0 +1,194 @@
+import { useEffect, useState } from 'react';
+import { KeyRound, ShieldCheck } from 'lucide-react';
+import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
+import { WorkspaceSignOut } from '@/Components/WorkspaceSessionControls';
+import {
+  enrollAdminTotp,
+  loadAdminSecurityState,
+  verifyAdminTotp,
+} from '@/lib/auth';
+
+type Enrollment = {
+  id: string;
+  qrCode: string;
+  secret: string;
+};
+
+export function AdminMfaPage() {
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+  const [existingFactorId, setExistingFactorId] = useState<string | null>(null);
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    loadAdminSecurityState()
+      .then((state) => {
+        if (!active) return;
+        if (!state) {
+          setAuthorized(false);
+          return;
+        }
+        setAuthorized(true);
+        if (state.currentAal === 'aal2') {
+          window.location.replace('/admin/verifications');
+          return;
+        }
+        setExistingFactorId(state.verifiedTotpFactorId);
+      })
+      .catch(() => {
+        if (active) setError('Admin security status could not be verified.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function startEnrollment() {
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await enrollAdminTotp();
+      setEnrollment({
+        id: data.id,
+        qrCode: data.totp.qr_code,
+        secret: data.totp.secret,
+      });
+    } catch {
+      setError('Authenticator setup could not be started. Try again after signing in again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const factorId = enrollment?.id ?? existingFactorId;
+    if (!factorId) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await verifyAdminTotp(factorId, code);
+      window.location.replace('/admin/verifications');
+    } catch {
+      setError('The authenticator code was not accepted. Use the current six-digit code and try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background px-4">
+        <p className="text-sm text-muted-foreground">Checking Admin security requirements…</p>
+      </main>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background px-4 py-10">
+        <section className="w-full max-w-md rounded-[28px] border bg-card p-7">
+          <PhysioBillBrand />
+          <h1 className="mt-8 text-2xl font-bold">Administration access denied</h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            This account is authenticated but does not have active platform Admin authority.
+          </p>
+          <WorkspaceSignOut className="mt-6 h-11 rounded-xl border px-4 text-sm font-semibold" />
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-background px-4 py-10">
+      <section className="w-full max-w-md rounded-[28px] border bg-card p-6 shadow-[0_20px_60px_hsl(var(--foreground)/.07)] sm:p-8">
+        <PhysioBillBrand />
+        <div className="mt-8 flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <ShieldCheck size={22} />
+        </div>
+        <p className="mt-5 text-xs font-bold uppercase tracking-[.14em] text-primary">Admin MFA required</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-[-.035em]">
+          {existingFactorId ? 'Verify authenticator code' : 'Secure this Admin account'}
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          Admin operations require a second factor. Use an authenticator app; SMS is not required.
+        </p>
+
+        {!existingFactorId && !enrollment && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={startEnrollment}
+            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            <KeyRound size={17} />
+            {busy ? 'Starting setup…' : 'Set up authenticator app'}
+          </button>
+        )}
+
+        {enrollment && (
+          <div className="mt-6 space-y-4">
+            <div className="rounded-2xl border bg-background p-4 text-center">
+              <img
+                src={enrollment.qrCode}
+                alt="Authenticator QR code"
+                className="mx-auto size-52 max-w-full"
+              />
+            </div>
+            <div className="rounded-xl border bg-muted/40 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">Manual setup key</p>
+              <p className="mt-1 break-all font-mono text-sm">{enrollment.secret}</p>
+            </div>
+          </div>
+        )}
+
+        {(existingFactorId || enrollment) && (
+          <form onSubmit={submitCode} className="mt-6 space-y-4">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold">Six-digit authenticator code</span>
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required
+                value={code}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="h-12 w-full rounded-xl border bg-background px-4 text-center font-mono text-lg tracking-[.25em] outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+              />
+            </label>
+            {error && (
+              <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+            <button
+              disabled={busy || code.length !== 6}
+              className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            >
+              {busy ? 'Verifying…' : 'Verify and open Admin'}
+            </button>
+          </form>
+        )}
+
+        {error && !existingFactorId && !enrollment && (
+          <div role="alert" className="mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        <WorkspaceSignOut className="mt-6 h-11 w-full rounded-xl border px-4 text-sm font-semibold text-muted-foreground" />
+      </section>
+    </main>
+  );
+}

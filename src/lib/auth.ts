@@ -210,7 +210,25 @@ export async function loadAdminSecurityState(): Promise<AdminAccessState | null>
 }
 
 export async function enrollAdminTotp() {
-  const { data, error } = await getSupabaseClient().auth.mfa.enroll({
+  const supabase = getSupabaseClient();
+
+  // A user can leave MFA enrollment halfway through after the QR code is
+  // issued. Supabase retains that factor as unverified, and a second enroll
+  // attempt can then fail. Remove only stale PhysioBill Admin enrollment
+  // attempts before issuing a new secret; verified factors are never removed.
+  const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+  if (factorsError) throw factorsError;
+
+  for (const factor of factors.totp) {
+    if (factor.status === 'unverified' && factor.friendly_name === 'PhysioBill Admin') {
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({
+        factorId: factor.id,
+      });
+      if (unenrollError) throw unenrollError;
+    }
+  }
+
+  const { data, error } = await supabase.auth.mfa.enroll({
     factorType: 'totp',
     friendlyName: 'PhysioBill Admin',
   });

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicFooter } from '@/Components/PublicFooter';
 
-const updated = '14 September 2026';
+const updated = '20 September 2026';
 const publicContactEmail = (import.meta.env.VITE_PUBLIC_CONTACT_EMAIL as string | undefined)?.trim() || null;
 const publicOperatorName = (import.meta.env.VITE_PUBLIC_OPERATOR_NAME as string | undefined)?.trim() || null;
 

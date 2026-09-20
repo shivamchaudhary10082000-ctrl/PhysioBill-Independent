@@ -10,6 +10,7 @@ on:
       - scripts/generate-csp-headers.mjs
       - public/_headers
       - src/Components/AuthTurnstile.tsx
+      - src/main.tsx
       - .github/workflows/phase4-slice16c-csp-verify.yml
 
 permissions:
@@ -50,7 +51,7 @@ jobs:
           fi
           grep -Fq "default-src 'self'" dist/_headers
           grep -Fq "frame-ancestors 'none'" dist/_headers
-          grep -Fq "script-src 'self';" dist/_headers
+          grep -Fq "script-src 'self' https://static.cloudflareinsights.com;" dist/_headers
           grep -Fq "frame-src 'none'" dist/_headers
           grep -Fq "upgrade-insecure-requests" dist/_headers
           grep -Fq "Strict-Transport-Security: max-age=63072000" dist/_headers
@@ -71,9 +72,9 @@ jobs:
           VITE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
         run: |
           npm run build
-          grep -Fq "script-src 'self' https://challenges.cloudflare.com;" dist/_headers
+          grep -Fq "script-src 'self' https://static.cloudflareinsights.com https://challenges.cloudflare.com;" dist/_headers
           grep -Fq "frame-src https://challenges.cloudflare.com;" dist/_headers
-          grep -Fq "connect-src 'self' https://nbsvrzypypmmuvlgdpln.supabase.co wss://nbsvrzypypmmuvlgdpln.supabase.co;" dist/_headers
+          grep -Fq "connect-src 'self' https://nbsvrzypypmmuvlgdpln.supabase.co wss://nbsvrzypypmmuvlgdpln.supabase.co https://cloudflareinsights.com;" dist/_headers
           if grep -Eq "script-src[^;]*(\*|unsafe-eval)" dist/_headers; then
             echo "Broad script CSP relaxation detected"
             exit 1
@@ -100,6 +101,8 @@ jobs:
           fi
           grep -Fq "default-src 'self'" dist/_headers
           grep -Fq "frame-ancestors 'none'" dist/_headers
+          grep -Fq "script-src 'self' https://static.cloudflareinsights.com;" dist/_headers
+          grep -Fq "connect-src 'self' https://nragldzovtewstdngcif.supabase.co wss://nragldzovtewstdngcif.supabase.co https://cloudflareinsights.com;" dist/_headers
           grep -Fq "frame-src 'none'" dist/_headers
           grep -Fq "upgrade-insecure-requests" dist/_headers
           grep -Fq "Strict-Transport-Security: max-age=63072000" dist/_headers

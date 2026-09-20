@@ -62,6 +62,39 @@ function applyNonProductionRobotsPolicy() {
 
 applyNonProductionRobotsPolicy();
 
+
+const STAGING_WEB_ANALYTICS_HOST = 'physiobill-independent-staging.pages.dev';
+const CLOUDFLARE_WEB_ANALYTICS_TOKEN = 'f66c29ea22ab4c13b7581a8ebd9050cf';
+const CLOUDFLARE_WEB_ANALYTICS_SRC = 'https://static.cloudflareinsights.com/beacon.min.js';
+const PRIVATE_ANALYTICS_PREFIXES = ['/app', '/admin', '/patient', '/auth', '/verify'] as const;
+
+function installStagingWebAnalytics() {
+  if (window.location.hostname.toLowerCase() !== STAGING_WEB_ANALYTICS_HOST) return;
+  if (
+    PRIVATE_ANALYTICS_PREFIXES.some(
+      (prefix) =>
+        window.location.pathname === prefix ||
+        window.location.pathname.startsWith(`${prefix}/`),
+    )
+  ) {
+    return;
+  }
+
+  if (document.querySelector('script[data-physiobill-web-analytics]')) return;
+
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = CLOUDFLARE_WEB_ANALYTICS_SRC;
+  script.dataset.cfBeacon = JSON.stringify({
+    token: CLOUDFLARE_WEB_ANALYTICS_TOKEN,
+  });
+  script.dataset.physiobillWebAnalytics = 'staging';
+  document.body.appendChild(script);
+}
+
+installStagingWebAnalytics();
+
+
 function PatientDirectorySearchClear() {
   useEffect(() => {
     const root = document.getElementById('root');

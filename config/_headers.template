@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'__TURNSTILE_SCRIPT_SRC__; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' __SUPABASE_CONNECT_SRC__; worker-src 'self' blob:; frame-src __TURNSTILE_FRAME_SRC__; manifest-src 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://static.cloudflareinsights.com__TURNSTILE_SCRIPT_SRC__; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' __SUPABASE_CONNECT_SRC__ https://cloudflareinsights.com; worker-src 'self' blob:; frame-src __TURNSTILE_FRAME_SRC__; manifest-src 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=63072000
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff

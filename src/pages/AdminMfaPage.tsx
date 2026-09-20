@@ -14,11 +14,70 @@ type Enrollment = {
   secret: string;
 };
 
+type StoredEnrollment = Enrollment & {
+  createdAt: number;
+};
+
+const ADMIN_MFA_ENROLLMENT_STORAGE_KEY = 'physiobill.admin.mfa.enrollment.v1';
+const ADMIN_MFA_ENROLLMENT_MAX_AGE_MS = 30 * 60 * 1000;
+
+function clearStoredEnrollment() {
+  try {
+    window.sessionStorage.removeItem(ADMIN_MFA_ENROLLMENT_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts.
+  }
+}
+
+function readStoredEnrollment(): Enrollment | null {
+  try {
+    const raw = window.sessionStorage.getItem(ADMIN_MFA_ENROLLMENT_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<StoredEnrollment>;
+    const valid =
+      typeof parsed.id === 'string' &&
+      typeof parsed.qrCode === 'string' &&
+      typeof parsed.secret === 'string' &&
+      typeof parsed.createdAt === 'number' &&
+      Date.now() - parsed.createdAt <= ADMIN_MFA_ENROLLMENT_MAX_AGE_MS;
+
+    if (!valid) {
+      clearStoredEnrollment();
+      return null;
+    }
+
+    return {
+      id: parsed.id,
+      qrCode: parsed.qrCode,
+      secret: parsed.secret,
+    };
+  } catch {
+    clearStoredEnrollment();
+    return null;
+  }
+}
+
+function storeEnrollment(enrollment: Enrollment) {
+  try {
+    const payload: StoredEnrollment = {
+      ...enrollment,
+      createdAt: Date.now(),
+    };
+    window.sessionStorage.setItem(
+      ADMIN_MFA_ENROLLMENT_STORAGE_KEY,
+      JSON.stringify(payload),
+    );
+  } catch {
+    // The setup can still continue in memory if session storage is unavailable.
+  }
+}
+
 export function AdminMfaPage() {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [existingFactorId, setExistingFactorId] = useState<string | null>(null);
-  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(() => readStoredEnrollment());
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +94,7 @@ export function AdminMfaPage() {
         }
         setAuthorized(true);
         if (state.currentAal === 'aal2') {
+          clearStoredEnrollment();
           window.location.replace('/admin/verifications');
           return;
         }
@@ -57,11 +117,13 @@ export function AdminMfaPage() {
     setError(null);
     try {
       const data = await enrollAdminTotp();
-      setEnrollment({
+      const nextEnrollment = {
         id: data.id,
         qrCode: data.totp.qr_code,
         secret: data.totp.secret,
-      });
+      };
+      setEnrollment(nextEnrollment);
+      storeEnrollment(nextEnrollment);
     } catch {
       setError('Authenticator setup could not be started. Try again after signing in again.');
     } finally {
@@ -78,6 +140,7 @@ export function AdminMfaPage() {
     setError(null);
     try {
       await verifyAdminTotp(factorId, code);
+      clearStoredEnrollment();
       window.location.replace('/admin/verifications');
     } catch {
       setError('The authenticator code was not accepted. Use the current six-digit code and try again.');
@@ -122,6 +185,8 @@ export function AdminMfaPage() {
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           Admin operations require a second factor. Use an authenticator app; SMS is not required.
+          Your current setup key is kept for this browser tab so switching to your authenticator
+          app or refreshing Chrome does not generate a different key.
         </p>
 
         {!existingFactorId && !enrollment && (
@@ -148,6 +213,9 @@ export function AdminMfaPage() {
             <div className="rounded-xl border bg-muted/40 p-3">
               <p className="text-xs font-semibold text-muted-foreground">Manual setup key</p>
               <p className="mt-1 break-all font-mono text-sm">{enrollment.secret}</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Keep using this same key after switching apps. Do not press setup again unless you intentionally want a new key.
+              </p>
             </div>
           </div>
         )}

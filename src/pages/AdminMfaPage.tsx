@@ -48,9 +48,9 @@ function readStoredEnrollment(): Enrollment | null {
     }
 
     return {
-      id: parsed.id,
-      qrCode: parsed.qrCode,
-      secret: parsed.secret,
+      id: parsed.id as string,
+      qrCode: parsed.qrCode as string,
+      secret: parsed.secret as string,
     };
   } catch {
     clearStoredEnrollment();

@@ -29,6 +29,7 @@ function ProductionConfigurationRequired() {
 }
 import {
   AdminMfaRoute,
+  AdminPortalRoute,
   AdminSignInRoute,
   AdminVerificationRoute,
 } from '@/pages/route-boundary/AdminRoutes';
@@ -110,6 +111,17 @@ export function PublicRouteBoundary() {
   if (path === '/professional/sign-in') return <ProfessionalSignInRoute />;
   if (path === '/admin/sign-in') return <AdminSignInRoute />;
   if (path === '/admin/mfa') return <AdminMfaRoute />;
+  if (path === '/admin') return <AdminPortalRoute section="overview" />;
+  if (path === '/admin/bookings') return <AdminPortalRoute section="bookings" />;
+  if (path === '/admin/patients') return <AdminPortalRoute section="patients" />;
+  if (path === '/admin/therapists') return <AdminPortalRoute section="therapists" />;
+  if (path === '/admin/finance') return <AdminPortalRoute section="finance" />;
+  if (path === '/admin/communications') return <AdminPortalRoute section="communications" />;
+  if (path === '/admin/cases') return <AdminPortalRoute section="cases" />;
+  if (path === '/admin/governance') return <AdminPortalRoute section="governance" />;
+  if (path === '/admin/audit') return <AdminPortalRoute section="audit" />;
+  if (path === '/admin/access') return <AdminPortalRoute section="access" />;
+  if (path === '/admin/system') return <AdminPortalRoute section="system" />;
   if (path === '/admin/verifications') return <AdminVerificationRoute />;
   if (path.startsWith('/admin/verifications/')) {
     const requestId = path.slice('/admin/verifications/'.length);

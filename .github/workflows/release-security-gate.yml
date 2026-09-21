@@ -9,6 +9,7 @@ on:
       - 'public/**'
       - 'config/**'
       - 'scripts/**'
+      - 'supabase/migrations/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/release-security-gate.yml'
@@ -122,7 +123,7 @@ jobs:
           ready=0
           for attempt in {1..18}; do
             all_ok=1
-            for path in /app/dashboard /patient /admin/verifications /auth/reset-password; do
+            for path in /app/dashboard /patient /admin /admin/bookings /admin/verifications /auth/reset-password; do
               echo "Checking $path (attempt $attempt)"
               curl -fsSIL --max-time 20 "https://physiobill-independent-staging.pages.dev$path" -o route-headers.txt || all_ok=0
               grep -qi '^cache-control:.*private' route-headers.txt || all_ok=0

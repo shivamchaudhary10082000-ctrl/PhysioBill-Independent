@@ -40,8 +40,8 @@ export function AdminSignInPage() {
       <section className="w-full max-w-md rounded-[28px] border bg-card p-6 shadow-[0_20px_60px_hsl(var(--foreground)/.07)] sm:p-8">
         <PhysioBillBrand />
         <p className="mt-8 text-xs font-bold uppercase tracking-[.14em] text-primary">Restricted administration</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-[-.035em]">Verification reviewer sign in</h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">Authentication does not grant reviewer authority. Every review operation is independently authorized by the database.</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-[-.035em]">Platform Admin sign in</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Authentication does not grant Admin authority. Every operation is independently authorized by an active database capability.</p>
         {error && <div role="alert" className="mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
         <form onSubmit={submit} className="mt-6 space-y-4">
           <label className="block space-y-2"><span className="text-xs font-semibold">Email</span><span className="relative block"><Mail className="absolute left-3 top-3.5 text-muted-foreground" size={17} /><input type="email" required autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 w-full rounded-xl border bg-background pl-10 pr-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" /></span></label>
@@ -51,7 +51,7 @@ export function AdminSignInPage() {
             resetKey={challengeResetKey}
             onTokenChange={setCaptchaToken}
           />
-          <button disabled={busy || (challengeRequired && !captchaToken)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60"><LogIn size={17} />{busy ? 'Signing in…' : 'Sign in to review'}</button>
+          <button disabled={busy || (challengeRequired && !captchaToken)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60"><LogIn size={17} />{busy ? 'Signing in…' : 'Sign in to Admin'}</button>
         </form>
       </section>
     </main>

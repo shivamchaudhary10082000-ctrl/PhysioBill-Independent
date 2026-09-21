@@ -67,6 +67,12 @@ jobs:
           grep -Fq "Cross-Origin-Resource-Policy: same-origin" dist/_headers
           grep -Fq "Permissions-Policy:" dist/_headers
           grep -Fq "Cache-Control: private, no-store" dist/_headers
+          awk '
+            $0 == "/admin" { in_admin = 1; next }
+            in_admin && $0 == "  Cache-Control: private, no-store, max-age=0, must-revalidate" { found = 1 }
+            in_admin && $0 !~ /^  / && $0 != "" { in_admin = 0 }
+            END { exit(found ? 0 : 1) }
+          ' dist/_headers
           grep -Fq 'name="robots" content="noindex, nofollow, noarchive, nosnippet"' dist/index.html
           grep -Fq 'Disallow: /' dist/robots.txt
 

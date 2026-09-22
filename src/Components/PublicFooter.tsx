@@ -1,65 +1,103 @@
-import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
+import { ChevronDown } from 'lucide-react';
+import { PhysioBillBrand, PhysioBillLogoMark } from '@/Components/PhysioBillBrand';
 
 type PublicFooterProps = {
   className?: string;
 };
 
+const footerSections = [
+  {
+    title: 'PhysioBill',
+    links: [
+      ['Find a physiotherapist', '/find-physio'],
+      ['Home physiotherapy', '/find-physio?mode=home_visit'],
+      ['Clinic physiotherapy', '/find-physio?mode=clinic_visit'],
+      ['Telephysiotherapy', '/find-physio?mode=telephysiotherapy'],
+    ],
+  },
+  {
+    title: 'For patients',
+    links: [
+      ['Patient sign in', '/patient/sign-in'],
+      ['My booking requests', '/patient/appointments'],
+      ['How verification works', '/professional-standards'],
+    ],
+  },
+  {
+    title: 'For physiotherapists',
+    links: [
+      ['Professional sign in', '/professional/sign-in'],
+      ['Clinical workspace', '/app/dashboard'],
+      ['Manage discovery profile', '/app/discovery-profile'],
+    ],
+  },
+  {
+    title: 'Trust & legal',
+    links: [
+      ['Privacy policy', '/privacy'],
+      ['Terms of use', '/terms'],
+      ['Professional standards', '/professional-standards'],
+    ],
+  },
+] as const;
+
 export function PublicFooter({ className = '' }: PublicFooterProps) {
   return (
     <footer className={`public-footer ${className}`.trim()}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-9 border-b border-white/10 py-11 sm:gap-10 sm:py-14 lg:grid-cols-[1.42fr_.78fr_.85fr_1fr] lg:gap-12 lg:py-16">
-          <div className="max-w-md lg:pr-8">
-            <a href="/" aria-label="PhysioBill home" className="inline-flex rounded-xl focus-visible:outline-none">
-              <PhysioBillBrand inverse />
-            </a>
-            <p className="mt-5 text-[11px] font-bold uppercase tracking-[.13em] text-[hsl(232_76%_82%)]">
-              PhysioBill Care
-            </p>
-            <p className="display-serif mt-2 max-w-sm text-[1.75rem] leading-[1.08] tracking-[-.025em] text-[hsl(225_40%_98%)] sm:text-[2rem]">
-              Physiotherapy care, closer to people.
-            </p>
-            <p className="mt-4 max-w-sm text-sm leading-6 text-[hsl(219_18%_72%)]">
-              Thoughtful physiotherapy discovery and professional tools, built around care.
-            </p>
+        <div className="border-b border-white/10 py-10 sm:py-14">
+          <div className="grid gap-9 lg:grid-cols-[1.2fr_2fr] lg:gap-16">
+            <div className="max-w-md">
+              <a href="/" aria-label="PhysioBill home" className="inline-flex rounded-xl focus-visible:outline-none">
+                <PhysioBillBrand inverse />
+              </a>
+              <p className="mt-5 text-xs font-bold uppercase tracking-[.12em] text-[hsl(232_76%_82%)]">Physiotherapy, clearly connected</p>
+              <p className="mt-3 max-w-sm text-sm leading-6 text-[hsl(219_18%_72%)]">
+                Verified-professional discovery, transparent booking requests, and focused tools for physiotherapy care.
+              </p>
+            </div>
+
+            <div className="space-y-2 lg:hidden">
+              {footerSections.map((section) => (
+                <details key={section.title} className="public-footer-accordion group">
+                  <summary>
+                    <span>{section.title}</span>
+                    <ChevronDown size={18} className="transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <nav aria-label={section.title} className="space-y-3 px-4 pb-4 pt-1">
+                    {section.links.map(([label, href]) => (
+                      <a key={label} href={href} className="public-footer-link">{label}</a>
+                    ))}
+                  </nav>
+                </details>
+              ))}
+            </div>
+
+            <div className="hidden grid-cols-4 gap-8 lg:grid">
+              {footerSections.map((section) => (
+                <nav key={section.title} aria-label={section.title}>
+                  <p className="public-footer-heading">{section.title}</p>
+                  <div className="mt-5 space-y-3 text-sm">
+                    {section.links.map(([label, href]) => (
+                      <a key={label} href={href} className="public-footer-link">{label}</a>
+                    ))}
+                  </div>
+                </nav>
+              ))}
+            </div>
           </div>
 
-          <nav aria-label="Explore PhysioBill">
-            <p className="public-footer-heading">Explore</p>
-            <div className="mt-4 space-y-3 text-sm">
-              <a href="/find-physio" className="public-footer-link">Find a physiotherapist</a>
-              <p className="public-footer-note">Home visit care</p>
-              <p className="public-footer-note">Clinic visit care</p>
-              <p className="public-footer-note">Telephysiotherapy</p>
-            </div>
-          </nav>
-
-          <nav aria-label="Professional access">
-            <p className="public-footer-heading">Professional access</p>
-            <div className="mt-4 space-y-3 text-sm">
-              <a href="/professional/sign-in" className="public-footer-link">Professional sign in</a>
-              <a href="/app/dashboard" className="public-footer-link">Clinical workspace</a>
-              <a href="/app/discovery-profile" className="public-footer-link">Discovery profile</a>
-            </div>
-          </nav>
-
-          <section aria-labelledby="footer-trust-heading">
-            <p id="footer-trust-heading" className="public-footer-heading">Trust by design</p>
-            <div className="mt-4 space-y-3 text-sm">
-              <p className="public-footer-note">Verified-professional discovery</p>
-              <p className="public-footer-note">Patient-safe public profiles</p>
-              <p className="public-footer-note">Clear professional access</p>
-            </div>
-          </section>
+          <a href="/" aria-label="PhysioBill home" className="public-footer-mega-brand mt-12 flex items-center justify-center gap-3 rounded-3xl py-3 sm:mt-16 sm:gap-5">
+            <PhysioBillLogoMark inverse className="h-14 w-14 sm:h-20 sm:w-20 lg:h-24 lg:w-24" />
+            <span className="text-[clamp(3rem,11vw,8.5rem)] font-extrabold leading-none tracking-[-.075em] text-white">
+              Physio<span className="text-[hsl(174_68%_65%)]">Bill</span>
+            </span>
+          </a>
         </div>
 
         <div className="flex flex-col gap-3 py-6 text-xs text-[hsl(219_18%_68%)] sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 PhysioBill</p>
-          <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2">
-            <a href="/privacy" className="public-footer-link">Privacy</a>
-            <a href="/terms" className="public-footer-link">Terms</a>
-            <a href="/professional-standards" className="public-footer-link">Professional standards</a>
-          </nav>
+          <p>© 2026 PhysioBill. All rights reserved.</p>
+          <p>Built only for physiotherapy discovery and practice operations.</p>
         </div>
       </div>
     </footer>

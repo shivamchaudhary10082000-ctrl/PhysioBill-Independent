@@ -194,6 +194,12 @@ function TherapistCard({
           {therapist.verified_qualification && (
             <p className="mt-1 text-sm font-medium text-muted-foreground">{therapist.verified_qualification}</p>
           )}
+          <a
+            href={`#availability-${therapist.physio_id}`}
+            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 text-xs font-bold text-primary transition hover:border-primary/30 hover:bg-primary/10"
+          >
+            <CalendarClock size={15} aria-hidden="true" /> {copy.upcomingAvailability}
+          </a>
         </div>
       </div>
 
@@ -274,7 +280,7 @@ function TherapistCard({
         </fieldset>
       )}
 
-      <div className="mt-5 border-t pt-5">
+      <div id={`availability-${therapist.physio_id}`} className="mt-5 scroll-mt-24 border-t pt-5">
         <div className="flex items-center gap-2">
           <CalendarClock size={17} className="text-primary" aria-hidden="true" />
           <p className="text-xs font-semibold text-muted-foreground">{copy.upcomingAvailability}</p>
@@ -509,7 +515,7 @@ export function TherapistDiscoveryPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/80 bg-background/92 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <a href="/" aria-label={copy.backToPhysioBill}><PhysioBillBrand /></a>
           <div className="flex items-center gap-2">
@@ -556,6 +562,12 @@ export function TherapistDiscoveryPage() {
             </div>
             <p className="text-sm font-medium text-muted-foreground">{searchSummary}</p>
           </div>
+
+          {query.city && (
+            <p className="mb-5 rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-xs leading-5 text-muted-foreground">
+              {copy.requestBoundary}
+            </p>
+          )}
 
           {loading ? (
             <LoadingCards copy={copy} />

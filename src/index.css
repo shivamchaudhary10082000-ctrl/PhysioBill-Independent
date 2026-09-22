@@ -389,6 +389,71 @@ main .rounded-\[30px\].border.bg-card {
   line-height: 1.55;
 }
 
+.public-footer-accordion {
+  overflow: hidden;
+  border: 1px solid hsl(225 26% 29%);
+  border-radius: 1rem;
+  background: hsl(223 34% 18%);
+}
+
+.public-footer-accordion summary {
+  display: flex;
+  min-height: 3.75rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .875rem 1rem;
+  color: hsl(225 32% 96%);
+  font-size: .95rem;
+  font-weight: 700;
+}
+
+.public-footer-accordion summary::-webkit-details-marker { display: none; }
+
+.public-footer-mega-brand {
+  border: 1px solid hsl(225 26% 26%);
+  background: linear-gradient(135deg, hsl(223 34% 18%), hsl(225 42% 12%));
+  text-decoration: none;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / .035);
+}
+
+.public-footer-mega-brand:hover span {
+  filter: brightness(1.05);
+}
+
+.physiobill-private-media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: hsl(var(--secondary));
+}
+
+.physiobill-private-media img {
+  display: block;
+  object-position: center bottom;
+  transform-origin: center bottom;
+}
+
+.physiobill-privacy-hero,
+.physiobill-privacy-clinic {
+  transform: scale(1.68);
+}
+
+.physiobill-privacy-home {
+  transform: scale(1.52);
+}
+
+.physiobill-privacy-tele {
+  transform: scale(1.9);
+}
+
+.physiobill-faq summary::-webkit-details-marker { display: none; }
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .physiobill-private-media-hero { aspect-ratio: 2 / 1; }
+}
+
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes soft-pulse { 0%,100% { opacity: .58; } 50% { opacity: .92; } }
 .page-enter { animation: rise .35s ease-out both; }

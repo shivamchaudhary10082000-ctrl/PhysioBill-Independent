@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MapPin, Search } from 'lucide-react';
+import { Building2, Home, MapPin, Search, Video } from 'lucide-react';
 import {
   THERAPIST_SERVICE_MODES,
   normalizeTherapistServiceMode,
@@ -78,31 +78,43 @@ export function PublicTherapistSearch({
   }
 
   const fieldClass =
-    'h-14 w-full rounded-2xl border border-input bg-card px-4 text-sm font-medium text-foreground outline-none transition placeholder:text-muted-foreground/60 hover:border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/10';
+    'h-14 w-full rounded-xl border border-input bg-card px-4 text-sm font-semibold text-foreground outline-none transition placeholder:font-medium placeholder:text-muted-foreground/60 hover:border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/10';
+
+  const modeIcons: Record<TherapistServiceMode, typeof Home> = {
+    home_visit: Home,
+    clinic_visit: Building2,
+    telephysiotherapy: Video,
+  };
 
   return (
     <form
       onSubmit={submit}
-      className={`grid gap-3 ${compact ? 'lg:grid-cols-[1.05fr_1fr_1fr_auto]' : 'lg:grid-cols-[1.05fr_1fr_1fr_auto]'}`}
+      className={`grid gap-3 ${compact ? 'lg:grid-cols-[1fr_1fr_auto]' : 'lg:grid-cols-[1fr_1fr_auto]'}`}
     >
-      <label className="block">
-        <span className="mb-2 block text-xs font-semibold text-muted-foreground">{copy.service}</span>
-        <select
-          id="discovery-service"
-          value={mode}
-          onChange={(event) => setMode(normalizeTherapistServiceMode(event.target.value))}
-          className={fieldClass}
-        >
-          {THERAPIST_SERVICE_MODES.map((serviceMode) => (
-            <option key={serviceMode} value={serviceMode}>
-              {copy.serviceModeLabels[serviceMode]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <fieldset id="discovery-service" tabIndex={-1} className="min-w-0 rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-primary/10 lg:col-span-3">
+        <legend className="mb-2 text-xs font-bold text-muted-foreground">{copy.service}</legend>
+        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border bg-secondary/65 p-1.5">
+          {THERAPIST_SERVICE_MODES.map((serviceMode) => {
+            const Icon = modeIcons[serviceMode];
+            const active = mode === serviceMode;
+            return (
+              <button
+                key={serviceMode}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setMode(serviceMode)}
+                className={`inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-[13px] font-bold leading-tight transition sm:gap-2 sm:text-sm ${active ? 'bg-primary text-primary-foreground shadow-[0_7px_18px_hsl(var(--primary)/.22)]' : 'text-muted-foreground hover:bg-card hover:text-foreground'}`}
+              >
+                <Icon size={17} className="shrink-0" aria-hidden="true" />
+                <span className="text-center">{copy.serviceModeLabels[serviceMode]}</span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <label className="block">
-        <span className="mb-2 block text-xs font-semibold text-muted-foreground">{copy.city}</span>
+        <span className="mb-2 block text-xs font-bold text-muted-foreground">{copy.city}</span>
         <span className="relative block">
           <MapPin
             aria-hidden="true"
@@ -133,7 +145,7 @@ export function PublicTherapistSearch({
       </label>
 
       <label className="block">
-        <span className="mb-2 block text-xs font-semibold text-muted-foreground">
+        <span className="mb-2 block text-xs font-bold text-muted-foreground">
           {copy.area} <span className="font-normal text-muted-foreground/75">({copy.optional})</span>
         </span>
         <input
@@ -150,7 +162,7 @@ export function PublicTherapistSearch({
       <div className="flex items-end">
         <button
           type="submit"
-          className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_hsl(var(--primary)/.16)] transition hover:bg-[hsl(var(--primary-hover))] focus:outline-none focus:ring-4 focus:ring-primary/20 lg:min-w-[190px]"
+          className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[0_10px_24px_hsl(var(--primary)/.16)] transition hover:bg-[hsl(var(--primary-hover))] focus:outline-none focus:ring-4 focus:ring-primary/20 lg:min-w-[190px]"
         >
           <Search size={18} /> {copy.findPhysiotherapists}
         </button>

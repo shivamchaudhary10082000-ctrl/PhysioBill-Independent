@@ -54,6 +54,7 @@ export type PublicTherapistDiscoveryCopy = {
   adjustControls: string;
   dismissSearchHelp: string;
   professionalSignIn: string;
+  viewProfile: string;
   serviceModeLabels: Record<TherapistServiceMode, string>;
 };
 
@@ -111,6 +112,7 @@ const copy: Record<SupportedLocale, PublicTherapistDiscoveryCopy> = {
     adjustControls: 'You can adjust the same location and service controls above.',
     dismissSearchHelp: 'Dismiss search help',
     professionalSignIn: 'Professional sign in',
+    viewProfile: 'View full profile',
     serviceModeLabels: { home_visit: 'Home visit', clinic_visit: 'Clinic visit', telephysiotherapy: 'Telephysiotherapy' },
   },
   'hi-IN': {
@@ -166,6 +168,7 @@ const copy: Record<SupportedLocale, PublicTherapistDiscoveryCopy> = {
     adjustControls: 'ऊपर वही लोकेशन और सेवा नियंत्रण बदल सकते हैं।',
     dismissSearchHelp: 'खोज सहायता बंद करें',
     professionalSignIn: 'प्रोफेशनल साइन इन',
+    viewProfile: 'पूरी प्रोफ़ाइल देखें',
     serviceModeLabels: { home_visit: 'होम विज़िट', clinic_visit: 'क्लिनिक विज़िट', telephysiotherapy: 'टेलीफिजियोथेरेपी' },
   },
   'gu-IN': {
@@ -221,6 +224,7 @@ const copy: Record<SupportedLocale, PublicTherapistDiscoveryCopy> = {
     adjustControls: 'ઉપરના એ જ લોકેશન અને સેવા નિયંત્રણો બદલી શકો છો.',
     dismissSearchHelp: 'શોધ સહાય બંધ કરો',
     professionalSignIn: 'પ્રોફેશનલ સાઇન ઇન',
+    viewProfile: 'સંપૂર્ણ પ્રોફાઇલ જુઓ',
     serviceModeLabels: { home_visit: 'હોમ વિઝિટ', clinic_visit: 'ક્લિનિક વિઝિટ', telephysiotherapy: 'ટેલિફિઝિયોથેરાપી' },
   },
 };

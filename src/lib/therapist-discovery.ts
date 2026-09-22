@@ -45,7 +45,7 @@ export type TherapistDiscoverySearch = {
   serviceMode: TherapistServiceMode;
 };
 
-const UUID_PATTERN =
+export const THERAPIST_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -79,7 +79,7 @@ function normalizeServiceAreas(value: unknown): VerifiedTherapistDiscoveryServic
     const city = safeText(item.city, 100);
     const state = safeText(item.state, 100);
     const countryCode = safeText(item.country_code, 2).toUpperCase();
-    if (!UUID_PATTERN.test(id) || !locality || !city || !state || !/^[A-Z]{2}$/.test(countryCode)) return [];
+    if (!THERAPIST_ID_PATTERN.test(id) || !locality || !city || !state || !/^[A-Z]{2}$/.test(countryCode)) return [];
     return [{ id, locality, city, state, country_code: countryCode }];
   });
 }
@@ -88,7 +88,7 @@ function normalizeDiscoveryRow(value: unknown): VerifiedTherapistDiscoveryResult
   if (!isRecord(value)) return null;
   const physioId = safeText(value.physio_id, 36);
   const displayName = safeText(value.display_name, 120);
-  if (!UUID_PATTERN.test(physioId) || !displayName || value.is_verified !== true) return null;
+  if (!THERAPIST_ID_PATTERN.test(physioId) || !displayName || value.is_verified !== true) return null;
   return {
     physio_id: physioId,
     display_name: displayName,
@@ -116,4 +116,21 @@ export async function searchVerifiedTherapists(search: TherapistDiscoverySearch)
   });
   if (error || !Array.isArray(data)) throw new Error('Unable to search verified physiotherapists right now.');
   return data.map((row: unknown) => normalizeDiscoveryRow(row)).filter((row): row is VerifiedTherapistDiscoveryResult => row !== null);
+}
+
+export async function getVerifiedTherapistPublicProfile(
+  physioId: string,
+): Promise<VerifiedTherapistDiscoveryResult | null> {
+  if (!THERAPIST_ID_PATTERN.test(physioId)) return null;
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('get_verified_therapist_public_profile', {
+    p_physio_id: physioId,
+  });
+  if (error || !Array.isArray(data)) {
+    throw new Error('Unable to load this physiotherapist profile right now.');
+  }
+
+  const profile = data.length > 0 ? normalizeDiscoveryRow(data[0]) : null;
+  return profile?.physio_id === physioId ? profile : null;
 }

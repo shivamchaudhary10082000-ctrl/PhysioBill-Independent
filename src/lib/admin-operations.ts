@@ -68,6 +68,10 @@ export type AdminTherapistOperation = {
   qualification: string;
   verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
   is_discoverable: boolean;
+  automated_check_status: 'pending' | 'passed' | 'review_required';
+  admin_visibility_status: 'active' | 'paused';
+  admin_visibility_reason: string;
+  admin_visibility_updated_at: string | null;
   registered_at: string;
   appointment_requests_30d: number;
   accepted_appointments_30d: number;
@@ -227,6 +231,19 @@ export async function listAdminTherapistOperations(input?: {
   });
   if (error) throw accessError('Therapist operations');
   return Array.isArray(data) ? data as AdminTherapistOperation[] : [];
+}
+
+export async function setAdminTherapistDiscoveryVisibility(input: {
+  physioId: string;
+  visibilityStatus: 'active' | 'paused';
+  reason?: string;
+}): Promise<void> {
+  const { error } = await getSupabaseClient().rpc('set_admin_therapist_discovery_visibility', {
+    p_physio_id: input.physioId,
+    p_visibility_status: input.visibilityStatus,
+    p_reason: input.reason?.trim() ?? '',
+  });
+  if (error) throw accessError('Therapist public-listing control');
 }
 
 export async function listAdminPatientOperations(input?: {

@@ -71,8 +71,15 @@ const prohibitedPublicClaimPatterns = [
 ] as const;
 
 function hasProhibitedPublicClaim(draft: TherapistDiscoveryDraft) {
-  const publicCopy = [draft.headline, draft.bio, draft.clinicName].join(' ');
+  const publicCopy = [draft.displayName, draft.headline, draft.bio, draft.clinicName].join(' ');
   return prohibitedPublicClaimPatterns.some((pattern) => pattern.test(publicCopy));
+}
+
+function hasPublicContactDetails(draft: TherapistDiscoveryDraft) {
+  const publicCopy = [draft.displayName, draft.headline, draft.bio, draft.clinicName].join(' ');
+  return /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/i.test(publicCopy)
+    || /(?:https?:\/\/|www\.)/i.test(publicCopy)
+    || /(?:^|\D)\d{10,13}(?:\D|$)/.test(publicCopy);
 }
 
 export function TherapistDiscoveryProfilePage() {
@@ -116,7 +123,8 @@ export function TherapistDiscoveryProfilePage() {
   }, [draft]);
 
   const hasUnsafeMarketingClaim = useMemo(() => Boolean(draft && hasProhibitedPublicClaim(draft)), [draft]);
-  const listingReady = useMemo(() => Boolean(draft && draft.displayName.trim() && draft.displayName.trim().length <= 120 && draft.serviceModes.length > 0 && draft.serviceAreas.length > 0 && draft.serviceAreas.every(areaComplete) && !duplicateAreas && !hasUnsafeMarketingClaim), [draft, duplicateAreas, hasUnsafeMarketingClaim]);
+  const hasUnsafeContactDetails = useMemo(() => Boolean(draft && hasPublicContactDetails(draft)), [draft]);
+  const listingReady = useMemo(() => Boolean(draft && draft.displayName.trim() && draft.displayName.trim().length <= 120 && draft.serviceModes.length > 0 && draft.serviceAreas.length > 0 && draft.serviceAreas.every(areaComplete) && !duplicateAreas && !hasUnsafeMarketingClaim && !hasUnsafeContactDetails), [draft, duplicateAreas, hasUnsafeMarketingClaim, hasUnsafeContactDetails]);
   const hasUnsavedChanges = useMemo(() => draftFingerprint(draft) !== draftFingerprint(state?.draft), [draft, state?.draft]);
   const savedPublicSearchHref = useMemo(() => {
     if (state?.verification.status !== 'verified' || !state.draft.isDiscoverable) return null;
@@ -182,6 +190,7 @@ export function TherapistDiscoveryProfilePage() {
     if (snapshot.serviceAreas.some((area) => !areaComplete(area))) return setError(msg(locale, 'areaError'));
     if (duplicateAreas) return setError(msg(locale, 'duplicateError'));
     if (hasProhibitedPublicClaim(snapshot)) return setError(msg(locale, 'marketingClaimError'));
+    if (hasPublicContactDetails(snapshot)) return setError(msg(locale, 'contactDetailError'));
     if (snapshot.isDiscoverable && !listingReady) return setError(msg(locale, 'publishError'));
     setSaving(true);
     try {
@@ -272,9 +281,9 @@ export function TherapistDiscoveryProfilePage() {
       <div className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]"><div className="space-y-6">
         <section className="rounded-2xl border bg-card p-5 shadow-[0_12px_30px_hsl(var(--foreground)/.03)] sm:p-6">
           <div><p className="workspace-section-kicker">{msg(locale, 'patientSafeListing')}</p><h2 className="mt-1 text-xl font-bold tracking-[-.025em]">{msg(locale, 'publicProfile')}</h2></div>
-          <div className={`mt-4 rounded-xl border p-4 text-sm leading-6 ${hasUnsafeMarketingClaim ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-primary/10 bg-primary/5 text-muted-foreground'}`}>
+          <div className={`mt-4 rounded-xl border p-4 text-sm leading-6 ${hasUnsafeMarketingClaim || hasUnsafeContactDetails ? 'border-destructive/20 bg-destructive/5 text-destructive' : 'border-primary/10 bg-primary/5 text-muted-foreground'}`}>
             <p className="font-semibold text-foreground">{msg(locale, 'advertisingSafety')}</p>
-            <p className="mt-1">{hasUnsafeMarketingClaim ? msg(locale, 'marketingClaimError') : msg(locale, 'advertisingSafetyCopy')}</p>
+            <p className="mt-1">{hasUnsafeMarketingClaim ? msg(locale, 'marketingClaimError') : hasUnsafeContactDetails ? msg(locale, 'contactDetailError') : msg(locale, 'advertisingSafetyCopy')}</p>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'displayName')}</span><input maxLength={120} value={draft.displayName} onChange={(event) => setField('displayName', event.target.value)} className={fieldClass} /><span className="text-xs text-muted-foreground">{draft.displayName.length}/120</span></label>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ProfessionalQuickNavigationFrame } from '@/Components/ProfessionalQuickNavigationFrame';
 import { PublicLandingPage } from '@/pages/PublicLandingPage';
 import { TherapistDiscoveryPage } from '@/pages/TherapistDiscoveryPage';
+import { PublicTherapistProfilePage } from '@/pages/PublicTherapistProfilePage';
 import { PatientClinicalCareRoute } from '@/pages/PatientClinicalCareRoute';
 import { PatientFinancialSummaryRoute } from '@/pages/PatientFinancialSummaryRoute';
 import { ReimbursementVerificationPage } from '@/pages/ReimbursementVerificationPage';
@@ -97,6 +98,12 @@ export function PublicRouteBoundary() {
   if (path === '/terms') return <TermsPage />;
   if (path === '/professional-standards') return <ProfessionalStandardsPage />;
   if (path === '/find-physio') return <TherapistDiscoveryPage />;
+  if (path.startsWith('/physiotherapist/')) {
+    const physioId = path.slice('/physiotherapist/'.length);
+    return physioId && !physioId.includes('/')
+      ? <PublicTherapistProfilePage physioId={physioId} />
+      : <NotFoundPage />;
+  }
   if (path.startsWith('/verify/reimbursement/')) {
     const token = path.slice('/verify/reimbursement/'.length);
     return token ? <ReimbursementVerificationPage token={token} /> : <NotFoundPage />;

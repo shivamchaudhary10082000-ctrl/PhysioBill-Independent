@@ -134,6 +134,7 @@ function TherapistCard({
     therapist.verified_registration_number,
   ].filter(Boolean);
   const hasHomeVisitAvailability = availability.some((window) => window.serviceMode === 'home_visit');
+  const profileHref = `/physiotherapist/${therapist.physio_id}?mode=${encodeURIComponent(availability[0]?.serviceMode ?? therapist.service_modes[0] ?? 'home_visit')}`;
 
   const requestWindow = async (availabilityWindowId: string, serviceMode: TherapistServiceMode) => {
     if (serviceMode === 'home_visit' && !selectedServiceAreaId) {
@@ -183,23 +184,21 @@ function TherapistCard({
   return (
     <article className="page-enter rounded-[26px] border border-border bg-card p-5 shadow-[0_14px_38px_hsl(var(--foreground)/.04)] sm:p-6">
       <div className="flex items-start gap-4">
-        <div className="grid size-14 shrink-0 place-items-center rounded-2xl border border-primary/12 bg-primary/7 text-sm font-semibold text-primary">
+        <a href={profileHref} aria-label={`${copy.viewProfile}: ${therapist.display_name}`} className="grid size-14 shrink-0 place-items-center rounded-2xl border border-primary/12 bg-primary/7 text-sm font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/12">
           {therapistInitials(therapist.display_name)}
-        </div>
+        </a>
         <div className="min-w-0 flex-1">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-success/15 bg-success/8 px-2.5 py-1 text-[11px] font-semibold text-success">
             <CheckCircle2 size={13} aria-hidden="true" /> {copy.verifiedProfessional}
           </span>
-          <h2 className="mt-2 text-xl font-bold tracking-[-.025em] sm:text-2xl">{therapist.display_name}</h2>
+          <h2 className="mt-2 text-xl font-bold tracking-[-.025em] sm:text-2xl"><a href={profileHref} className="transition hover:text-primary">{therapist.display_name}</a></h2>
           {therapist.verified_qualification && (
             <p className="mt-1 text-sm font-medium text-muted-foreground">{therapist.verified_qualification}</p>
           )}
-          <a
-            href={`#availability-${therapist.physio_id}`}
-            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 text-xs font-bold text-primary transition hover:border-primary/30 hover:bg-primary/10"
-          >
-            <CalendarClock size={15} aria-hidden="true" /> {copy.upcomingAvailability}
-          </a>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a href={profileHref} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))]">{copy.viewProfile}</a>
+            <a href={`#availability-${therapist.physio_id}`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 text-xs font-bold text-primary transition hover:border-primary/30 hover:bg-primary/10"><CalendarClock size={15} aria-hidden="true" /> {copy.upcomingAvailability}</a>
+          </div>
         </div>
       </div>
 

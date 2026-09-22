@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BadgeCheck, CheckCircle2, CircleAlert, Eye, MapPin, Plus, Save, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, CalendarDays, CheckCircle2, CircleAlert, Eye, MapPin, Plus, Save, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { THERAPIST_SERVICE_MODES, type TherapistDiscoveryServiceArea, type TherapistServiceMode } from '@/lib/therapist-discovery';
 import {
   loadMyTherapistDiscoveryManagement,
@@ -19,6 +19,33 @@ const emptyArea = (): TherapistDiscoveryServiceArea => ({ locality: '', city: ''
 const normalizeAreaKey = (area: TherapistDiscoveryServiceArea) => [area.locality, area.city, area.state, area.country_code].map((value) => value.trim().toLowerCase()).join('|');
 const fieldClass = 'h-12 w-full rounded-xl border bg-card px-3.5 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10';
 const textareaClass = 'min-h-28 w-full rounded-xl border bg-card px-3.5 py-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10';
+
+function draftFingerprint(draft: TherapistDiscoveryDraft | null | undefined) {
+  if (!draft) return '';
+  return JSON.stringify({
+    displayName: draft.displayName.trim(),
+    headline: draft.headline.trim(),
+    bio: draft.bio.trim(),
+    clinicName: draft.clinicName.trim(),
+    isDiscoverable: draft.isDiscoverable,
+    serviceModes: [...draft.serviceModes].sort(),
+    serviceAreas: draft.serviceAreas.map((area) => [
+      area.locality.trim(),
+      area.city.trim(),
+      area.state.trim(),
+      area.country_code.trim().toUpperCase(),
+    ].join('|')).sort(),
+  });
+}
+
+function buildSavedPublicSearchHref(draft: TherapistDiscoveryDraft | null | undefined) {
+  const area = draft?.serviceAreas.find(areaComplete);
+  const mode = draft?.serviceModes[0];
+  if (!area || !mode) return null;
+  const params = new URLSearchParams({ city: area.city.trim(), mode });
+  if (area.locality.trim()) params.set('locality', area.locality.trim());
+  return `/find-physio?${params.toString()}`;
+}
 
 function credentialsComplete(state: TherapistDiscoveryManagementState) {
   return Boolean(state.credentials.fullName.trim() && state.credentials.qualification.trim() && state.credentials.registrationNumber.trim() && state.credentials.registrationAuthority.trim() && state.credentials.registrationJurisdiction.trim());
@@ -90,10 +117,34 @@ export function TherapistDiscoveryProfilePage() {
 
   const hasUnsafeMarketingClaim = useMemo(() => Boolean(draft && hasProhibitedPublicClaim(draft)), [draft]);
   const listingReady = useMemo(() => Boolean(draft && draft.displayName.trim() && draft.displayName.trim().length <= 120 && draft.serviceModes.length > 0 && draft.serviceAreas.length > 0 && draft.serviceAreas.every(areaComplete) && !duplicateAreas && !hasUnsafeMarketingClaim), [draft, duplicateAreas, hasUnsafeMarketingClaim]);
+  const hasUnsavedChanges = useMemo(() => draftFingerprint(draft) !== draftFingerprint(state?.draft), [draft, state?.draft]);
+  const savedPublicSearchHref = useMemo(() => {
+    if (state?.verification.status !== 'verified' || !state.draft.isDiscoverable) return null;
+    return buildSavedPublicSearchHref(state.draft);
+  }, [state]);
+  const readinessItems = useMemo(() => [
+    { label: msg(locale, 'readinessCredentials'), complete: Boolean(state && credentialsComplete(state)) },
+    { label: msg(locale, 'readinessDisplayName'), complete: Boolean(draft?.displayName.trim()) },
+    { label: msg(locale, 'readinessIntroduction'), complete: Boolean(draft?.headline.trim() && draft?.bio.trim()) },
+    { label: msg(locale, 'readinessCareModes'), complete: Boolean(draft?.serviceModes.length) },
+    { label: msg(locale, 'readinessServiceAreas'), complete: Boolean(draft?.serviceAreas.length && draft.serviceAreas.every(areaComplete) && !duplicateAreas) },
+    { label: msg(locale, 'readinessPublished'), complete: Boolean(savedPublicSearchHref) },
+  ], [draft, duplicateAreas, locale, savedPublicSearchHref, state]);
+  const readinessComplete = readinessItems.filter((item) => item.complete).length;
 
   useEffect(() => {
     if (!listingReady) setDraft((current) => current?.isDiscoverable ? { ...current, isDiscoverable: false } : current);
   }, [listingReady]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return undefined;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeLeaving);
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
+  }, [hasUnsavedChanges]);
 
   if (loading) return <div className="space-y-4"><div className="h-32 rounded-[24px] skeleton" /><div className="grid gap-4 lg:grid-cols-2"><div className="h-72 rounded-2xl skeleton" /><div className="h-72 rounded-2xl skeleton" /></div></div>;
   if (!state || !draft) return <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">{error ?? msg(locale, 'unavailable')}</div>;
@@ -101,7 +152,7 @@ export function TherapistDiscoveryProfilePage() {
   const status = state.verification.status;
   const canRequest = (status === 'unverified' || status === 'rejected') && credentialsComplete(state);
   const requestedAt = requestedAtLabel(state.verification.requestedAt, locale);
-  const currentlyVisible = status === 'verified' && draft.isDiscoverable && listingReady;
+  const currentlyVisible = Boolean(savedPublicSearchHref);
 
   const setField = <K extends keyof TherapistDiscoveryDraft>(field: K, value: TherapistDiscoveryDraft[K]) => {
     setDraft((current) => current ? { ...current, [field]: value } : current);
@@ -187,6 +238,23 @@ export function TherapistDiscoveryProfilePage() {
       {notice && <div role="status" className="rounded-xl border border-primary/10 bg-primary/5 p-3 text-sm font-medium">{notice}</div>}
 
       <section className="rounded-2xl border bg-card p-5 shadow-[0_12px_30px_hsl(var(--foreground)/.03)] sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="workspace-section-kicker">{msg(locale, 'profileReadiness')}</p>
+            <h2 className="mt-1 text-xl font-bold tracking-[-.025em]">{readinessComplete} {msg(locale, 'of')} {readinessItems.length} {msg(locale, 'stepsComplete')}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{msg(locale, 'readinessCopy')}</p>
+          </div>
+          <div className="min-w-40">
+            <div className="h-2 overflow-hidden rounded-full bg-secondary" aria-hidden="true"><div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${Math.round((readinessComplete / readinessItems.length) * 100)}%` }} /></div>
+            <p className="mt-2 text-right text-xs font-semibold text-muted-foreground">{Math.round((readinessComplete / readinessItems.length) * 100)}%</p>
+          </div>
+        </div>
+        <ul className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {readinessItems.map((item) => <li key={item.label} className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium ${item.complete ? 'border-success/10 bg-success/5 text-foreground' : 'bg-background text-muted-foreground'}`}><span className={`grid size-6 shrink-0 place-items-center rounded-full ${item.complete ? 'bg-success/12 text-success' : 'bg-secondary text-muted-foreground'}`}>{item.complete ? <CheckCircle2 size={14} /> : <CircleAlert size={14} />}</span>{item.label}</li>)}
+        </ul>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-5 shadow-[0_12px_30px_hsl(var(--foreground)/.03)] sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div>
           <p className="workspace-section-kicker">{msg(locale, 'verificationStatus')}</p>
           <h2 className="mt-1 text-xl font-bold tracking-[-.025em]">{msg(locale, 'professionalVerification')}</h2>
@@ -209,10 +277,10 @@ export function TherapistDiscoveryProfilePage() {
             <p className="mt-1">{hasUnsafeMarketingClaim ? msg(locale, 'marketingClaimError') : msg(locale, 'advertisingSafetyCopy')}</p>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'displayName')}</span><input maxLength={120} value={draft.displayName} onChange={(event) => setField('displayName', event.target.value)} className={fieldClass} /><span className="text-[11px] text-muted-foreground">{draft.displayName.length}/120</span></label>
-            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'headline')}</span><input maxLength={200} value={draft.headline} onChange={(event) => setField('headline', event.target.value)} className={fieldClass} /><span className="text-[11px] text-muted-foreground">{draft.headline.length}/200</span></label>
-            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'shortBio')}</span><textarea maxLength={2000} value={draft.bio} onChange={(event) => setField('bio', event.target.value)} className={textareaClass} /><span className="text-[11px] text-muted-foreground">{draft.bio.length}/2000</span></label>
-            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'clinicPracticeName')} <span className="font-normal">({msg(locale, 'optional')})</span></span><input maxLength={160} value={draft.clinicName} onChange={(event) => setField('clinicName', event.target.value)} className={fieldClass} /><span className="text-[11px] text-muted-foreground">{draft.clinicName.length}/160</span></label>
+            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'displayName')}</span><input maxLength={120} value={draft.displayName} onChange={(event) => setField('displayName', event.target.value)} className={fieldClass} /><span className="text-xs text-muted-foreground">{draft.displayName.length}/120</span></label>
+            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'headline')}</span><input maxLength={200} placeholder={msg(locale, 'headlinePlaceholder')} value={draft.headline} onChange={(event) => setField('headline', event.target.value)} className={fieldClass} /><span className="flex items-start justify-between gap-3 text-xs leading-5 text-muted-foreground"><span>{msg(locale, 'headlineHelp')}</span><span className="shrink-0">{draft.headline.length}/200</span></span></label>
+            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'shortBio')}</span><textarea maxLength={2000} placeholder={msg(locale, 'bioPlaceholder')} value={draft.bio} onChange={(event) => setField('bio', event.target.value)} className={textareaClass} /><span className="flex items-start justify-between gap-3 text-xs leading-5 text-muted-foreground"><span>{msg(locale, 'bioHelp')}</span><span className="shrink-0">{draft.bio.length}/2000</span></span></label>
+            <label className="block space-y-2 sm:col-span-2"><span className="text-xs font-semibold text-foreground/70">{msg(locale, 'clinicPracticeName')} <span className="font-normal">({msg(locale, 'optional')})</span></span><input maxLength={160} value={draft.clinicName} onChange={(event) => setField('clinicName', event.target.value)} className={fieldClass} /><span className="text-xs text-muted-foreground">{draft.clinicName.length}/160</span></label>
           </div>
         </section>
 
@@ -231,7 +299,7 @@ export function TherapistDiscoveryProfilePage() {
         <section className="rounded-2xl border bg-card p-5 shadow-[0_12px_30px_hsl(var(--foreground)/.03)] sm:p-6">
           <div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/6 text-primary"><ShieldCheck size={20} /></span><div><p className="workspace-section-kicker">{msg(locale, 'visibilityPreference')}</p><h2 className="mt-1 text-lg font-bold tracking-[-.02em]">{msg(locale, 'publicDiscoveryOptIn')}</h2><p className="mt-1 text-sm leading-6 text-muted-foreground">{msg(locale, 'optInCopy')}</p></div></div>
           <label className={`mt-5 flex items-start gap-3 rounded-2xl border p-4 ${listingReady ? 'bg-background/70' : 'bg-muted/35'}`}><input type="checkbox" className="mt-1 size-4 accent-[hsl(var(--primary))]" disabled={!listingReady} checked={draft.isDiscoverable} onChange={(event) => setField('isDiscoverable', event.target.checked)} /><span><span className="block text-sm font-semibold text-foreground">{msg(locale, 'publishWhenVerified')}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{msg(locale, 'publishRequirements')}</span></span></label>
-          <div className="mt-5 flex justify-end"><button type="button" disabled={saving} onClick={() => void save()} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:opacity-60"><Save size={16} /> {saving ? msg(locale, 'saving') : msg(locale, 'save')}</button></div>
+          <div className="mt-5 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between"><p aria-live="polite" className={`text-sm font-medium ${hasUnsavedChanges ? 'text-warning' : 'text-muted-foreground'}`}>{hasUnsavedChanges ? msg(locale, 'unsavedChanges') : msg(locale, 'allChangesSaved')}</p><button type="button" disabled={saving || !hasUnsavedChanges} onClick={() => void save()} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:cursor-not-allowed disabled:opacity-45"><Save size={16} /> {saving ? msg(locale, 'saving') : msg(locale, 'save')}</button></div>
         </section>
       </div>
 
@@ -243,6 +311,10 @@ export function TherapistDiscoveryProfilePage() {
           <div className="mt-5 flex flex-wrap gap-2">{draft.serviceModes.map((mode) => <span key={mode} className="rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-xs font-semibold">{therapistDiscoveryServiceModeLabel(locale, mode)}</span>)}</div>
           <div className="mt-5 space-y-2">{draft.serviceAreas.filter(areaComplete).map((area) => <div key={normalizeAreaKey(area)} className="flex items-center gap-2 text-sm"><MapPin size={14} className="text-primary" /><span>{area.locality.trim()}, {area.city.trim()}</span></div>)}</div>
           <div className={`mt-6 rounded-xl border p-4 text-sm leading-6 ${currentlyVisible ? 'border-success/10 bg-success/5 text-foreground' : 'border-border bg-secondary/45 text-muted-foreground'}`}>{currentlyVisible ? <span className="inline-flex items-start gap-2"><CheckCircle2 size={17} className="mt-0.5 shrink-0 text-success" />{msg(locale, 'eligible')}</span> : <span className="inline-flex items-start gap-2"><CircleAlert size={17} className="mt-0.5 shrink-0" />{msg(locale, 'notVisible')}</span>}</div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+            <a href="/app/availability" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-background px-4 text-sm font-semibold hover:bg-secondary"><CalendarDays size={16} /> {msg(locale, 'manageAvailability')}</a>
+            {savedPublicSearchHref && <a href={savedPublicSearchHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-[hsl(var(--primary-hover))]">{msg(locale, 'openPublicListing')} <ArrowUpRight size={16} /></a>}
+          </div>
         </div>
       </section></aside></div>
     </div>

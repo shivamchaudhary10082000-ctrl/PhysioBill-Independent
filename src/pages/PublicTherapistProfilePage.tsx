@@ -36,6 +36,19 @@ type ProfileState =
   | { status: 'error' }
   | { status: 'ready'; profile: VerifiedTherapistDiscoveryResult };
 
+const PROFILE_SECTIONS = [
+  { id: 'book', label: 'Book' },
+  { id: 'patient-stories', label: 'Patient Stories' },
+  { id: 'treatments', label: 'Treatments & Conditions' },
+  { id: 'photos', label: 'Photos & Media' },
+  { id: 'specializations', label: 'Specializations' },
+  { id: 'practice', label: 'Practice Details' },
+  { id: 'about', label: 'About' },
+  { id: 'faqs', label: 'FAQs' },
+] as const;
+
+type ProfileSectionId = (typeof PROFILE_SECTIONS)[number]['id'];
+
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'PT';
 }
@@ -72,6 +85,29 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
   const [requestedIds, setRequestedIds] = useState<Set<string>>(() => new Set());
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<ProfileSectionId>(() => {
+    const hash = window.location.hash.replace(/^#/, '');
+    return PROFILE_SECTIONS.some((section) => section.id === hash) ? hash as ProfileSectionId : 'about';
+  });
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace(/^#/, '');
+      if (PROFILE_SECTIONS.some((section) => section.id === hash)) setActiveSection(hash as ProfileSectionId);
+    };
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, []);
+
+  useEffect(() => {
+    if (profileState.status !== 'ready') return;
+    const hash = window.location.hash.replace(/^#/, '');
+    if (!PROFILE_SECTIONS.some((section) => section.id === hash)) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ block: 'start' });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [profileState.status]);
 
   useEffect(() => {
     let active = true;
@@ -199,9 +235,42 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
           </div>
         </section>
 
+        <ProfileSectionNav activeSection={activeSection} onNavigate={setActiveSection} />
+
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="space-y-6">
-            <section className="rounded-[28px] border bg-card p-6 shadow-[0_14px_42px_hsl(var(--foreground)/.035)] sm:p-8">
+            <section id="patient-stories" className="scroll-mt-40 rounded-[28px] border bg-card p-6 shadow-[0_14px_42px_hsl(var(--foreground)/.035)] sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Patient feedback</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-[-.03em]">Patient Stories</h2>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">No public patient stories are available for this profile yet. PhysioBill does not display placeholder or invented reviews.</p>
+            </section>
+
+            <section id="treatments" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Care offered</p>
+              <h2 className="mt-2 text-2xl font-bold">Treatments & Conditions</h2>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">No separate treatment or condition list has been published for this profile yet.</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {profile.service_modes.map((mode) => <span key={mode} className="rounded-full border border-primary/12 bg-primary/5 px-3 py-1.5 text-xs font-semibold">{copy.serviceModeLabels[mode]}</span>)}
+              </div>
+            </section>
+
+            <section id="photos" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Profile media</p>
+              <h2 className="mt-2 text-2xl font-bold">Photos & Media</h2>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">No public photos or videos have been published for this profile yet.</p>
+            </section>
+
+            <section id="specializations" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Professional focus</p>
+              <h2 className="mt-2 text-2xl font-bold">Specializations</h2>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full border border-primary/12 bg-primary/5 px-3 py-1.5 text-xs font-semibold">Physiotherapy</span>
+                {profile.verified_qualification && <span className="rounded-full border bg-secondary/45 px-3 py-1.5 text-xs font-semibold">{profile.verified_qualification}</span>}
+              </div>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">PhysioBill does not infer a clinical specialty from a biography. Specific specialties should be shown only when they are explicitly published and supported by the profile workflow.</p>
+            </section>
+
+            <section id="about" className="scroll-mt-40 rounded-[28px] border bg-card p-6 shadow-[0_14px_42px_hsl(var(--foreground)/.035)] sm:p-8">
               <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Professional profile</p>
               <h2 className="mt-2 text-2xl font-bold tracking-[-.03em]">About this physiotherapist</h2>
               <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{profile.bio || 'This physiotherapist has not added a public introduction yet.'}</p>
@@ -217,8 +286,8 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
               <p className="mt-4 text-xs leading-5 text-muted-foreground">PhysioBill shows only credentials approved through its professional verification workflow. This badge is not a guarantee of treatment outcome.</p>
             </section>
 
-            <section className="rounded-[28px] border bg-card p-6 sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Care coverage</p>
+            <section id="practice" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Practice details</p>
               <h2 className="mt-2 text-2xl font-bold">Service areas</h2>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {profile.service_areas.map((area) => <div key={area.id} className="flex items-start gap-3 rounded-2xl border bg-secondary/35 p-4"><MapPin className="mt-0.5 shrink-0 text-primary" size={18} /><div><p className="font-bold">{area.locality}, {area.city}</p><p className="mt-1 text-xs text-muted-foreground">{area.state}</p></div></div>)}
@@ -226,7 +295,7 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
               <p className="mt-4 text-xs leading-5 text-muted-foreground">These are broad service areas, not a clinic address or live location.</p>
             </section>
 
-            <section className="rounded-[28px] border bg-card p-6 sm:p-8">
+            <section id="faqs" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
               <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Before you request</p>
               <h2 className="mt-2 text-2xl font-bold">Common questions</h2>
               <div className="mt-5 divide-y rounded-2xl border">
@@ -239,7 +308,7 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
             </section>
           </div>
 
-          <aside id="book" className="scroll-mt-24 rounded-[28px] border border-primary/12 bg-card p-5 shadow-[0_20px_60px_hsl(var(--foreground)/.08)] lg:sticky lg:top-24 sm:p-6">
+          <aside id="book" className="order-first scroll-mt-40 rounded-[28px] border border-primary/12 bg-card p-5 shadow-[0_20px_60px_hsl(var(--foreground)/.08)] sm:p-6 lg:order-none lg:sticky lg:top-24">
             <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-primary/8 text-primary"><CalendarClock size={20} /></div><div><p className="text-xs font-semibold text-primary">Live availability</p><h2 className="text-xl font-bold">Request a time</h2></div></div>
 
             {hasHomeVisit && profile.service_areas.length > 0 && (
@@ -270,6 +339,32 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur-xl lg:hidden"><a href="#book" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"><CalendarClock size={18} /> View availability</a></div>
       <PublicFooter />
     </div>
+  );
+}
+
+function ProfileSectionNav({
+  activeSection,
+  onNavigate,
+}: {
+  activeSection: ProfileSectionId;
+  onNavigate: (section: ProfileSectionId) => void;
+}) {
+  return (
+    <nav aria-label="Physiotherapist profile sections" className="sticky top-[72px] z-30 mt-6 rounded-2xl border bg-background/95 p-1.5 shadow-sm backdrop-blur-xl">
+      <div className="flex gap-1 overflow-x-auto">
+        {PROFILE_SECTIONS.map((section) => (
+          <a
+            key={section.id}
+            href={`#${section.id}`}
+            aria-current={activeSection === section.id ? 'page' : undefined}
+            onClick={() => onNavigate(section.id)}
+            className={`flex min-h-10 shrink-0 items-center rounded-xl px-3.5 text-sm font-semibold transition ${activeSection === section.id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+          >
+            {section.label}
+          </a>
+        ))}
+      </div>
+    </nav>
   );
 }
 

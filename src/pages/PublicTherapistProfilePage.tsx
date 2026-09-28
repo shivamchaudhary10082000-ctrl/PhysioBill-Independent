@@ -241,7 +241,7 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
                 <a href="#book" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-[hsl(var(--primary-hover))]"><CalendarPlus size={17} /> Request appointment</a>
                 <a href="#about" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-primary/15 bg-background/75 px-5 text-sm font-bold transition hover:bg-secondary">View professional profile</a>
               </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-primary/10 bg-background/70 p-4">
                   <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Visit options</p>
                   <p className="mt-1 text-lg font-bold">{profile.service_modes.length}</p>
@@ -250,7 +250,7 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
                   <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Service areas</p>
                   <p className="mt-1 text-lg font-bold">{profile.service_areas.length || '—'}</p>
                 </div>
-                <div className="rounded-2xl border border-primary/10 bg-background/70 p-4">
+                <div className="col-span-2 rounded-2xl border border-primary/10 bg-background/70 p-4 sm:col-span-1">
                   <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Next opening</p>
                   <p className="mt-1 text-sm font-bold leading-6">{availabilityLoading ? 'Checking…' : nextAvailableWindow ? formatWindow(nextAvailableWindow, locale) : 'No time published'}</p>
                 </div>

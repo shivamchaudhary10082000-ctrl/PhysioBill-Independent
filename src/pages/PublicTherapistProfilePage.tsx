@@ -81,6 +81,7 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
   const [availabilityLoading, setAvailabilityLoading] = useState(true);
   const [availabilityError, setAvailabilityError] = useState(false);
   const [selectedAreaId, setSelectedAreaId] = useState('');
+  const [selectedMode, setSelectedMode] = useState(preferredMode);
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(() => new Set());
   const [requestNotice, setRequestNotice] = useState<string | null>(null);
@@ -98,6 +99,13 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
     window.addEventListener('hashchange', syncFromHash);
     return () => window.removeEventListener('hashchange', syncFromHash);
   }, []);
+
+  useEffect(() => {
+    if (profileState.status !== 'ready') return;
+    if (!profileState.profile.service_modes.includes(selectedMode)) {
+      setSelectedMode(profileState.profile.service_modes[0] ?? preferredMode);
+    }
+  }, [preferredMode, profileState, selectedMode]);
 
   useEffect(() => {
     if (profileState.status !== 'ready') return;
@@ -206,12 +214,10 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
 
   const { profile } = profileState;
   const registration = [profile.verified_registration_authority, profile.verified_registration_number].filter(Boolean).join(' · ');
-  const hasHomeVisit = availability.some((item) => item.serviceMode === 'home_visit');
-  const sortedAvailability = [...availability].sort((a, b) => {
-    const preferredA = a.serviceMode === preferredMode ? 0 : 1;
-    const preferredB = b.serviceMode === preferredMode ? 0 : 1;
-    return preferredA - preferredB || new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
-  });
+  const sortedAvailability = availability
+    .filter((item) => item.serviceMode === selectedMode)
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  const nextAvailableWindow = sortedAvailability[0];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -230,6 +236,24 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
               {profile.headline && <p className="mt-4 max-w-2xl text-base leading-7 sm:text-lg">{profile.headline}</p>}
               <div className="mt-5 flex flex-wrap gap-2">
                 {profile.service_modes.map((mode) => <span key={mode} className="rounded-full border border-primary/12 bg-background/75 px-3 py-1.5 text-xs font-semibold">{copy.serviceModeLabels[mode]}</span>)}
+              </div>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <a href="#book" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-[hsl(var(--primary-hover))]"><CalendarPlus size={17} /> Request appointment</a>
+                <a href="#about" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-primary/15 bg-background/75 px-5 text-sm font-bold transition hover:bg-secondary">View professional profile</a>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-primary/10 bg-background/70 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Visit options</p>
+                  <p className="mt-1 text-lg font-bold">{profile.service_modes.length}</p>
+                </div>
+                <div className="rounded-2xl border border-primary/10 bg-background/70 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Service areas</p>
+                  <p className="mt-1 text-lg font-bold">{profile.service_areas.length || '—'}</p>
+                </div>
+                <div className="rounded-2xl border border-primary/10 bg-background/70 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">Next opening</p>
+                  <p className="mt-1 text-sm font-bold leading-6">{availabilityLoading ? 'Checking…' : nextAvailableWindow ? formatWindow(nextAvailableWindow, locale) : 'No time published'}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -309,24 +333,40 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
           </div>
 
           <aside id="book" className="order-first scroll-mt-40 rounded-[28px] border border-primary/12 bg-card p-5 shadow-[0_20px_60px_hsl(var(--foreground)/.08)] sm:p-6 lg:order-none lg:sticky lg:top-24">
-            <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-primary/8 text-primary"><CalendarClock size={20} /></div><div><p className="text-xs font-semibold text-primary">Live availability</p><h2 className="text-xl font-bold">Request a time</h2></div></div>
+            <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-xl bg-primary/8 text-primary"><CalendarClock size={20} /></div><div><p className="text-xs font-semibold text-primary">Live availability</p><h2 className="text-xl font-bold">Request an appointment</h2></div></div>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">Choose the visit type, add a service area when required, then request one published time. The physiotherapist still needs to accept the request.</p>
 
-            {hasHomeVisit && profile.service_areas.length > 0 && (
+            <fieldset className="mt-5">
+              <legend className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">1 · Choose visit type</legend>
+              <div className="mt-2 grid gap-2">
+                {profile.service_modes.map((mode) => (
+                  <button key={mode} type="button" aria-pressed={selectedMode === mode} onClick={() => { setSelectedMode(mode); setRequestError(null); setRequestNotice(null); }} className={`flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 text-left text-xs font-bold transition ${selectedMode === mode ? 'border-primary bg-primary/7 text-primary' : 'bg-secondary/30 hover:bg-secondary/55'}`}>
+                    <span>{copy.serviceModeLabels[mode]}</span>
+                    <span className={`size-2 rounded-full ${selectedMode === mode ? 'bg-primary' : 'bg-muted-foreground/30'}`} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            {selectedMode === 'home_visit' && profile.service_areas.length > 0 && (
               <fieldset className="mt-5">
-                <legend className="text-xs font-bold">Home-visit area</legend>
+                <legend className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">2 · Choose home-visit area</legend>
                 <div className="mt-2 grid gap-2">
-                  {profile.service_areas.map((area) => <label key={area.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${selectedAreaId === area.id ? 'border-primary bg-primary/7' : 'bg-secondary/35'}`}><input type="radio" name="profile-service-area" checked={selectedAreaId === area.id} onChange={() => { setSelectedAreaId(area.id); setRequestError(null); }} /><MapPin size={14} className="text-primary" />{area.locality}, {area.city}</label>)}
+                  {profile.service_areas.map((area) => <label key={area.id} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${selectedAreaId === area.id ? 'border-primary bg-primary/7' : 'bg-secondary/35'}`}><input type="radio" name="profile-service-area" checked={selectedAreaId === area.id} onChange={() => { setSelectedAreaId(area.id); setRequestError(null); }} /><MapPin size={14} className="text-primary" />{area.locality}, {area.city}</label>)}
                 </div>
               </fieldset>
             )}
 
-            {availabilityLoading ? <div className="mt-5 space-y-2"><div className="skeleton h-16 rounded-xl" /><div className="skeleton h-16 rounded-xl" /></div>
-              : availabilityError ? <p className="mt-5 rounded-xl bg-secondary/45 p-4 text-sm text-muted-foreground">{copy.availabilityUnavailable}</p>
-              : sortedAvailability.length === 0 ? <p className="mt-5 rounded-xl bg-secondary/45 p-4 text-sm leading-6 text-muted-foreground">{copy.noUpcomingTimes}</p>
-              : <div className="mt-5 space-y-2">{sortedAvailability.map((item) => {
+            <div className="mt-5">
+              <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted-foreground">{selectedMode === 'home_visit' ? '3 · Choose a published time' : '2 · Choose a published time'}</p>
+            </div>
+            {availabilityLoading ? <div className="mt-3 space-y-2"><div className="skeleton h-20 rounded-xl" /><div className="skeleton h-20 rounded-xl" /></div>
+              : availabilityError ? <p className="mt-3 rounded-xl bg-secondary/45 p-4 text-sm text-muted-foreground">{copy.availabilityUnavailable}</p>
+              : sortedAvailability.length === 0 ? <p className="mt-3 rounded-xl bg-secondary/45 p-4 text-sm leading-6 text-muted-foreground">No upcoming {copy.serviceModeLabels[selectedMode].toLowerCase()} times are published right now. You can choose another visit type above.</p>
+              : <div className="mt-3 space-y-2">{sortedAvailability.map((item) => {
                 const requested = requestedIds.has(item.id);
                 const needsArea = item.serviceMode === 'home_visit' && !selectedAreaId;
-                return <div key={item.id} className="rounded-2xl border bg-secondary/30 p-3"><p className="text-sm font-bold">{formatWindow(item, locale) || copy.upcomingTime}</p><p className="mt-1 text-xs text-muted-foreground">{copy.serviceModeLabels[item.serviceMode]} · {item.timezoneName}</p><button type="button" disabled={requested || requestingId === item.id || needsArea} onClick={() => void requestWindow(item)} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:cursor-not-allowed disabled:opacity-55"><CalendarPlus size={15} />{requested ? copy.requested : requestingId === item.id ? copy.requesting : needsArea ? copy.chooseAreaFirst : copy.requestThisTime}</button></div>;
+                return <div key={item.id} className="rounded-2xl border bg-secondary/30 p-3.5"><p className="text-sm font-bold">{formatWindow(item, locale) || copy.upcomingTime}</p><p className="mt-1 text-xs text-muted-foreground">{copy.serviceModeLabels[item.serviceMode]} · {item.timezoneName}</p><button type="button" disabled={requested || requestingId === item.id || needsArea} onClick={() => void requestWindow(item)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))] disabled:cursor-not-allowed disabled:opacity-55"><CalendarPlus size={15} />{requested ? copy.requested : requestingId === item.id ? copy.requesting : needsArea ? copy.chooseAreaFirst : copy.requestThisTime}</button></div>;
               })}</div>}
 
             {requestNotice && <p role="status" className="mt-4 rounded-xl border border-success/15 bg-success/7 p-3 text-xs font-medium text-success">{requestNotice}</p>}
@@ -336,7 +376,7 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
         </div>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur-xl lg:hidden"><a href="#book" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"><CalendarClock size={18} /> View availability</a></div>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur-xl lg:hidden"><a href="#book" className="mx-auto flex min-h-12 max-w-lg items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-sm"><CalendarPlus size={18} /> Request appointment</a></div>
       <PublicFooter />
     </div>
   );

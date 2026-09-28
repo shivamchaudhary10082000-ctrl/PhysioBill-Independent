@@ -226,11 +226,11 @@ export function AdminPortalRoute({ section, requestId }: { section: AdminSection
         </div>
       </header>
       <div className="mx-auto grid max-w-[1320px] gap-6 px-4 pb-20 pt-5 sm:px-7 lg:grid-cols-[220px_minmax(0,1fr)] lg:pt-7">
-        <nav aria-label="Admin sections" className="flex gap-2 overflow-x-auto pb-1 lg:sticky lg:top-[94px] lg:block lg:h-fit lg:space-y-1 lg:overflow-visible">
+        <nav aria-label="Admin sections" className="sticky top-[70px] z-10 -mx-4 flex snap-x gap-2 overflow-x-auto border-y bg-background/95 px-4 py-2 backdrop-blur-xl sm:-mx-7 sm:px-7 lg:mx-0 lg:top-[94px] lg:block lg:h-fit lg:space-y-1 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
           {ADMIN_NAVIGATION.filter((item) => canUse(capabilities, item.capabilities)).map((item) => {
             const Icon = item.icon;
             const current = item.section === section;
-            return <a key={item.section} href={item.href} aria-current={current ? 'page' : undefined} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition lg:flex ${current ? 'bg-primary text-primary-foreground' : 'border bg-card text-muted-foreground hover:text-foreground'}`}><Icon size={16} />{item.label}</a>;
+            return <a key={item.section} href={item.href} aria-current={current ? 'page' : undefined} className={`inline-flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition lg:flex ${current ? 'bg-primary text-primary-foreground shadow-sm' : 'border bg-card text-muted-foreground hover:border-primary/20 hover:text-foreground'}`}><Icon size={16} />{item.label}</a>;
           })}
         </nav>
         <main className="min-w-0"><Suspense fallback={<RouteLoading message="Opening Admin section…" />}><AdminSectionPage section={section} requestId={requestId} capabilities={capabilities} /></Suspense></main>

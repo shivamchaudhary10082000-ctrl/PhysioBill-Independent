@@ -35,7 +35,7 @@ function MetricCard({
   icon: typeof Activity;
 }) {
   return (
-    <article className="rounded-2xl border bg-card p-5 shadow-[0_10px_28px_hsl(var(--foreground)/.025)]">
+    <article className="rounded-2xl border border-primary/8 bg-card p-5 shadow-[0_10px_28px_hsl(var(--foreground)/.025)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_hsl(var(--foreground)/.05)]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold text-muted-foreground">{label}</p>
@@ -45,6 +45,28 @@ function MetricCard({
       </div>
       <p className="mt-3 text-xs leading-5 text-muted-foreground">{detail}</p>
     </article>
+  );
+}
+
+function QuickAction({
+  href,
+  label,
+  detail,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  detail: string;
+  icon: typeof Activity;
+}) {
+  return (
+    <a href={href} className="group flex min-h-24 items-center gap-4 rounded-2xl border bg-card p-4 transition hover:border-primary/25 hover:bg-primary/[.025]">
+      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/8 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground"><Icon size={19} /></span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold">{label}</span>
+        <span className="mt-1 block text-xs leading-5 text-muted-foreground">{detail}</span>
+      </span>
+    </a>
   );
 }
 
@@ -69,18 +91,28 @@ export function AdminOperationsOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[26px] border border-primary/14 bg-[hsl(var(--primary-soft))] p-6 sm:p-8">
+      <section className="overflow-hidden rounded-[28px] border border-primary/14 bg-[linear-gradient(135deg,hsl(var(--primary-soft)),hsl(var(--card))_72%)] p-6 shadow-[0_18px_50px_hsl(var(--foreground)/.04)] sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Operations control</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-[-.035em]">Admin overview</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Operational totals only. Clinical notes, diagnoses, OTPs and provider secrets are not available here.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Operations control</p>
+              <span className="rounded-full border border-success/15 bg-success/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-success">MFA protected</span>
+            </div>
+            <h1 className="mt-2 text-3xl font-bold tracking-[-.035em] sm:text-4xl">Admin control center</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">See what needs attention, move into operational queues quickly, and keep clinical notes, diagnoses, OTPs and provider secrets outside the Admin surface.</p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <label className="space-y-1"><span className="block text-[11px] font-semibold text-muted-foreground">From</span><input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} className="h-10 rounded-xl border bg-background px-3 text-sm" /></label>
-            <label className="space-y-1"><span className="block text-[11px] font-semibold text-muted-foreground">To</span><input type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} className="h-10 rounded-xl border bg-background px-3 text-sm" /></label>
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto">
+            <label className="space-y-1"><span className="block text-[11px] font-semibold text-muted-foreground">From</span><input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 text-sm" /></label>
+            <label className="space-y-1"><span className="block text-[11px] font-semibold text-muted-foreground">To</span><input type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} className="h-11 w-full rounded-xl border bg-background px-3 text-sm" /></label>
           </div>
         </div>
+      </section>
+
+      <section aria-label="Admin quick actions" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <QuickAction href="/admin/bookings" label="Booking queue" detail="Review patient → therapist request states." icon={CalendarClock} />
+        <QuickAction href="/admin/patients" label="Patient operations" detail="Open privacy-safe patient identities." icon={UsersRound} />
+        <QuickAction href="/admin/therapists" label="Therapist roster" detail="Inspect professional and discovery status." icon={BadgeCheck} />
+        <QuickAction href="/admin/cases" label="Operational cases" detail="Handle escalations without exposing clinical notes." icon={ShieldAlert} />
       </section>
 
       {loading && <div className="h-44 rounded-2xl skeleton" />}
@@ -90,10 +122,26 @@ export function AdminOperationsOverviewPage() {
         <>
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="Appointment requests" value={overview.appointments.total} detail={`${overview.period.from} to ${overview.period.to}`} icon={CalendarClock} />
-            <MetricCard label="Accepted" value={overview.appointments.accepted} detail={`${overview.appointments.requested} awaiting therapist response`} icon={CalendarCheck2} />
+            <MetricCard label="Awaiting response" value={overview.appointments.requested} detail="Therapist action still pending" icon={CalendarCheck2} />
             <MetricCard label="Registered patients" value={overview.patients.registered_total} detail="Platform patient identities; not therapist-owned charts" icon={UsersRound} />
             <MetricCard label="Verified therapists" value={overview.therapists.verified_total} detail={`${overview.therapists.discoverable_total} currently discoverable`} icon={BadgeCheck} />
           </section>
+
+          {(overview.appointments.requested > 0 || overview.therapists.pending_verification_total > 0) && (
+            <section className="rounded-2xl border border-warning/20 bg-warning/5 p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-warning/10 text-warning"><ShieldAlert size={19} /></span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[.12em] text-warning">Needs attention</p>
+                  <h2 className="mt-1 text-lg font-bold">There is unfinished operational work</h2>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                    {overview.appointments.requested > 0 && <a href="/admin/bookings" className="rounded-full border bg-background px-3 py-2 hover:border-primary/25">{integer.format(overview.appointments.requested)} booking request{overview.appointments.requested === 1 ? '' : 's'} awaiting response</a>}
+                    {overview.therapists.pending_verification_total > 0 && <span className="rounded-full border bg-background px-3 py-2">{integer.format(overview.therapists.pending_verification_total)} therapist verification request{overview.therapists.pending_verification_total === 1 ? '' : 's'} pending</span>}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
           <section className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
             <article className="rounded-2xl border bg-card p-6">

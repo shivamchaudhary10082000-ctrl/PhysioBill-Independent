@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -13,6 +14,11 @@ import {
 import { PhysioBillBrand } from '@/Components/PhysioBillBrand';
 import { PublicFooter } from '@/Components/PublicFooter';
 import { PublicTherapistSearch } from '@/Components/PublicTherapistSearch';
+import {
+  listVerifiedTherapists,
+  THERAPIST_SERVICE_MODE_LABELS,
+  type VerifiedTherapistDiscoveryResult,
+} from '@/lib/therapist-discovery';
 
 const careModes = [
   {
@@ -41,6 +47,16 @@ const careModes = [
   },
 ] as const;
 
+function profileInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'PT';
+}
+
 const patientFaqs = [
   {
     question: 'What does “verified professional” mean?',
@@ -61,6 +77,27 @@ const patientFaqs = [
 ] as const;
 
 export function PublicLandingPage() {
+  const [verifiedProfiles, setVerifiedProfiles] = useState<VerifiedTherapistDiscoveryResult[]>([]);
+  const [profilesLoading, setProfilesLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    listVerifiedTherapists(3)
+      .then((profiles) => {
+        if (active) setVerifiedProfiles(profiles);
+      })
+      .catch(() => {
+        if (active) setVerifiedProfiles([]);
+      })
+      .finally(() => {
+        if (active) setProfilesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen overflow-hidden bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur-xl">
@@ -135,7 +172,63 @@ export function PublicLandingPage() {
           </div>
         </section>
 
-        <section id="care-options" className="bg-card/65 lg:pt-28">
+        <section className="border-b border-border/70 bg-background" aria-labelledby="verified-profiles-heading">
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:pt-36">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs font-bold uppercase tracking-[.1em] text-primary">Verified physiotherapists</p>
+                <h2 id="verified-profiles-heading" className="mt-3 text-3xl font-extrabold tracking-[-.04em] sm:text-4xl">Review a professional before you request care.</h2>
+                <p className="mt-3 text-base leading-7 text-muted-foreground">These are real public profiles that currently pass PhysioBill’s verification and discoverability checks. Open a profile to review credentials, services, areas and published availability.</p>
+              </div>
+              <a href="/find-physio" className="inline-flex min-h-11 shrink-0 items-center gap-2 self-start rounded-xl border border-primary/15 bg-card px-4 text-sm font-bold text-primary transition hover:border-primary/30 hover:bg-primary/5 sm:self-auto">Find more physiotherapists <ArrowRight size={16} /></a>
+            </div>
+
+            {profilesLoading ? (
+              <div className="mt-7 grid gap-4 lg:grid-cols-3" aria-label="Loading verified physiotherapist profiles">
+                {[0, 1, 2].map((item) => <div key={item} className="skeleton h-56 rounded-[24px]" />)}
+              </div>
+            ) : verifiedProfiles.length > 0 ? (
+              <div className="mt-7 grid gap-4 lg:grid-cols-3">
+                {verifiedProfiles.map((therapist) => {
+                  const primaryArea = therapist.service_areas[0];
+                  const primaryMode = therapist.service_modes[0] ?? 'home_visit';
+                  const profileHref = `/physiotherapist/${therapist.physio_id}?mode=${encodeURIComponent(primaryMode)}`;
+                  return (
+                    <article key={therapist.physio_id} className="rounded-[24px] border border-primary/10 bg-card p-5 shadow-[0_14px_38px_hsl(var(--foreground)/.04)] sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <a href={profileHref} aria-label={`Open ${therapist.display_name} profile`} className="grid size-14 shrink-0 place-items-center rounded-2xl border border-primary/12 bg-primary/7 text-sm font-extrabold text-primary">
+                          {profileInitials(therapist.display_name)}
+                        </a>
+                        <div className="min-w-0">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-success/15 bg-success/8 px-2.5 py-1 text-[11px] font-bold text-success"><CheckCircle2 size={13} /> Verified professional</span>
+                          <h3 className="mt-2 text-xl font-extrabold tracking-[-.025em]"><a href={profileHref} className="transition hover:text-primary">{therapist.display_name}</a></h3>
+                          {therapist.verified_qualification && <p className="mt-1 text-sm font-semibold text-muted-foreground">{therapist.verified_qualification}</p>}
+                        </div>
+                      </div>
+
+                      {therapist.headline && <p className="mt-4 text-sm leading-6 text-muted-foreground">{therapist.headline}</p>}
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {therapist.service_modes.map((mode) => <span key={mode} className="rounded-full border border-primary/10 bg-primary/5 px-3 py-1.5 text-xs font-semibold">{THERAPIST_SERVICE_MODE_LABELS[mode]}</span>)}
+                      </div>
+
+                      {primaryArea && <p className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground"><MapPin size={15} className="text-primary" /> {primaryArea.locality}, {primaryArea.city}</p>}
+
+                      <a href={profileHref} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition hover:bg-[hsl(var(--primary-hover))]">View full profile <ArrowRight size={16} /></a>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-7 rounded-[24px] border bg-card p-6 text-center sm:p-8">
+                <p className="text-sm font-bold">No verified public profiles are available to show on the homepage right now.</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">Use the city and service search to check the current discovery directory.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section id="care-options" className="bg-card/65">
           <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
             <div className="max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[.1em] text-primary">Choose your care setting</p>

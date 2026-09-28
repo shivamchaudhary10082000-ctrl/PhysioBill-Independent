@@ -38,11 +38,7 @@ type ProfileState =
 
 const PROFILE_SECTIONS = [
   { id: 'book', label: 'Book' },
-  { id: 'patient-stories', label: 'Patient Stories' },
-  { id: 'treatments', label: 'Treatments & Conditions' },
-  { id: 'photos', label: 'Photos & Media' },
-  { id: 'specializations', label: 'Specializations' },
-  { id: 'practice', label: 'Practice Details' },
+  { id: 'practice', label: 'Practice' },
   { id: 'about', label: 'About' },
   { id: 'faqs', label: 'FAQs' },
 ] as const;
@@ -239,7 +235,7 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
               </div>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <a href="#book" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-sm transition hover:bg-[hsl(var(--primary-hover))]"><CalendarPlus size={17} /> Request appointment</a>
-                <a href="#about" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-primary/15 bg-background/75 px-5 text-sm font-bold transition hover:bg-secondary">View professional profile</a>
+                <a href="#about" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-primary/15 bg-background/75 px-5 text-sm font-bold transition hover:bg-secondary">About & credentials</a>
               </div>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-primary/10 bg-background/70 p-4">
@@ -263,41 +259,10 @@ export function PublicTherapistProfilePage({ physioId }: { physioId: string }) {
 
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="space-y-6">
-            <section id="patient-stories" className="scroll-mt-40 rounded-[28px] border bg-card p-6 shadow-[0_14px_42px_hsl(var(--foreground)/.035)] sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Patient feedback</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-[-.03em]">Patient Stories</h2>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">No public patient stories are available for this profile yet. PhysioBill does not display placeholder or invented reviews.</p>
-            </section>
-
-            <section id="treatments" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Care offered</p>
-              <h2 className="mt-2 text-2xl font-bold">Treatments & Conditions</h2>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">No separate treatment or condition list has been published for this profile yet.</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {profile.service_modes.map((mode) => <span key={mode} className="rounded-full border border-primary/12 bg-primary/5 px-3 py-1.5 text-xs font-semibold">{copy.serviceModeLabels[mode]}</span>)}
-              </div>
-            </section>
-
-            <section id="photos" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Profile media</p>
-              <h2 className="mt-2 text-2xl font-bold">Photos & Media</h2>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">No public photos or videos have been published for this profile yet.</p>
-            </section>
-
-            <section id="specializations" className="scroll-mt-40 rounded-[28px] border bg-card p-6 sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Professional focus</p>
-              <h2 className="mt-2 text-2xl font-bold">Specializations</h2>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-primary/12 bg-primary/5 px-3 py-1.5 text-xs font-semibold">Physiotherapy</span>
-                {profile.verified_qualification && <span className="rounded-full border bg-secondary/45 px-3 py-1.5 text-xs font-semibold">{profile.verified_qualification}</span>}
-              </div>
-              <p className="mt-4 text-xs leading-5 text-muted-foreground">PhysioBill does not infer a clinical specialty from a biography. Specific specialties should be shown only when they are explicitly published and supported by the profile workflow.</p>
-            </section>
-
             <section id="about" className="scroll-mt-40 rounded-[28px] border bg-card p-6 shadow-[0_14px_42px_hsl(var(--foreground)/.035)] sm:p-8">
               <p className="text-xs font-bold uppercase tracking-[.14em] text-primary">Professional profile</p>
               <h2 className="mt-2 text-2xl font-bold tracking-[-.03em]">About this physiotherapist</h2>
-              <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{profile.bio || 'This physiotherapist has not added a public introduction yet.'}</p>
+              {profile.bio && <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{profile.bio}</p>}
               {profile.clinic_name && <div className="mt-6 flex items-start gap-3 rounded-2xl bg-secondary/55 p-4"><Building2 className="mt-0.5 shrink-0 text-primary" size={19} /><div><p className="text-xs font-semibold text-muted-foreground">Practice</p><p className="mt-1 font-bold">{profile.clinic_name}</p></div></div>}
             </section>
 

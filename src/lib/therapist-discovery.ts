@@ -118,6 +118,21 @@ export async function searchVerifiedTherapists(search: TherapistDiscoverySearch)
   return data.map((row: unknown) => normalizeDiscoveryRow(row)).filter((row): row is VerifiedTherapistDiscoveryResult => row !== null);
 }
 
+export async function listVerifiedTherapists(limit = 3): Promise<VerifiedTherapistDiscoveryResult[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc('search_verified_therapists', {
+    p_city: null,
+    p_locality: null,
+    p_service_mode: null,
+  });
+  if (error || !Array.isArray(data)) throw new Error('Unable to load verified physiotherapists right now.');
+
+  return data
+    .map((row: unknown) => normalizeDiscoveryRow(row))
+    .filter((row): row is VerifiedTherapistDiscoveryResult => row !== null)
+    .slice(0, Math.max(1, Math.min(limit, 6)));
+}
+
 export async function getVerifiedTherapistPublicProfile(
   physioId: string,
 ): Promise<VerifiedTherapistDiscoveryResult | null> {

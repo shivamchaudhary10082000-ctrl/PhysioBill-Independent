@@ -1,0 +1,788 @@
+/*
+ * PhysioBill restrained premium visual system
+ *
+ * Design goal: calm clinical luxury rather than decorative SaaS.
+ * The hierarchy is carried by typography, spacing, proportion and restraint.
+ * Brand colour is deliberately secondary to content and primary work actions.
+ * No application behaviour, authorization or data flow is changed here.
+ */
+
+:root {
+  --app-font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+  --background: 42 18% 97%;
+  --foreground: 220 8% 11%;
+  --border: 40 8% 87%;
+  --input: 40 7% 81%;
+  --ring: 220 8% 18%;
+  --card: 45 24% 99%;
+  --card-foreground: 220 8% 11%;
+  --card-border: 40 8% 87%;
+  --popover: 45 24% 99%;
+  --popover-foreground: 220 8% 11%;
+  --popover-border: 40 8% 87%;
+  --primary: 220 7% 13%;
+  --primary-foreground: 45 18% 98%;
+  --primary-hover: 220 7% 8%;
+  --primary-soft: 42 11% 93%;
+  --secondary: 42 10% 94%;
+  --secondary-foreground: 220 7% 16%;
+  --muted: 42 9% 94%;
+  --muted-foreground: 220 5% 43%;
+  --accent: 188 22% 93%;
+  --accent-foreground: 195 24% 20%;
+  --sidebar: 45 22% 98%;
+  --sidebar-foreground: 220 8% 12%;
+  --sidebar-border: 40 8% 87%;
+  --sidebar-primary: 42 11% 92%;
+  --sidebar-primary-foreground: 220 7% 12%;
+  --sidebar-accent: 42 11% 93%;
+  --sidebar-accent-foreground: 220 7% 12%;
+  --sidebar-ring: 220 8% 18%;
+
+  --lux-canvas-top: 45 24% 98%;
+  --lux-canvas-bottom: 40 14% 96%;
+  --lux-surface: 45 24% 99%;
+  --lux-surface-raised: 0 0% 100%;
+  --lux-surface-soft: 42 10% 95%;
+  --lux-line: 40 8% 86%;
+  --lux-line-soft: 40 8% 90%;
+  --lux-ink-soft: 220 5% 43%;
+  --lux-brand: 190 62% 34%;
+  --lux-brand-blue: 209 73% 42%;
+  --lux-shadow: 220 12% 10%;
+}
+
+.dark {
+  --background: 36 5% 7%;
+  --foreground: 40 14% 93%;
+  --border: 36 5% 20%;
+  --input: 36 5% 27%;
+  --ring: 40 12% 82%;
+  --card: 36 5% 9%;
+  --card-foreground: 40 14% 93%;
+  --card-border: 36 5% 20%;
+  --popover: 36 5% 10%;
+  --popover-foreground: 40 14% 93%;
+  --popover-border: 36 5% 20%;
+  --primary: 40 16% 91%;
+  --primary-foreground: 36 5% 8%;
+  --primary-hover: 40 18% 97%;
+  --primary-soft: 36 5% 14%;
+  --secondary: 36 5% 13%;
+  --secondary-foreground: 40 14% 91%;
+  --muted: 36 4% 14%;
+  --muted-foreground: 40 6% 64%;
+  --accent: 188 12% 15%;
+  --accent-foreground: 40 13% 91%;
+  --sidebar: 36 5% 8%;
+  --sidebar-foreground: 40 14% 93%;
+  --sidebar-border: 36 5% 19%;
+  --sidebar-primary: 36 5% 15%;
+  --sidebar-primary-foreground: 40 15% 92%;
+  --sidebar-accent: 36 5% 14%;
+  --sidebar-accent-foreground: 40 14% 93%;
+  --sidebar-ring: 40 12% 82%;
+
+  --lux-canvas-top: 36 5% 8%;
+  --lux-canvas-bottom: 36 6% 6%;
+  --lux-surface: 36 5% 9%;
+  --lux-surface-raised: 36 5% 11%;
+  --lux-surface-soft: 36 5% 13%;
+  --lux-line: 36 5% 21%;
+  --lux-line-soft: 36 5% 17%;
+  --lux-ink-soft: 40 6% 64%;
+  --lux-brand: 188 42% 58%;
+  --lux-brand-blue: 209 62% 65%;
+  --lux-shadow: 0 0% 0%;
+}
+
+html {
+  color-scheme: light;
+  background: hsl(var(--background));
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --background: 36 5% 7%;
+    --foreground: 40 14% 93%;
+    --border: 36 5% 20%;
+    --input: 36 5% 27%;
+    --ring: 40 12% 82%;
+    --card: 36 5% 9%;
+    --card-foreground: 40 14% 93%;
+    --card-border: 36 5% 20%;
+    --popover: 36 5% 10%;
+    --popover-foreground: 40 14% 93%;
+    --popover-border: 36 5% 20%;
+    --primary: 40 16% 91%;
+    --primary-foreground: 36 5% 8%;
+    --primary-hover: 40 18% 97%;
+    --primary-soft: 36 5% 14%;
+    --secondary: 36 5% 13%;
+    --secondary-foreground: 40 14% 91%;
+    --muted: 36 4% 14%;
+    --muted-foreground: 40 6% 64%;
+    --accent: 188 12% 15%;
+    --accent-foreground: 40 13% 91%;
+    --sidebar: 36 5% 8%;
+    --sidebar-foreground: 40 14% 93%;
+    --sidebar-border: 36 5% 19%;
+    --sidebar-primary: 36 5% 15%;
+    --sidebar-primary-foreground: 40 15% 92%;
+    --sidebar-accent: 36 5% 14%;
+    --sidebar-accent-foreground: 40 14% 93%;
+    --sidebar-ring: 40 12% 82%;
+    --lux-canvas-top: 36 5% 8%;
+    --lux-canvas-bottom: 36 6% 6%;
+    --lux-surface: 36 5% 9%;
+    --lux-surface-raised: 36 5% 11%;
+    --lux-surface-soft: 36 5% 13%;
+    --lux-line: 36 5% 21%;
+    --lux-line-soft: 36 5% 17%;
+    --lux-ink-soft: 40 6% 64%;
+    --lux-brand: 188 42% 58%;
+    --lux-brand-blue: 209 62% 65%;
+    --lux-shadow: 0 0% 0%;
+  }
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background: linear-gradient(180deg, hsl(var(--lux-canvas-top)) 0%, hsl(var(--background)) 34%, hsl(var(--lux-canvas-bottom)) 100%);
+  background-attachment: fixed;
+  color: hsl(var(--foreground));
+  font-family: var(--app-font-sans);
+  font-weight: 400;
+  letter-spacing: -.006em;
+}
+
+#root,
+.app-shell,
+.min-h-screen.bg-background {
+  background: transparent !important;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+  letter-spacing: -.032em;
+}
+
+main h1,
+main h2,
+main h3 {
+  font-weight: 620 !important;
+}
+
+main p,
+main label,
+main input,
+main select,
+main textarea,
+main button,
+main a {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Persistent chrome: deliberately quiet so content owns the screen. */
+header.sticky {
+  border-bottom: 1px solid hsl(var(--lux-line-soft)) !important;
+  background: hsl(var(--lux-surface) / .92) !important;
+  -webkit-backdrop-filter: saturate(115%) blur(14px);
+  backdrop-filter: saturate(115%) blur(14px);
+  box-shadow: none !important;
+}
+
+header.sticky p[class*='uppercase'] {
+  letter-spacing: .14em !important;
+  font-weight: 600 !important;
+}
+
+/* Shared professional quick navigation: text rail, not a row of pills. */
+.professional-nav-rail {
+  border-bottom-color: hsl(var(--lux-line-soft)) !important;
+  background: hsl(var(--lux-surface) / .88) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.professional-nav {
+  scrollbar-width: none !important;
+}
+
+.professional-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.professional-nav-link {
+  position: relative;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: hsl(var(--muted-foreground)) !important;
+  font-weight: 500 !important;
+  letter-spacing: -.005em;
+}
+
+.professional-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1.5px;
+  background: transparent;
+  transform: scaleX(.45);
+  transform-origin: center;
+  transition: transform .18s ease, background-color .18s ease;
+}
+
+.professional-nav-link:hover {
+  color: hsl(var(--foreground)) !important;
+}
+
+.professional-nav-link[aria-current='page'] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.professional-nav-link[aria-current='page']::after {
+  background: hsl(var(--foreground));
+  transform: scaleX(1);
+}
+
+/* Legacy/fallback horizontal nav styling, for route surfaces not yet using the named classes. */
+nav.touch-pan-x:not(.professional-nav) {
+  scrollbar-width: none;
+}
+
+nav.touch-pan-x:not(.professional-nav)::-webkit-scrollbar {
+  display: none;
+}
+
+nav.touch-pan-x:not(.professional-nav) > a {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+}
+
+/* Desktop sidebar reads as architecture, not a second dashboard. */
+aside.bg-sidebar {
+  background: hsl(var(--sidebar) / .94) !important;
+  border-right-color: hsl(var(--lux-line-soft)) !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+aside.bg-sidebar nav a,
+.fixed.inset-0 aside nav a {
+  border: 0 !important;
+  border-radius: .55rem !important;
+  background: transparent !important;
+  font-weight: 500 !important;
+}
+
+aside.bg-sidebar nav a:hover,
+.fixed.inset-0 aside nav a:hover,
+aside.bg-sidebar nav a.bg-sidebar-accent,
+nav a[data-workspace-active='true'] {
+  background: hsl(var(--secondary)) !important;
+  box-shadow: none !important;
+}
+
+aside.bg-sidebar > div:last-child {
+  border: 1px solid hsl(var(--lux-line-soft)) !important;
+  border-radius: .75rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Core surfaces: fewer effects, finer lines, smaller radii. */
+main .rounded-2xl.border.bg-card,
+main .overflow-hidden.rounded-2xl.border.bg-card,
+main [class*='rounded-[24px]'].border.bg-card,
+main [class*='rounded-[26px]'].border.bg-card,
+main [class*='rounded-[28px]'].border.bg-card,
+main [class*='rounded-[30px]'].border.bg-card,
+main [class*='rounded-[32px]'].border.bg-card {
+  border-color: hsl(var(--lux-line)) !important;
+  border-radius: .8rem !important;
+  background: hsl(var(--lux-surface) / .94) !important;
+  box-shadow: 0 1px 0 hsl(0 0% 100% / .28), 0 10px 28px hsl(var(--lux-shadow) / .025) !important;
+}
+
+/* Dashboard: the page becomes an editorial work surface rather than a grid of cards. */
+main > .space-y-7 {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+main > .space-y-7 > div:first-child[class*='bg-primary'] {
+  border: 0 !important;
+  border-bottom: 1px solid hsl(var(--lux-line)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 2.6rem .15rem 2.35rem !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: none !important;
+}
+
+main > .space-y-7 > div:first-child[class*='bg-primary']::after,
+main > .space-y-7 > div:first-child[class*='bg-primary']::before {
+  display: none !important;
+}
+
+main > .space-y-7 > div:first-child[class*='bg-primary'] > p:first-child {
+  color: hsl(var(--lux-brand)) !important;
+  font-size: .66rem !important;
+  font-weight: 650 !important;
+  letter-spacing: .18em !important;
+}
+
+main > .space-y-7 > div:first-child[class*='bg-primary'] h2 {
+  max-width: 900px !important;
+  margin-top: .8rem !important;
+  font-size: clamp(2rem, 5vw, 3.35rem) !important;
+  line-height: 1.03 !important;
+  font-weight: 590 !important;
+  letter-spacing: -.045em !important;
+}
+
+main > .space-y-7 > div:first-child[class*='bg-primary'] p:last-child {
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: .95rem !important;
+  line-height: 1.7 !important;
+}
+
+main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 {
+  gap: 0 !important;
+  overflow: hidden;
+  border-top: 1px solid hsl(var(--lux-line)) !important;
+  border-bottom: 1px solid hsl(var(--lux-line)) !important;
+}
+
+main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div {
+  min-height: 9rem;
+  border: 0 !important;
+  border-right: 1px solid hsl(var(--lux-line)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 1.35rem 1.45rem !important;
+  box-shadow: none !important;
+}
+
+main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div:last-child {
+  border-right: 0 !important;
+}
+
+main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div p:first-child {
+  font-size: .72rem !important;
+  font-weight: 560 !important;
+}
+
+main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div p:last-child {
+  margin-top: 1.9rem !important;
+  font-size: 1.65rem !important;
+  font-weight: 590 !important;
+  letter-spacing: -.035em;
+}
+
+main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 svg {
+  opacity: .42;
+}
+
+main > .space-y-7 > .grid.gap-6 > section,
+main > .space-y-7 > section.rounded-2xl.border.bg-card,
+main > .space-y-7 > .grid.gap-6:last-child > section {
+  border: 0 !important;
+  border-top: 1px solid hsl(var(--lux-line)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 1.65rem .15rem !important;
+  box-shadow: none !important;
+}
+
+main > .space-y-7 > section.rounded-2xl.border.bg-card > div:first-child p,
+main > .space-y-7 > .grid.gap-6 > section > div:first-child p {
+  font-weight: 560 !important;
+}
+
+main > .space-y-7 [class*='bg-secondary/40'],
+main > .space-y-7 [class*='bg-secondary/50'],
+main > .space-y-7 [class*='bg-secondary/55'],
+main > .space-y-7 [class*='bg-secondary/60'] {
+  border: 0 !important;
+  border-bottom: 1px solid hsl(var(--lux-line-soft)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+main > .space-y-7 section > .mt-4.grid a {
+  border-bottom: 1px solid hsl(var(--lux-line-soft)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding-inline: .1rem !important;
+  font-weight: 520 !important;
+}
+
+main > .space-y-7 section > .mt-4.grid a svg {
+  color: hsl(var(--lux-brand)) !important;
+}
+
+/* General information rows: structure is present, but it recedes. */
+main [class*='bg-secondary/40'],
+main [class*='bg-secondary/50'],
+main [class*='bg-secondary/55'],
+main [class*='bg-secondary/60'] {
+  background: hsl(var(--lux-surface-soft) / .66) !important;
+}
+
+main .divide-y > * + * {
+  border-color: hsl(var(--lux-line-soft)) !important;
+}
+
+main table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+main thead {
+  background: hsl(var(--lux-surface-soft) / .7) !important;
+}
+
+main tbody tr {
+  transition: background-color .14s ease;
+}
+
+main tbody tr:hover {
+  background: hsl(var(--secondary) / .55) !important;
+}
+
+/* Typography hierarchy: fewer heavy weights. */
+main .font-extrabold:not([class*='text-3xl']):not([class*='text-4xl']) {
+  font-weight: 620 !important;
+}
+
+main .font-bold {
+  font-weight: 590 !important;
+}
+
+main [class*='uppercase'][class*='tracking'] {
+  font-weight: 620 !important;
+}
+
+/* Inputs: precise, low-noise tools rather than pill controls. */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  border-color: hsl(var(--input)) !important;
+  border-radius: .62rem !important;
+  background: hsl(var(--lux-surface-raised) / .76) !important;
+  box-shadow: none !important;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+input:not([type='checkbox']):not([type='radio']):focus,
+select:focus,
+textarea:focus {
+  border-color: hsl(var(--foreground) / .58) !important;
+  background: hsl(var(--lux-surface-raised)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--foreground) / .055) !important;
+}
+
+input:not([type='checkbox']):not([type='radio']):disabled,
+select:disabled,
+textarea:disabled {
+  border-color: hsl(var(--lux-line-soft)) !important;
+  background: hsl(var(--muted) / .72) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  opacity: 1 !important;
+}
+
+/* Actions: only primary work actions are visually filled. */
+button.bg-primary,
+a.bg-primary {
+  border-radius: .62rem !important;
+  background: hsl(var(--primary)) !important;
+  box-shadow: none !important;
+  font-weight: 570 !important;
+  transform: none !important;
+}
+
+button.bg-primary:hover:not(:disabled),
+a.bg-primary:hover {
+  background: hsl(var(--primary-hover)) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+button.rounded-xl,
+a.rounded-xl {
+  border-radius: .62rem !important;
+}
+
+/* Keep PhysioBill's blue/teal identity in small, meaningful brand details. */
+.physiobill-mark {
+  box-shadow: none !important;
+}
+
+header a[aria-label='Open profile'] {
+  border: 1px solid hsl(var(--lux-line)) !important;
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+  box-shadow: none !important;
+}
+
+/* Professional sign-in: refined editorial split instead of decorative SaaS. */
+main:has(> section.max-w-6xl) {
+  background: transparent !important;
+}
+
+main > section.max-w-6xl {
+  border-color: hsl(var(--lux-line)) !important;
+  border-radius: .95rem !important;
+  background: hsl(var(--lux-surface) / .96) !important;
+  box-shadow: 0 24px 70px hsl(var(--lux-shadow) / .055) !important;
+}
+
+main > section.max-w-6xl > div:first-child {
+  background: hsl(var(--lux-surface-soft)) !important;
+}
+
+main > section.max-w-6xl > div:first-child > .pointer-events-none {
+  display: none !important;
+}
+
+main > section.max-w-6xl > div:first-child .mt-7.grid > div {
+  border: 0 !important;
+  border-top: 1px solid hsl(var(--lux-line)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: .9rem 0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+main > section.max-w-6xl > div:first-child .mt-7.grid > div > span {
+  background: transparent !important;
+}
+
+main > section.max-w-6xl h1 {
+  font-weight: 560 !important;
+  letter-spacing: -.045em !important;
+}
+
+/* Patient sign-in follows the same restrained visual language. */
+main > section.max-w-5xl {
+  border-color: hsl(var(--lux-line)) !important;
+  border-radius: .95rem !important;
+  background: hsl(var(--lux-surface) / .96) !important;
+  box-shadow: 0 24px 70px hsl(var(--lux-shadow) / .05) !important;
+}
+
+main > section.max-w-5xl > div:first-child[class*='bg-secondary'] {
+  background: hsl(var(--lux-surface-soft)) !important;
+}
+
+/* Public discovery: editorial headline + one clear functional search surface. */
+main:has(#search) > section:first-child [aria-hidden='true'] {
+  display: none !important;
+}
+
+#search {
+  border-color: hsl(var(--lux-line)) !important;
+  border-radius: .9rem !important;
+  background: hsl(var(--lux-surface-raised) / .92) !important;
+  box-shadow: 0 24px 70px hsl(var(--lux-shadow) / .05) !important;
+}
+
+main:has(#search) h1 {
+  font-weight: 570 !important;
+  letter-spacing: -.055em !important;
+}
+
+main:has(#search) .display-serif {
+  color: hsl(var(--lux-brand)) !important;
+}
+
+main:has(#search) > section:nth-of-type(2) {
+  background: transparent !important;
+}
+
+main:has(#search) > section:nth-of-type(2) > .grid > div {
+  border: 0 !important;
+  border-top: 1px solid hsl(var(--lux-line)) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Patient gateway: one calm page shell; secondary destinations do not compete. */
+main > section.max-w-4xl > div[class*='rounded-[30px]'] {
+  border-color: hsl(var(--lux-line)) !important;
+  border-radius: .9rem !important;
+  background: hsl(var(--lux-surface) / .96) !important;
+  box-shadow: 0 20px 60px hsl(var(--lux-shadow) / .04) !important;
+}
+
+main > section.max-w-4xl nav a:not(.bg-primary) {
+  border-color: hsl(var(--lux-line)) !important;
+  background: transparent !important;
+  font-weight: 520 !important;
+}
+
+main > section.max-w-4xl nav a:not(.bg-primary):hover {
+  background: hsl(var(--secondary) / .6) !important;
+}
+
+/* Dialogs and mobile drawers share the same quiet material. */
+[role='dialog'],
+.fixed.inset-0 aside {
+  border-color: hsl(var(--lux-line)) !important;
+}
+
+.fixed.inset-0 aside {
+  background: hsl(var(--lux-surface)) !important;
+}
+
+/* Premium means responsive craft, not decorative animation. */
+@media (hover: hover) and (pointer: fine) {
+  main a,
+  main button,
+  .professional-nav-link {
+    transition-duration: .16s;
+  }
+
+  main .rounded-2xl.border.bg-card:hover {
+    border-color: hsl(var(--lux-line)) !important;
+    box-shadow: 0 1px 0 hsl(0 0% 100% / .24), 0 12px 30px hsl(var(--lux-shadow) / .035) !important;
+  }
+
+  main > .space-y-7 .rounded-2xl.border.bg-card:hover {
+    box-shadow: none !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div:nth-child(2n) {
+    border-right: 0 !important;
+  }
+}
+
+@media (max-width: 639px) {
+  body {
+    background: linear-gradient(180deg, hsl(var(--lux-canvas-top)) 0%, hsl(var(--background)) 38%, hsl(var(--lux-canvas-bottom)) 100%);
+  }
+
+  header.sticky {
+    -webkit-backdrop-filter: blur(11px);
+    backdrop-filter: blur(11px);
+  }
+
+  .professional-nav {
+    gap: 1.45rem !important;
+    padding-inline: 1rem !important;
+  }
+
+  .professional-nav-link {
+    min-height: 3rem !important;
+    padding-inline: 0 !important;
+    font-size: .78rem !important;
+  }
+
+  main > .space-y-7 > div:first-child[class*='bg-primary'] {
+    padding-top: 1.85rem !important;
+    padding-bottom: 1.8rem !important;
+  }
+
+  main > .space-y-7 > div:first-child[class*='bg-primary'] h2 {
+    font-size: 2.05rem !important;
+    line-height: 1.06 !important;
+  }
+
+  main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div {
+    min-height: 7.8rem;
+    padding: 1.15rem 1rem !important;
+    border-bottom: 1px solid hsl(var(--lux-line)) !important;
+  }
+
+  main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div:nth-child(2n) {
+    border-right: 0 !important;
+  }
+
+  main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div:nth-last-child(-n+2) {
+    border-bottom: 0 !important;
+  }
+
+  main > .space-y-7 > .grid.sm\:grid-cols-2.xl\:grid-cols-4 > div p:last-child {
+    margin-top: 1.35rem !important;
+    font-size: 1.4rem !important;
+  }
+
+  main > section.max-w-6xl,
+  main > section.max-w-5xl {
+    border-radius: .75rem !important;
+    box-shadow: none !important;
+  }
+
+  #search,
+  main > section.max-w-4xl > div[class*='rounded-[30px]'] {
+    border-radius: .75rem !important;
+    box-shadow: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Receipts and invoices remain neutral, legible and ink-safe regardless of theme. */
+@media print {
+  html {
+    color-scheme: light !important;
+    background: #fff !important;
+  }
+
+  body,
+  #root,
+  .app-shell,
+  main,
+  .min-h-screen.bg-background {
+    background: #fff !important;
+    background-image: none !important;
+    color: #111 !important;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+}

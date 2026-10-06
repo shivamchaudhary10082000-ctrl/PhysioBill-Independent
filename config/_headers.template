@@ -12,23 +12,41 @@
 /
   Cache-Control: private, no-store, max-age=0, must-revalidate
 
+/app
+  Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
+
 /app/*
   Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
 
 /auth/*
   Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
 
 /patient
   Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
 
 /patient/*
   Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
+
+/professional/*
+  Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
 
 /admin
   Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
 
 /admin/*
   Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
+
+/verify/*
+  Cache-Control: private, no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
 
 /assets/*
   ! Cache-Control

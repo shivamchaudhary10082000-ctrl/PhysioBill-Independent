@@ -8,6 +8,7 @@ const SUPABASE_PLACEHOLDER = '__SUPABASE_CONNECT_SRC__';
 const TURNSTILE_SCRIPT_PLACEHOLDER = '__TURNSTILE_SCRIPT_SRC__';
 const TURNSTILE_FRAME_PLACEHOLDER = '__TURNSTILE_FRAME_SRC__';
 const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
+const PRODUCTION_SITEMAP_URL = 'https://physiobill-independent.pages.dev/sitemap.xml';
 
 export function getSupabaseCspOrigins(rawUrl) {
   if (!rawUrl?.trim()) {
@@ -117,7 +118,7 @@ async function main() {
   await writeFile(
     robotsPath,
     canonicalProductionBuild
-      ? 'User-agent: *\nAllow: /\n'
+      ? `User-agent: *\nAllow: /\nSitemap: ${PRODUCTION_SITEMAP_URL}\n`
       : 'User-agent: *\nDisallow: /\n',
     'utf8',
   );

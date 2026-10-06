@@ -7,6 +7,45 @@ import { PublicRouteBoundary } from '@/pages/PublicRouteBoundary';
 import './index.css';
 import './premium.css';
 
+const CANONICAL_PRODUCTION_ORIGIN = 'https://physiobill-independent.pages.dev';
+const PUBLIC_CANONICAL_ROUTES = new Set([
+  '/',
+  '/find-physio',
+  '/privacy',
+  '/terms',
+  '/professional-standards',
+]);
+
+function canonicalPublicPath(pathname: string) {
+  if (PUBLIC_CANONICAL_ROUTES.has(pathname)) return pathname;
+
+  if (pathname.startsWith('/physiotherapist/')) {
+    const physioId = pathname.slice('/physiotherapist/'.length);
+    if (physioId && !physioId.includes('/')) return pathname;
+  }
+
+  return null;
+}
+
+function applyPublicDocumentMetadata() {
+  const canonicalPath = canonicalPublicPath(window.location.pathname);
+  const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  const openGraphUrl = document.querySelector<HTMLMetaElement>('meta[property="og:url"]');
+
+  if (!canonicalPath) {
+    canonical?.remove();
+    openGraphUrl?.remove();
+    return;
+  }
+
+  const canonicalUrl = `${CANONICAL_PRODUCTION_ORIGIN}${canonicalPath}`;
+
+  if (canonical) canonical.href = canonicalUrl;
+  if (openGraphUrl) openGraphUrl.content = canonicalUrl;
+}
+
+applyPublicDocumentMetadata();
+
 const LEGACY_SENSITIVE_STORAGE_KEYS = new Set([
   'physiobill-demo-session',
 ]);
@@ -173,7 +212,17 @@ function registerOfflineSafeServiceWorker() {
 
 registerOfflineSafeServiceWorker();
 
-createRoot(document.getElementById('root')!, {
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('PhysioBill root element is missing.');
+}
+
+// The source HTML includes a semantic public landing shell for crawlers and
+// no-JavaScript clients. React owns the root after startup, so remove that
+// static shell before mounting the interactive application.
+rootElement.replaceChildren();
+
+createRoot(rootElement, {
   // Keeps caught errors off reportError(), which would raise the dev overlay.
   onCaughtError: (error, errorInfo) => {
     console.error(error, errorInfo.componentStack);

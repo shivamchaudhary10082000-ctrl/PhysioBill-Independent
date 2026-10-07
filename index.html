@@ -7,40 +7,136 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1"
     />
 
-    <title>PhysioBill</title>
+    <title>PhysioBill — Find Verified Physiotherapists</title>
 
     <meta
       name="description"
-      content="PhysioBill — independent physiotherapy billing and patient management."
+      content="Find verified physiotherapists for home visits, clinic care and telephysiotherapy through PhysioBill."
     />
     <meta name="robots" content="index, follow" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f5f8fc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111722" media="(prefers-color-scheme: dark)" />
 
-    <meta property="og:title" content="PhysioBill" />
+    <link rel="canonical" href="https://physiobill-independent.pages.dev/" />
+
+    <meta property="og:title" content="PhysioBill — Find Verified Physiotherapists" />
     <meta
       property="og:description"
-      content="Independent physiotherapy billing and patient management."
+      content="Find verified physiotherapists for home visits, clinic care and telephysiotherapy through PhysioBill."
     />
     <meta property="og:type" content="website" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="PhysioBill" />
+    <meta property="og:site_name" content="PhysioBill" />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:url" content="https://physiobill-independent.pages.dev/" />
     <meta
-      name="twitter:description"
-      content="Independent physiotherapy billing and patient management."
+      property="og:image"
+      content="https://physiobill-independent.pages.dev/images/physiobill-clinic-care.webp"
+    />
+    <meta
+      property="og:image:alt"
+      content="Privacy-safe physiotherapy care shown on PhysioBill"
     />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PhysioBill — Find Verified Physiotherapists" />
+    <meta
+      name="twitter:description"
+      content="Find verified physiotherapists for home visits, clinic care and telephysiotherapy through PhysioBill."
+    />
+    <meta
+      name="twitter:image"
+      content="https://physiobill-independent.pages.dev/images/physiobill-clinic-care.webp"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Privacy-safe physiotherapy care shown on PhysioBill"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": "https://physiobill-independent.pages.dev/#website",
+        "url": "https://physiobill-independent.pages.dev/",
+        "name": "PhysioBill",
+        "description": "Find verified physiotherapists for home visits, clinic care and telephysiotherapy through PhysioBill.",
+        "inLanguage": "en-IN"
+      }
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href="/physiobill-app-icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest?v=6" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div data-static-public-shell class="min-h-screen bg-background text-foreground">
+        <header class="border-b border-border bg-background">
+          <div class="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-5 px-4 py-3 sm:px-6 lg:px-8">
+            <a href="/" class="text-lg font-extrabold">PhysioBill</a>
+            <nav aria-label="Public navigation" class="flex flex-wrap items-center gap-4 text-sm font-semibold">
+              <a href="/find-physio">Find a physiotherapist</a>
+              <a href="/professional-standards">Trust &amp; safety</a>
+            </nav>
+          </div>
+        </header>
+
+        <main>
+          <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+            <p class="text-sm font-bold">Physiotherapy discovery and scheduling</p>
+            <h1 class="mt-3 max-w-3xl text-4xl font-extrabold leading-tight sm:text-5xl">
+              Find verified physiotherapists for home, clinic and online care.
+            </h1>
+            <p class="mt-5 max-w-2xl text-base leading-7">
+              PhysioBill helps patients review verified professional profiles, search by care setting and location, and request physiotherapy without unrelated healthcare listings.
+            </p>
+            <div class="mt-7 flex flex-wrap gap-3">
+              <a href="/find-physio" class="font-bold">Find a physiotherapist →</a>
+              <a href="/professional/sign-in" class="font-bold">For physiotherapists →</a>
+            </div>
+          </section>
+
+          <section aria-labelledby="static-care-heading" class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+            <h2 id="static-care-heading" class="text-2xl font-extrabold">Choose the physiotherapy setting that fits your needs.</h2>
+            <div class="mt-5 grid gap-5 lg:grid-cols-3">
+              <article>
+                <h3 class="text-xl font-bold"><a href="/find-physio?mode=home_visit">Home physiotherapy</a></h3>
+                <p class="mt-2">Search for verified professionals who serve your city and area.</p>
+              </article>
+              <article>
+                <h3 class="text-xl font-bold"><a href="/find-physio?mode=clinic_visit">Clinic physiotherapy</a></h3>
+                <p class="mt-2">Review clinic-based care, professional details and published availability.</p>
+              </article>
+              <article>
+                <h3 class="text-xl font-bold"><a href="/find-physio?mode=telephysiotherapy">Telephysiotherapy</a></h3>
+                <p class="mt-2">Request remote care when a verified professional offers online sessions.</p>
+              </article>
+            </div>
+          </section>
+
+          <section aria-labelledby="static-trust-heading" class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+            <h2 id="static-trust-heading" class="text-2xl font-extrabold">Review the professional before requesting care.</h2>
+            <p class="mt-3 max-w-3xl leading-7">
+              Public discovery is limited to profiles that pass PhysioBill's verification and discoverability checks. Patients should still review the displayed qualification and registration information before requesting care.
+            </p>
+            <p class="mt-4"><a href="/professional-standards" class="font-bold">Read professional standards and trust information →</a></p>
+          </section>
+        </main>
+
+        <footer class="border-t border-border">
+          <div class="mx-auto flex max-w-7xl flex-wrap gap-x-6 gap-y-3 px-4 py-8 text-sm sm:px-6 lg:px-8">
+            <span>PhysioBill · Physiotherapy discovery and scheduling</span>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/professional-standards">Professional standards</a>
+          </div>
+        </footer>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
